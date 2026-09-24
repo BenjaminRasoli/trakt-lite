@@ -11,3 +11,45 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  username      String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  watchHistory  WatchHistory[]
+}
+
+model Media {
+  id          Int            @id @default(autoincrement())
+  tmdbId      Int            @unique
+  title       String
+  mediaType   String         // "movie" or "tv"
+  posterPath  String?
+  backdropPath String?
+  overview    String?
+  releaseDate DateTime?
+  voteAverage Float?
+  genreIds    Int[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  watchHistory WatchHistory[]
+}
+
+model WatchHistory {
+  id           String   @id @default(cuid())
+  userId       String
+  mediaId      Int
+  seasonNumber Int?
+  episodeNumber Int?
+  watchedAt    DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user   User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  media  Media @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+
+}

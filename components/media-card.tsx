@@ -5,6 +5,7 @@ import {
   getMediaType,
 } from "@/lib/tmdb";
 import type { TMDBMedia } from "@/lib/tmdb";
+import Link from "next/link";
 
 interface MediaCardProps {
   media: TMDBMedia;
@@ -46,8 +47,13 @@ export default function MediaCard({ media }: MediaCardProps) {
     .map((id) => GENRE_MAP[id])
     .filter(Boolean);
 
+  const typeToUse = media.media_type || mediaType;
+
   return (
-    <div className="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 rounded-lg border border-zinc-700/50 backdrop-blur-sm overflow-hidden hover:border-violet-500/50 transition-all hover:shadow-lg hover:shadow-violet-500/10">
+    <Link
+      href={`/media/${media.id}?type=${typeToUse}`}
+      className="block bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 rounded-lg border border-zinc-700/50 backdrop-blur-sm overflow-hidden hover:border-violet-500/50 transition-all hover:shadow-lg hover:shadow-violet-500/10"
+    >
       <div className="relative aspect-[2/3]">
         <img
           src={posterUrl}
@@ -87,6 +93,6 @@ export default function MediaCard({ media }: MediaCardProps) {
           ))}
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
