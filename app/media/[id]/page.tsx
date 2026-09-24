@@ -588,8 +588,7 @@ export default function MediaDetailsPage() {
                               Episode {episode.episode_number} - {episode.name}
                             </option>
                           ))
-                        : // Fallback if season details not loaded yet
-                          Array.from({ length: 10 }, (_, i) => i + 1).map(
+                        : Array.from({ length: 10 }, (_, i) => i + 1).map(
                             (epNum) => (
                               <option key={epNum} value={epNum}>
                                 Episode {epNum}

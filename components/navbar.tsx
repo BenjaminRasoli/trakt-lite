@@ -50,12 +50,20 @@ export default function Navbar() {
               Trakt Lite
             </a>
             {user && (
-              <a
-                href="/new"
-                className="text-zinc-300 hover:text-violet-400 transition-colors cursor-pointer font-medium"
-              >
-                New
-              </a>
+              <>
+                <a
+                  href="/new"
+                  className="text-zinc-300 hover:text-violet-400 transition-colors cursor-pointer font-medium"
+                >
+                  New
+                </a>
+                <a
+                  href="/settings"
+                  className="text-zinc-300 hover:text-violet-400 transition-colors cursor-pointer font-medium"
+                >
+                  Settings
+                </a>
+              </>
             )}
           </div>
 
