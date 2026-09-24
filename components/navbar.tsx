@@ -36,18 +36,27 @@ export default function Navbar() {
   };
 
   const username = user?.user_metadata?.username || user?.email?.split("@")[0] || "User";
+  const capitalizedUsername = username.charAt(0).toUpperCase() + username.slice(1);
 
   return (
     <nav className="bg-gradient-to-r from-zinc-900 via-zinc-800 to-zinc-900 border-b border-zinc-700/50 backdrop-blur-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <div className="flex items-center">
+          <div className="flex items-center gap-8">
             <a
               href="/"
               className="text-2xl font-bold text-white hover:text-violet-400 transition-colors cursor-pointer"
             >
               Trakt Lite
             </a>
+            {user && (
+              <a
+                href="/new"
+                className="text-zinc-300 hover:text-violet-400 transition-colors cursor-pointer font-medium"
+              >
+                New
+              </a>
+            )}
           </div>
 
           <div className="flex items-center gap-4">
@@ -56,7 +65,7 @@ export default function Navbar() {
             ) : user ? (
               <>
                 <div className="text-zinc-300">
-                  Welcome back, <span className="text-violet-400 font-semibold">{username}</span>
+                  Welcome back, <span className="text-violet-400 font-semibold">{capitalizedUsername}</span>
                 </div>
                 <button
                   onClick={handleSignOut}
