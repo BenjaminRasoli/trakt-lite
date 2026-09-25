@@ -50,7 +50,7 @@ export default function Navbar() {
     username.charAt(0).toUpperCase() + username.slice(1);
 
   return (
-    <nav className="border-b border-zinc-700/50 bg-gradient-to-r from-zinc-900 via-zinc-800 to-zinc-900 backdrop-blur-sm">
+    <nav className="sticky top-0 z-40 border-b border-zinc-700/50 bg-zinc-950/85 backdrop-blur-md">
       <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:py-0 sm:h-16">
           <div className="flex flex-wrap items-center gap-2 sm:gap-8">
@@ -58,7 +58,7 @@ export default function Navbar() {
               href="/"
               className="text-xl font-bold text-white transition-colors hover:text-violet-400 sm:text-2xl"
             >
-              Trakt Lite
+              Trakt <span className="text-violet-400">Lite</span>
             </Link>
             {user && (
               <>

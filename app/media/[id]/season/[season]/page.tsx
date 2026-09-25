@@ -252,7 +252,9 @@ export default function SeasonPage() {
               <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-300">
                 {title}
               </p>
-              <h1 className="text-3xl font-bold text-white">Season {seasonNumber}</h1>
+              <h1 className="text-3xl font-bold text-white">
+                Season {seasonNumber}
+              </h1>
             </div>
           </div>
         </div>
@@ -267,8 +269,12 @@ export default function SeasonPage() {
             }}
           />
           <div>
-            <p className="text-sm text-zinc-400">{season.air_date || "Air date unknown"}</p>
-            <h2 className="text-xl font-semibold text-white">{season.name || `Season ${seasonNumber}`}</h2>
+            <p className="text-sm text-zinc-400">
+              {season.air_date || "Air date unknown"}
+            </p>
+            <h2 className="text-xl font-semibold text-white">
+              {season.name || `Season ${seasonNumber}`}
+            </h2>
             <p className="mt-2 max-w-2xl text-sm text-zinc-300">
               {season.overview || "No season overview is available yet."}
             </p>
@@ -328,7 +334,9 @@ export default function SeasonPage() {
                           {episode.name || `Episode ${episode.episode_number}`}
                         </h3>
                         <p className="mt-1 text-sm text-zinc-400">
-                          {episode.runtime ? `${episode.runtime} min` : "Runtime unknown"}
+                          {episode.runtime
+                            ? `${episode.runtime} min`
+                            : "Runtime unknown"}
                         </p>
                       </div>
 
@@ -337,12 +345,15 @@ export default function SeasonPage() {
                         onClick={() => openWatchModal(episode)}
                         className="inline-flex cursor-pointer items-center justify-center rounded-full border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:border-violet-500/50 hover:text-violet-200"
                       >
-                        {episodeHistory.length > 0 ? "Update watched" : "Mark watched"}
+                        {episodeHistory.length > 0
+                          ? "Update watched"
+                          : "Mark watched"}
                       </button>
                     </div>
 
                     <p className="mt-3 text-sm leading-relaxed text-zinc-300">
-                      {episode.overview || "No episode summary is available for this one."}
+                      {episode.overview ||
+                        "No episode summary is available for this one."}
                     </p>
 
                     <div className="mt-4 rounded-xl border border-zinc-700/60 bg-zinc-800/40 p-3">
@@ -357,7 +368,8 @@ export default function SeasonPage() {
                               key={watch.id}
                               className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-[10px] font-medium uppercase tracking-[0.15em] text-emerald-300"
                             >
-                              Watched {new Date(watch.watchedAt).toLocaleDateString()}
+                              Watched{" "}
+                              {new Date(watch.watchedAt).toLocaleDateString()}
                             </span>
                           ))}
                         </div>

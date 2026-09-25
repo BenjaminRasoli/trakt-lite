@@ -463,35 +463,36 @@ export default function MediaDetailsPage() {
               <h2 className="mb-4 text-xl font-bold text-white">Seasons</h2>
 
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {Array.from({ length: media.number_of_seasons }, (_, i) => i + 1).map(
-                  (seasonNumber) => {
-                    const seasonInfo = tvShowDetails?.seasons?.find(
-                      (season: any) => season.season_number === seasonNumber,
-                    );
-                    const episodeCount = seasonInfo?.episodes?.length || 0;
+                {Array.from(
+                  { length: media.number_of_seasons },
+                  (_, i) => i + 1,
+                ).map((seasonNumber) => {
+                  const seasonInfo = tvShowDetails?.seasons?.find(
+                    (season: any) => season.season_number === seasonNumber,
+                  );
+                  const episodeCount = seasonInfo?.episodes?.length || 0;
 
-                    return (
-                      <Link
-                        key={seasonNumber}
-                        href={`/media/${mediaId}/season/${seasonNumber}?type=tv`}
-                        className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4 transition hover:border-violet-500/60 hover:bg-zinc-900"
-                      >
-                        <div className="mb-2 flex items-center justify-between gap-3">
-                          <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-300">
-                            Season {seasonNumber}
-                          </span>
-                          <span className="rounded-full bg-zinc-800 px-2 py-1 text-[10px] text-zinc-300">
-                            {episodeCount} eps
-                          </span>
-                        </div>
+                  return (
+                    <Link
+                      key={seasonNumber}
+                      href={`/media/${mediaId}/season/${seasonNumber}?type=tv`}
+                      className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4 transition hover:border-violet-500/60 hover:bg-zinc-900"
+                    >
+                      <div className="mb-2 flex items-center justify-between gap-3">
+                        <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-300">
+                          Season {seasonNumber}
+                        </span>
+                        <span className="rounded-full bg-zinc-800 px-2 py-1 text-[10px] text-zinc-300">
+                          {episodeCount} eps
+                        </span>
+                      </div>
 
-                        <p className="text-sm text-zinc-400">
-                          {seasonInfo?.name || "Season overview"}
-                        </p>
-                      </Link>
-                    );
-                  },
-                )}
+                      <p className="text-sm text-zinc-400">
+                        {seasonInfo?.name || "Season overview"}
+                      </p>
+                    </Link>
+                  );
+                })}
               </div>
             </div>
           )}
