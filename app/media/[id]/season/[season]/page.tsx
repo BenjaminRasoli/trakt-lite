@@ -115,6 +115,19 @@ export default function SeasonPage() {
     };
   }, [modalOpen]);
 
+  useEffect(() => {
+    if (!modalOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        closeWatchModal();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [modalOpen]);
+
   const openWatchModal = (episode: any) => {
     const existingHistory = watchHistory
       .filter(
@@ -423,8 +436,15 @@ export default function SeasonPage() {
       </main>
 
       {selectedEpisode && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-lg border border-zinc-700 bg-zinc-900 p-6">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              closeWatchModal();
+            }
+          }}
+        >
+          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg border border-zinc-700 bg-zinc-900 p-6">
             <h2 className="mb-4 text-2xl font-bold text-white">
               Mark Episode as Watched
             </h2>

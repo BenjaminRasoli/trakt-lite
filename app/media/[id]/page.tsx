@@ -167,6 +167,30 @@ export default function MediaDetailsPage() {
     };
   }, [showWatchDialog, showDeleteConfirm]);
 
+  useEffect(() => {
+    if (!showWatchDialog && !showDeleteConfirm) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        if (showDeleteConfirm) {
+          setShowDeleteConfirm(false);
+          setWatchToDelete(null);
+          return;
+        }
+
+        if (showWatchDialog) {
+          setShowWatchDialog(false);
+          setWatchOption("justWatched");
+          setWatchDate("");
+          setWatchTime("");
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showWatchDialog, showDeleteConfirm]);
+
   const handleAddWatch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -671,8 +695,18 @@ export default function MediaDetailsPage() {
       </div>
 
       {showWatchDialog && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-900 rounded-lg p-6 w-full max-w-md border border-zinc-700">
+        <div
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowWatchDialog(false);
+              setWatchOption("justWatched");
+              setWatchDate("");
+              setWatchTime("");
+            }
+          }}
+        >
+          <div className="bg-zinc-900 rounded-lg p-6 w-full max-w-md border border-zinc-700 max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-bold text-white mb-4">
               {type === "tv" ? "Mark Episode as Watched" : "Mark as Watched"}
             </h2>
@@ -833,8 +867,16 @@ export default function MediaDetailsPage() {
       )}
 
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-900 rounded-lg p-6 w-full max-w-md border border-zinc-700">
+        <div
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowDeleteConfirm(false);
+              setWatchToDelete(null);
+            }
+          }}
+        >
+          <div className="bg-zinc-900 rounded-lg p-6 w-full max-w-md border border-zinc-700 max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold text-white mb-4">
               Confirm Removal
             </h2>

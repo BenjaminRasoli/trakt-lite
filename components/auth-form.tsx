@@ -118,7 +118,7 @@ export default function AuthForm() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full px-4 py-3 cursor-pointer bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold rounded-lg hover:from-violet-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-violet-500/25"
+          className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-4 py-3 text-base font-semibold text-violet-100 shadow-lg shadow-violet-500/10 transition hover:border-violet-400 hover:bg-violet-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? "Loading..." : isSignUp ? "Create Account" : "Sign In"}
         </button>
