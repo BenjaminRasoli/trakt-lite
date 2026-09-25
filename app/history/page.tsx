@@ -43,51 +43,58 @@ export default function HistoryPage() {
   const historyLengthRef = useRef(0);
   const isLoadingRef = useRef(false);
 
-  const fetchHistory = useCallback(async (append = false) => {
-    if (!user || isLoadingRef.current) return;
+  const fetchHistory = useCallback(
+    async (append = false) => {
+      if (!user || isLoadingRef.current) return;
 
-    isLoadingRef.current = true;
-    setHistoryLoading(!append);
-    setLoadingMore(append);
+      isLoadingRef.current = true;
+      setHistoryLoading(!append);
+      setLoadingMore(append);
 
-    try {
-      const offset = append ? historyLengthRef.current : 0;
-      const response = await fetch(
-        `/api/watch-history?limit=${PAGE_SIZE}&offset=${offset}`,
-      );
+      try {
+        const offset = append ? historyLengthRef.current : 0;
+        const response = await fetch(
+          `/api/watch-history?limit=${PAGE_SIZE}&offset=${offset}`,
+        );
 
-      if (!response.ok) {
-        console.error("API response not OK:", response.status, response.statusText);
+        if (!response.ok) {
+          console.error(
+            "API response not OK:",
+            response.status,
+            response.statusText,
+          );
+          if (!append) setHistory([]);
+          setHasMore(false);
+          return;
+        }
+
+        const data: HistoryResponse = await response.json();
+
+        if (!data || !Array.isArray(data.items)) {
+          console.error("Invalid API response format:", data);
+          if (!append) setHistory([]);
+          setHasMore(false);
+          return;
+        }
+
+        setHistory((current) => {
+          const newHistory = append ? [...current, ...data.items] : data.items;
+          historyLengthRef.current = newHistory.length;
+          return newHistory;
+        });
+        setHasMore(data.hasMore);
+      } catch (error) {
+        console.error("Error fetching history:", error);
         if (!append) setHistory([]);
         setHasMore(false);
-        return;
+      } finally {
+        setHistoryLoading(false);
+        setLoadingMore(false);
+        isLoadingRef.current = false;
       }
-
-      const data: HistoryResponse = await response.json();
-      
-      if (!data || !Array.isArray(data.items)) {
-        console.error("Invalid API response format:", data);
-        if (!append) setHistory([]);
-        setHasMore(false);
-        return;
-      }
-
-      setHistory((current) => {
-        const newHistory = append ? [...current, ...data.items] : data.items;
-        historyLengthRef.current = newHistory.length;
-        return newHistory;
-      });
-      setHasMore(data.hasMore);
-    } catch (error) {
-      console.error("Error fetching history:", error);
-      if (!append) setHistory([]);
-      setHasMore(false);
-    } finally {
-      setHistoryLoading(false);
-      setLoadingMore(false);
-      isLoadingRef.current = false;
-    }
-  }, [user]);
+    },
+    [user],
+  );
 
   useEffect(() => {
     const getUser = async () => {
@@ -120,17 +127,17 @@ export default function HistoryPage() {
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout | null = null;
-    
+
     const handleScroll = () => {
       if (loadingMore || !hasMore || !user) return;
 
       if (timeoutId) clearTimeout(timeoutId);
-      
+
       timeoutId = setTimeout(() => {
         const scrollHeight = document.documentElement.scrollHeight;
         const scrollTop = document.documentElement.scrollTop;
         const clientHeight = document.documentElement.clientHeight;
-        
+
         const nearBottom = scrollTop + clientHeight >= scrollHeight - 500;
 
         if (nearBottom) {
@@ -157,8 +164,13 @@ export default function HistoryPage() {
 
   if (loading || historyLoading) {
     return (
-      <div className="flex flex-1 items-center justify-center bg-black min-h-screen">
-        <div className="text-white">Loading...</div>
+      <div className="flex min-h-screen flex-1 items-center justify-center bg-black">
+        <div className="flex items-center gap-3 text-violet-300">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-violet-300" />
+          <span className="text-sm font-medium uppercase tracking-[0.2em]">
+            Loading
+          </span>
+        </div>
       </div>
     );
   }

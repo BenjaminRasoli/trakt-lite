@@ -31,7 +31,12 @@ export default function NewPage() {
         </div>
 
         {loading ? (
-          <div className="text-center text-zinc-400">Loading trending media...</div>
+          <div className="flex items-center justify-center gap-3 py-8 text-violet-300">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-violet-300" />
+            <span className="text-sm font-medium uppercase tracking-[0.2em]">
+              Loading
+            </span>
+          </div>
         ) : trendingMedia.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {trendingMedia.map((media) => (

@@ -108,7 +108,7 @@ export default function SettingsPage() {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      
+
       setExportProgress("Export complete!");
       setTimeout(() => {
         setExportProgress("");
@@ -123,8 +123,13 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col flex-1 items-center justify-center font-sans min-h-screen bg-black">
-        <div className="text-white">Loading...</div>
+      <div className="flex min-h-screen flex-1 flex-col items-center justify-center bg-black font-sans">
+        <div className="flex items-center gap-3 text-violet-300">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-violet-300" />
+          <span className="text-sm font-medium uppercase tracking-[0.2em]">
+            Loading
+          </span>
+        </div>
       </div>
     );
   }
@@ -141,13 +146,18 @@ export default function SettingsPage() {
 
         <div className="space-y-8">
           <div className="bg-zinc-900 rounded-lg p-6 border border-zinc-700/50">
-            <h2 className="text-xl font-bold text-white mb-4">Import Watch Data</h2>
+            <h2 className="text-xl font-bold text-white mb-4">
+              Import Watch Data
+            </h2>
             <p className="text-zinc-400 mb-4">
-              Import your watch history from a Trakt export file. This will replace all existing data.
+              Import your watch history from a Trakt export file. This will
+              replace all existing data.
             </p>
             <form onSubmit={handleImport} className="space-y-4">
               <div>
-                <label className="block text-zinc-300 mb-2">Select Trakt Export File (.zip)</label>
+                <label className="block text-zinc-300 mb-2">
+                  Select Trakt Export File (.zip)
+                </label>
                 <input
                   type="file"
                   name="zipFile"
@@ -180,7 +190,9 @@ export default function SettingsPage() {
           </div>
 
           <div className="bg-zinc-900 rounded-lg p-6 border border-zinc-700/50">
-            <h2 className="text-xl font-bold text-white mb-4">Export Watch Data</h2>
+            <h2 className="text-xl font-bold text-white mb-4">
+              Export Watch Data
+            </h2>
             <p className="text-zinc-400 mb-4">
               Export all your watch history in Trakt format as a .zip file.
             </p>

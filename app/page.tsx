@@ -7,6 +7,37 @@ import { useRouter, useSearchParams } from "next/navigation";
 import MediaCard from "@/components/media-card";
 import { getPosterUrl, searchMedia } from "@/lib/tmdb";
 
+function RecentHistorySkeleton() {
+  return (
+    <section className="mb-8 animate-pulse">
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <div>
+          <div className="mb-2 h-2.5 w-24 rounded-full bg-zinc-700" />
+          <div className="h-7 w-28 rounded-md bg-zinc-700" />
+        </div>
+        <div className="h-8 w-20 rounded-full bg-zinc-700" />
+      </div>
+
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+        {Array.from({ length: 6 }).map((_, index) => (
+          <div
+            key={index}
+            className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80"
+          >
+            <div className="relative aspect-[2/3] bg-zinc-800" />
+            <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
+              <div className="h-2.5 w-10 rounded-full bg-zinc-700" />
+              <div className="h-3 w-20 rounded-full bg-zinc-700" />
+              <div className="h-2.5 w-14 rounded-full bg-zinc-700" />
+              <div className="pt-1 h-2.5 w-10 rounded-full bg-zinc-700" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function HomeContent() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -45,10 +76,13 @@ function HomeContent() {
     if (query) {
       setSearchQuery(query);
       setSearching(true);
+      setRecentHistory([]); // Clear history when searching via URL
       searchMedia(query).then((results) => {
         setSearchResults(results);
         setSearching(false);
       });
+    } else {
+      setSearchResults([]);
     }
   }, [searchParams]);
 
@@ -66,20 +100,21 @@ function HomeContent() {
         }
 
         const responseData = await response.json();
-        const data = responseData.items || responseData; // Handle both old and new response formats
-        
-        // Fetch media details for items without poster data with batching
-        const batchSize = 3; // Process 3 items at a time to respect rate limits
+        const data = responseData.items || responseData;
+
+        const batchSize = 3;
         const enrichedData: any[] = [];
-        
+
         for (let i = 0; i < data.length; i += batchSize) {
           const batch = data.slice(i, i + batchSize);
-          
+
           const mediaPromises = batch.map(async (historyItem: any) => {
             const media = historyItem.media;
             if (!media.posterPath && media.tmdbId) {
               try {
-                const mediaResponse = await fetch(`/api/media/${media.tmdbId}?type=${media.mediaType}`);
+                const mediaResponse = await fetch(
+                  `/api/media/${media.tmdbId}?type=${media.mediaType}`,
+                );
                 if (mediaResponse.ok) {
                   const updatedMedia = await mediaResponse.json();
                   return { ...historyItem, media: updatedMedia };
@@ -93,13 +128,12 @@ function HomeContent() {
 
           const batchResults = await Promise.all(mediaPromises);
           enrichedData.push(...batchResults);
-          
-          // Add delay between batches to respect rate limits
+
           if (i + batchSize < data.length) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise((resolve) => setTimeout(resolve, 1000));
           }
         }
-        
+
         setRecentHistory(enrichedData);
       } catch (error) {
         console.error("Error fetching recent history:", error);
@@ -118,6 +152,7 @@ function HomeContent() {
 
     router.push(`/?q=${encodeURIComponent(searchQuery)}`);
     setSearching(true);
+    setRecentHistory([]);
     const results = await searchMedia(searchQuery);
     setSearchResults(results);
     setSearching(false);
@@ -127,11 +162,40 @@ function HomeContent() {
     user?.user_metadata?.username || user?.email?.split("@")[0] || "User";
   const capitalizedUsername =
     username.charAt(0).toUpperCase() + username.slice(1);
+  const hasSearchResults = searchResults.length > 0 || searching;
 
   if (loading) {
     return (
-      <div className="flex flex-col flex-1 items-center justify-center font-sans min-h-screen bg-black">
-        <div className="text-white">Loading...</div>
+      <div className="flex flex-col flex-1 items-center font-sans min-h-screen bg-black">
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 flex-1 animate-pulse">
+          <div className="mb-12">
+            <div className="flex items-center gap-4 mb-8">
+              <div className="h-12 w-32 rounded-md bg-zinc-800" />
+              <div className="h-12 w-24 rounded-md bg-zinc-800" />
+            </div>
+            <div className="mb-8 h-14 w-full max-w-2xl rounded-lg bg-zinc-800" />
+          </div>
+          <div className="mb-8">
+            <div className="mb-4 h-4 w-28 rounded-full bg-zinc-700" />
+            <div className="mb-4 h-7 w-32 rounded-md bg-zinc-700" />
+            <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80"
+                >
+                  <div className="relative aspect-[2/3] bg-zinc-800" />
+                  <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
+                    <div className="h-2.5 w-10 rounded-full bg-zinc-700" />
+                    <div className="h-3 w-20 rounded-full bg-zinc-700" />
+                    <div className="h-2.5 w-14 rounded-full bg-zinc-700" />
+                    <div className="pt-1 h-2.5 w-10 rounded-full bg-zinc-700" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -183,25 +247,50 @@ function HomeContent() {
             </p>
           </div>
 
-          <form onSubmit={handleSearch} className="flex gap-4 max-w-2xl">
+          <form
+            onSubmit={handleSearch}
+            className="flex items-stretch gap-4 max-w-2xl"
+          >
             <input
               type="text"
               placeholder="Search for movies and TV shows..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1 px-6 py-4 bg-zinc-800/50 border border-zinc-600/50 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-transparent transition-all text-lg"
+              className="flex-1 h-[58px] px-6 py-4 bg-zinc-800/50 border border-zinc-600/50 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-transparent transition-all text-lg"
             />
             <button
               type="submit"
               disabled={searching}
-              className="px-8 py-4 cursor-pointer bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold rounded-lg hover:from-violet-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-violet-500/25"
+              className="h-[58px] w-[58px] shrink-0 cursor-pointer bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold rounded-lg hover:from-violet-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-violet-500/25 flex items-center justify-center"
             >
-              {searching ? "Searching..." : "Search"}
+              <div className="flex h-5 w-5 items-center justify-center">
+                {searching ? (
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                ) : (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-5 w-5"
+                  >
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.3-4.3"></path>
+                  </svg>
+                )}
+              </div>
             </button>
           </form>
         </div>
 
-        {!historyLoading && recentHistory.length > 0 && (
+        {!searching && historyLoading ? (
+          <RecentHistorySkeleton />
+        ) : !searching && recentHistory.length > 0 ? (
           <section className="mb-8">
             <div className="mb-4 flex items-center justify-between gap-4">
               <div>
@@ -272,6 +361,19 @@ function HomeContent() {
               })}
             </div>
           </section>
+        ) : null}
+
+        {searchResults.length > 0 && (
+          <div>
+            <h2 className="text-2xl font-bold text-white mb-6">
+              Search Results
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {searchResults.map((media) => (
+                <MediaCard key={media.id} media={media} />
+              ))}
+            </div>
+          </div>
         )}
 
         {searchResults.length > 0 && (
@@ -296,7 +398,9 @@ export default function Home() {
     <Suspense
       fallback={
         <div className="flex min-h-screen items-center justify-center bg-black text-white">
-          Loading...
+          <div className="flex h-12 w-12 items-center justify-center rounded-full border border-violet-500/40 bg-violet-500/10 shadow-lg shadow-violet-500/10">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-violet-300" />
+          </div>
         </div>
       }
     >

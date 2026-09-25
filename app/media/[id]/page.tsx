@@ -54,6 +54,10 @@ export default function MediaDetailsPage() {
   const mediaType = (searchParams.get("type") as "movie" | "tv") || "movie";
 
   useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [mediaId, mediaType]);
+
+  useEffect(() => {
     const getUser = async () => {
       const {
         data: { user },
@@ -219,8 +223,13 @@ export default function MediaDetailsPage() {
 
   if (loading || mediaLoading || detailsLoading) {
     return (
-      <div className="flex flex-col flex-1 items-center justify-center font-sans min-h-screen bg-black">
-        <div className="text-white">Loading...</div>
+      <div className="flex min-h-screen flex-1 flex-col items-center justify-center bg-black font-sans">
+        <div className="flex items-center gap-3 text-violet-300">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-violet-300" />
+          <span className="text-sm font-medium uppercase tracking-[0.2em]">
+            Loading
+          </span>
+        </div>
       </div>
     );
   }
