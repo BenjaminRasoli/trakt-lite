@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useSupabase } from "@/components/supabase-provider";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import {
@@ -37,6 +38,7 @@ export default function MediaDetailsPage() {
   const [watchToDelete, setWatchToDelete] = useState<string | null>(null);
   const [selectedSeason, setSelectedSeason] = useState<number>(1);
   const [selectedEpisode, setSelectedEpisode] = useState<number>(1);
+  const [expandedSeason, setExpandedSeason] = useState<number | null>(1);
   const [tvShowDetails, setTvShowDetails] = useState<any>(null);
   const [credits, setCredits] = useState<{
     cast: TMDBActor[];
@@ -114,6 +116,9 @@ export default function MediaDetailsPage() {
             ),
           );
           setTvShowDetails({ seasons: seasonDetails });
+          setExpandedSeason((current) => current ?? 1);
+          setSelectedSeason(1);
+          setSelectedEpisode(1);
         } catch (error) {
           console.error("Error fetching TV show details:", error);
         }
@@ -138,7 +143,11 @@ export default function MediaDetailsPage() {
           return;
         }
         const data = await response.json();
-        const watchHistoryData = data.items || data; // Handle both formats
+        const watchHistoryData = Array.isArray(data.items)
+          ? data.items
+          : Array.isArray(data)
+            ? data
+            : [];
         setWatchHistory(watchHistoryData);
       } catch (error) {
         console.error("Error fetching watch history:", error);
@@ -148,6 +157,15 @@ export default function MediaDetailsPage() {
 
     fetchWatchHistory();
   }, [user, mediaId]);
+
+  useEffect(() => {
+    const isAnyModalOpen = showWatchDialog || showDeleteConfirm;
+    document.body.style.overflow = isAnyModalOpen ? "hidden" : "";
+
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showWatchDialog, showDeleteConfirm]);
 
   const handleAddWatch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -442,77 +460,39 @@ export default function MediaDetailsPage() {
 
           {type === "tv" && media.number_of_seasons && (
             <div className="mb-8">
-              <h2 className="text-xl font-bold text-white mb-3">Series Info</h2>
-              <div className="text-zinc-300">
-                <p>
-                  {media.number_of_seasons} Season
-                  {media.number_of_seasons !== 1 ? "s" : ""}
-                </p>
-                <p>
-                  {media.number_of_episodes} Episode
-                  {media.number_of_episodes !== 1 ? "s" : ""}
-                </p>
-              </div>
+              <h2 className="mb-4 text-xl font-bold text-white">Seasons</h2>
 
-              {tvShowDetails?.seasons && (
-                <div className="mt-6">
-                  <h3 className="text-lg font-semibold text-white mb-4">
-                    Episodes
-                  </h3>
-                  <div className="space-y-4">
-                    {tvShowDetails.seasons.map(
-                      (season: any, seasonIndex: number) => (
-                        <div
-                          key={seasonIndex}
-                          className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700/50"
-                        >
-                          <h4 className="text-white font-semibold mb-3">
-                            Season {season.season_number}
-                          </h4>
-                          <div className="space-y-2">
-                            {season.episodes?.map((episode: any) => {
-                              const isWatched = watchHistory.some(
-                                (w) =>
-                                  w.seasonNumber === season.season_number &&
-                                  w.episodeNumber === episode.episode_number,
-                              );
-                              return (
-                                <div
-                                  key={episode.episode_number}
-                                  className="flex items-center justify-between p-2 bg-zinc-700/30 rounded border border-zinc-600/30"
-                                >
-                                  <div className="flex items-center gap-3">
-                                    <span className="text-zinc-300 text-sm">
-                                      {episode.episode_number}. {episode.name}
-                                    </span>
-                                    {isWatched && (
-                                      <span className="px-2 py-0.5 bg-green-600/20 text-green-400 text-xs rounded">
-                                        Watched
-                                      </span>
-                                    )}
-                                  </div>
-                                  <button
-                                    onClick={() => {
-                                      setSelectedSeason(season.season_number);
-                                      setSelectedEpisode(
-                                        episode.episode_number,
-                                      );
-                                      setShowWatchDialog(true);
-                                    }}
-                                    className="px-3 py-1 cursor-pointer text-xs bg-violet-600/20 text-violet-400 rounded hover:bg-violet-600/30 transition-colors"
-                                  >
-                                    {isWatched ? "Update" : "Mark"}
-                                  </button>
-                                </div>
-                              );
-                            })}
-                          </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {Array.from({ length: media.number_of_seasons }, (_, i) => i + 1).map(
+                  (seasonNumber) => {
+                    const seasonInfo = tvShowDetails?.seasons?.find(
+                      (season: any) => season.season_number === seasonNumber,
+                    );
+                    const episodeCount = seasonInfo?.episodes?.length || 0;
+
+                    return (
+                      <Link
+                        key={seasonNumber}
+                        href={`/media/${mediaId}/season/${seasonNumber}?type=tv`}
+                        className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4 transition hover:border-violet-500/60 hover:bg-zinc-900"
+                      >
+                        <div className="mb-2 flex items-center justify-between gap-3">
+                          <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-300">
+                            Season {seasonNumber}
+                          </span>
+                          <span className="rounded-full bg-zinc-800 px-2 py-1 text-[10px] text-zinc-300">
+                            {episodeCount} eps
+                          </span>
                         </div>
-                      ),
-                    )}
-                  </div>
-                </div>
-              )}
+
+                        <p className="text-sm text-zinc-400">
+                          {seasonInfo?.name || "Season overview"}
+                        </p>
+                      </Link>
+                    );
+                  },
+                )}
+              </div>
             </div>
           )}
 

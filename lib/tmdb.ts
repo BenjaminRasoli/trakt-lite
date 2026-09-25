@@ -55,6 +55,19 @@ export interface TMDBReview {
   updated_at: string;
 }
 
+export interface TMDBEpisode {
+  id: number;
+  name: string;
+  overview: string;
+  still_path: string | null;
+  air_date?: string;
+  episode_number: number;
+  season_number: number;
+  vote_average: number | null;
+  runtime?: number | null;
+  vote_count?: number;
+}
+
 export async function searchMedia(query: string): Promise<TMDBMedia[]> {
   if (!TMDB_API_KEY) {
     console.error("TMDB API key is not configured");
@@ -376,6 +389,50 @@ export async function getTVSeasonDetails(
     return data;
   } catch (error) {
     console.error("Error fetching TV season details:", error);
+    return null;
+  }
+}
+
+export async function getTVEpisodeDetails(
+  tvId: number,
+  seasonNumber: number,
+  episodeNumber: number,
+): Promise<TMDBEpisode | null> {
+  if (!TMDB_API_KEY) {
+    console.error("TMDB API key is not configured");
+    return null;
+  }
+
+  try {
+    const response = await fetch(
+      `${TMDB_BASE_URL}/tv/${tvId}/season/${seasonNumber}/episode/${episodeNumber}?api_key=${TMDB_API_KEY}`,
+    );
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error fetching TV episode details:", error);
+    return null;
+  }
+}
+
+export async function getTVEpisodeCredits(
+  tvId: number,
+  seasonNumber: number,
+  episodeNumber: number,
+): Promise<{ cast: TMDBActor[]; crew: TMDBCrew[] } | null> {
+  if (!TMDB_API_KEY) {
+    console.error("TMDB API key is not configured");
+    return null;
+  }
+
+  try {
+    const response = await fetch(
+      `${TMDB_BASE_URL}/tv/${tvId}/season/${seasonNumber}/episode/${episodeNumber}/credits?api_key=${TMDB_API_KEY}`,
+    );
+    const data = await response.json();
+    return { cast: data.cast || [], crew: data.crew || [] };
+  } catch (error) {
+    console.error("Error fetching TV episode credits:", error);
     return null;
   }
 }
