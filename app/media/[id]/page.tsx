@@ -563,7 +563,7 @@ export default function MediaDetailsPage() {
                         {actor.name}
                       </p>
                       <p className="text-zinc-400 text-xs truncate">
-                        {actor.character}
+                        as {actor.character || "Unknown role"}
                       </p>
                     </div>
                   );
@@ -575,8 +575,8 @@ export default function MediaDetailsPage() {
           {reviews.length > 0 && (
             <div className="mb-8">
               <h2 className="text-xl font-bold text-white mb-4">Reviews</h2>
-              <div className="space-y-4">
-                {reviews.slice(0, 3).map((review) => {
+              <div className="flex gap-4 overflow-x-auto pb-3 scroll-smooth [scrollbar-width:thin] [scrollbar-color:rgba(168,85,247,0.8)_rgba(39,39,42,0.8)]">
+                {reviews.map((review) => {
                   const reviewAvatar = review.author_details.avatar_path
                     ? getProfileUrl(review.author_details.avatar_path)
                     : "";
@@ -585,9 +585,9 @@ export default function MediaDetailsPage() {
                   return (
                     <div
                       key={review.id}
-                      className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700/50"
+                      className="min-w-[290px] max-w-[290px] flex-shrink-0 rounded-lg border border-zinc-700/50 bg-zinc-800/50 p-4 sm:min-w-[360px]"
                     >
-                      <div className="flex items-center gap-3 mb-3">
+                      <div className="mb-3 flex items-center gap-3">
                         {reviewAvatar &&
                         reviewAvatar !== "/placeholder-avatar.svg" ? (
                           <img
@@ -631,9 +631,9 @@ export default function MediaDetailsPage() {
                           )}
                         </div>
                       </div>
-                      <p className="text-zinc-300 text-sm line-clamp-4">
+                      <div className="max-h-52 overflow-y-auto pr-1 text-sm leading-relaxed text-zinc-300 [scrollbar-width:thin] [scrollbar-color:rgba(168,85,247,0.8)_rgba(39,39,42,0.8)]">
                         {review.content}
-                      </p>
+                      </div>
                     </div>
                   );
                 })}
