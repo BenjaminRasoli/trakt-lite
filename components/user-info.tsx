@@ -10,16 +10,24 @@ export default function UserInfo() {
   const supabase = useSupabase()
 
   useEffect(() => {
+    const updateUser = (nextUser: User | null) => {
+      setUser((currentUser) => {
+        if (!nextUser) return null
+        if (currentUser?.id === nextUser.id) return currentUser
+        return nextUser
+      })
+    }
+
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
+      updateUser(user)
       setLoading(false)
     }
 
     getUser()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
+      updateUser(session?.user ?? null)
     })
 
     return () => subscription.unsubscribe()

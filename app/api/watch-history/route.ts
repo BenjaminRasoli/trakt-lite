@@ -58,18 +58,28 @@ async function hydrateMissingMediaMetadata(media: {
   return hydratedMedia;
 }
 
-function isReleasedEpisode(episode: {
-  air_date?: string | null;
-} | null | undefined) {
+function isReleasedEpisode(
+  episode:
+    | {
+        air_date?: string | null;
+      }
+    | null
+    | undefined,
+) {
   if (!episode?.air_date) return false;
 
   const airDate = new Date(episode.air_date);
   return Number.isFinite(airDate.getTime()) && airDate <= new Date();
 }
 
-function isFutureEpisode(episode: {
-  air_date?: string | null;
-} | null | undefined) {
+function isFutureEpisode(
+  episode:
+    | {
+        air_date?: string | null;
+      }
+    | null
+    | undefined,
+) {
   if (!episode?.air_date) return false;
 
   const airDate = new Date(episode.air_date);
@@ -313,10 +323,7 @@ async function getUpcomingEpisodesQueue(userId: string, limit = 6) {
             isFutureEpisode(episode),
         )
         .sort(
-          (
-            a: { air_date?: string | null },
-            b: { air_date?: string | null },
-          ) =>
+          (a: { air_date?: string | null }, b: { air_date?: string | null }) =>
             new Date(a.air_date || now).getTime() -
             new Date(b.air_date || now).getTime(),
         )[0];
@@ -328,7 +335,9 @@ async function getUpcomingEpisodesQueue(userId: string, limit = 6) {
           posterPath: show.posterPath,
           backdropPath: show.backdropPath,
           seasonNumber: currentSeason,
-          episodeNumber: Number(nextFutureEpisodeInCurrentSeason.episode_number),
+          episodeNumber: Number(
+            nextFutureEpisodeInCurrentSeason.episode_number,
+          ),
           episodeTitle:
             nextFutureEpisodeInCurrentSeason.name ||
             `Episode ${Number(nextFutureEpisodeInCurrentSeason.episode_number)}`,
@@ -347,10 +356,7 @@ async function getUpcomingEpisodesQueue(userId: string, limit = 6) {
             Number(episode.episode_number) >= 1 && isFutureEpisode(episode),
         )
         .sort(
-          (
-            a: { air_date?: string | null },
-            b: { air_date?: string | null },
-          ) =>
+          (a: { air_date?: string | null }, b: { air_date?: string | null }) =>
             new Date(a.air_date || now).getTime() -
             new Date(b.air_date || now).getTime(),
         )[0];

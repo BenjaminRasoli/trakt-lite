@@ -4,7 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSupabase } from "@/components/supabase-provider";
-import { getPosterUrl, getRandomBackdropUrl, getTrendingMedia } from "@/lib/tmdb";
+import {
+  getPosterUrl,
+  getRandomBackdropUrl,
+  getTrendingMedia,
+} from "@/lib/tmdb";
 
 interface UpcomingEpisodeItem {
   tmdbId: number;
@@ -29,20 +33,30 @@ export default function CalendarPage() {
   useEffect(() => {
     let isMounted = true;
 
+    const updateUser = (nextUser: any) => {
+      setUser((currentUser: any) => {
+        if (!nextUser) return null;
+        if (currentUser?.id === nextUser.id) return currentUser;
+        return nextUser;
+      });
+    };
+
     const getUser = async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!isMounted) return;
-      setUser(user);
+      updateUser(user);
       setLoading(false);
     };
 
     getUser();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!isMounted) return;
-      setUser(session?.user ?? null);
+      updateUser(session?.user ?? null);
     });
 
     const fetchBackdrop = async () => {
@@ -90,7 +104,11 @@ export default function CalendarPage() {
 
   const groupedByDate = useMemo(() => {
     return [...upcoming]
-      .sort((a, b) => new Date(a.airDate || 0).getTime() - new Date(b.airDate || 0).getTime())
+      .sort(
+        (a, b) =>
+          new Date(a.airDate || 0).getTime() -
+          new Date(b.airDate || 0).getTime(),
+      )
       .reduce<Record<string, UpcomingEpisodeItem[]>>((groups, item) => {
         const key = item.airDate || "Unknown date";
         groups[key] = groups[key] ? [...groups[key], item] : [item];
@@ -149,7 +167,9 @@ export default function CalendarPage() {
 
         {!calendarLoading && upcoming.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-zinc-700 bg-zinc-900/60 p-12 text-center">
-            <h2 className="text-2xl font-semibold text-white">No upcoming episodes</h2>
+            <h2 className="text-2xl font-semibold text-white">
+              No upcoming episodes
+            </h2>
             <p className="mt-3 text-zinc-400">
               Watch a few shows and future episodes will show up here.
             </p>
@@ -157,21 +177,29 @@ export default function CalendarPage() {
         ) : (
           <div className="space-y-8">
             {Object.entries(groupedByDate).map(([dateKey, items]) => {
-              const dateLabel = dateKey === "Unknown date" ? "Unknown date" : new Date(dateKey).toLocaleDateString(undefined, {
-                weekday: "short",
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              });
+              const dateLabel =
+                dateKey === "Unknown date"
+                  ? "Unknown date"
+                  : new Date(dateKey).toLocaleDateString(undefined, {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    });
 
               return (
-                <section key={dateKey} className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4 sm:p-5">
+                <section
+                  key={dateKey}
+                  className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4 sm:p-5"
+                >
                   <div className="mb-4 flex items-center justify-between gap-4">
                     <div>
                       <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-violet-400/80">
                         Upcoming
                       </p>
-                      <h2 className="text-xl font-bold text-white">{dateLabel}</h2>
+                      <h2 className="text-xl font-bold text-white">
+                        {dateLabel}
+                      </h2>
                     </div>
                   </div>
 

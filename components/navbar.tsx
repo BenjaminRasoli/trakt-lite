@@ -12,11 +12,19 @@ export default function Navbar() {
   const router = useRouter();
 
   useEffect(() => {
+    const updateUser = (nextUser: any) => {
+      setUser((currentUser: any) => {
+        if (!nextUser) return null;
+        if (currentUser?.id === nextUser.id) return currentUser;
+        return nextUser;
+      });
+    };
+
     const getUser = async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      setUser(user);
+      updateUser(user);
       setLoading(false);
     };
 
@@ -25,7 +33,7 @@ export default function Navbar() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+      updateUser(session?.user ?? null);
     });
 
     return () => subscription.unsubscribe();

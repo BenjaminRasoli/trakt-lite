@@ -88,11 +88,19 @@ function HomeContent() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
+    const updateUser = (nextUser: any) => {
+      setUser((currentUser: any) => {
+        if (!nextUser) return null;
+        if (currentUser?.id === nextUser.id) return currentUser;
+        return nextUser;
+      });
+    };
+
     const getUser = async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      setUser(user);
+      updateUser(user);
       setLoading(false);
     };
 
@@ -101,7 +109,7 @@ function HomeContent() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+      updateUser(session?.user ?? null);
     });
 
     return () => subscription.unsubscribe();
@@ -458,10 +466,13 @@ function HomeContent() {
                       <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
                         <div className="text-[10px] font-medium uppercase tracking-[0.15em] text-violet-300">
                           {item.airDate
-                            ? new Date(item.airDate).toLocaleDateString(undefined, {
-                                month: "short",
-                                day: "numeric",
-                              })
+                            ? new Date(item.airDate).toLocaleDateString(
+                                undefined,
+                                {
+                                  month: "short",
+                                  day: "numeric",
+                                },
+                              )
                             : "Coming soon"}
                         </div>
                         <div className="line-clamp-2 text-xs font-semibold text-white">

@@ -104,12 +104,20 @@ export default function HistoryPage() {
   useEffect(() => {
     let isMounted = true;
 
+    const updateUser = (nextUser: User | null) => {
+      setUser((currentUser) => {
+        if (!nextUser) return null;
+        if (currentUser?.id === nextUser.id) return currentUser;
+        return nextUser;
+      });
+    };
+
     const getUser = async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!isMounted) return;
-      setUser(user);
+      updateUser(user);
       setLoading(false);
     };
 
@@ -119,7 +127,7 @@ export default function HistoryPage() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!isMounted) return;
-      setUser(session?.user ?? null);
+      updateUser(session?.user ?? null);
     });
 
     const fetchBackdrop = async () => {
