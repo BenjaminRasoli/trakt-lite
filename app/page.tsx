@@ -14,32 +14,61 @@ import {
 
 function RecentHistorySkeleton() {
   return (
-    <section className="mb-8 animate-pulse">
-      <div className="mb-4 flex items-center justify-between gap-4">
-        <div>
-          <div className="mb-2 h-2.5 w-24 rounded-full bg-zinc-700" />
-          <div className="h-7 w-28 rounded-md bg-zinc-700" />
-        </div>
-        <div className="h-8 w-20 rounded-full bg-zinc-700" />
-      </div>
-
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
-        {Array.from({ length: 6 }).map((_, index) => (
-          <div
-            key={index}
-            className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80"
-          >
-            <div className="relative aspect-[2/3] bg-zinc-800" />
-            <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
-              <div className="h-2.5 w-10 rounded-full bg-zinc-700" />
-              <div className="h-3 w-20 rounded-full bg-zinc-700" />
-              <div className="h-2.5 w-14 rounded-full bg-zinc-700" />
-              <div className="pt-1 h-2.5 w-10 rounded-full bg-zinc-700" />
-            </div>
+    <>
+      <section className="mb-8 animate-pulse">
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <div>
+            <div className="mb-2 h-2.5 w-24 rounded-full bg-zinc-700" />
+            <div className="h-7 w-28 rounded-md bg-zinc-700" />
           </div>
-        ))}
-      </div>
-    </section>
+          <div className="h-8 w-20 rounded-full bg-zinc-700" />
+        </div>
+
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div
+              key={`next-up-skeleton-${index}`}
+              className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80"
+            >
+              <div className="relative aspect-[2/3] bg-zinc-800" />
+              <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
+                <div className="h-2.5 w-10 rounded-full bg-zinc-700" />
+                <div className="h-3 w-20 rounded-full bg-zinc-700" />
+                <div className="h-2.5 w-14 rounded-full bg-zinc-700" />
+                <div className="pt-1 h-2.5 w-10 rounded-full bg-zinc-700" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="mb-8 animate-pulse">
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <div>
+            <div className="mb-2 h-2.5 w-24 rounded-full bg-zinc-700" />
+            <div className="h-7 w-28 rounded-md bg-zinc-700" />
+          </div>
+          <div className="h-8 w-20 rounded-full bg-zinc-700" />
+        </div>
+
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div
+              key={`history-skeleton-${index}`}
+              className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80"
+            >
+              <div className="relative aspect-[2/3] bg-zinc-800" />
+              <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
+                <div className="h-2.5 w-10 rounded-full bg-zinc-700" />
+                <div className="h-3 w-20 rounded-full bg-zinc-700" />
+                <div className="h-2.5 w-14 rounded-full bg-zinc-700" />
+                <div className="pt-1 h-2.5 w-10 rounded-full bg-zinc-700" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    </>
   );
 }
 
@@ -50,6 +79,7 @@ function HomeContent() {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
   const [recentHistory, setRecentHistory] = useState<any[]>([]);
+  const [nextUp, setNextUp] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [mediaCache, setMediaCache] = useState<Record<number, any>>({});
   const supabase = useSupabase();
@@ -81,7 +111,8 @@ function HomeContent() {
     if (query) {
       setSearchQuery(query);
       setSearching(true);
-      setRecentHistory([]); // Clear history when searching via URL
+      setRecentHistory([]);
+      setNextUp([]);
       searchMedia(query).then((results) => {
         setSearchResults(results);
         setSearching(false);
@@ -98,22 +129,27 @@ function HomeContent() {
       setHistoryLoading(true);
 
       try {
-        const response = await fetch("/api/watch-history?limit=6");
+        const response = await fetch(
+          "/api/watch-history?limit=6&nextUpLimit=6&nextUp=true",
+        );
         if (!response.ok) {
           setRecentHistory([]);
+          setNextUp([]);
           return;
         }
 
         const responseData = await response.json();
-        const data = responseData.items || responseData;
+        const data = Array.isArray(responseData.items)
+          ? responseData.items
+          : [];
+        const nextUpItems = Array.isArray(responseData.nextUp)
+          ? responseData.nextUp.slice(0, 6)
+          : [];
 
-        const batchSize = 3;
-        const enrichedData: any[] = [];
+        setNextUp(nextUpItems);
 
-        for (let i = 0; i < data.length; i += batchSize) {
-          const batch = data.slice(i, i + batchSize);
-
-          const mediaPromises = batch.map(async (historyItem: any) => {
+        const enrichedData = await Promise.all(
+          data.slice(0, 6).map(async (historyItem: any) => {
             const media = historyItem.media;
             if (!media.posterPath && media.tmdbId) {
               try {
@@ -129,15 +165,8 @@ function HomeContent() {
               }
             }
             return historyItem;
-          });
-
-          const batchResults = await Promise.all(mediaPromises);
-          enrichedData.push(...batchResults);
-
-          if (i + batchSize < data.length) {
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-          }
-        }
+          }),
+        );
 
         setRecentHistory(enrichedData);
       } catch (error) {
@@ -158,6 +187,7 @@ function HomeContent() {
     router.push(`/?q=${encodeURIComponent(searchQuery)}`);
     setSearching(true);
     setRecentHistory([]);
+    setNextUp([]);
     const results = await searchMedia(searchQuery);
     setSearchResults(results);
     setSearching(false);
@@ -324,78 +354,135 @@ function HomeContent() {
 
         {!searching && historyLoading ? (
           <RecentHistorySkeleton />
-        ) : !searching && recentHistory.length > 0 ? (
-          <section className="mb-8">
-            <div className="mb-4 flex items-center justify-between gap-4">
-              <div>
-                <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-violet-400/80">
-                  Recently watched
-                </p>
-                <h2 className="text-xl font-bold text-white">History</h2>
-              </div>
+        ) : (
+          <>
+            {!searching && nextUp.length > 0 && (
+              <section className="mb-8">
+                <div className="mb-4 flex items-center justify-between gap-4">
+                  <div>
+                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-violet-400/80">
+                      Continue watching
+                    </p>
+                    <h2 className="text-xl font-bold text-white">Next up</h2>
+                  </div>
 
-              <Link
-                href="/history"
-                className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-3 py-1.5 text-xs font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
-              >
-                View all
-              </Link>
-            </div>
-
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
-              {recentHistory.map((historyItem) => {
-                const media = historyItem.media;
-                const watchedDate = new Date(historyItem.watchedAt);
-                const episodeLabel =
-                  historyItem.seasonNumber !== null &&
-                  historyItem.episodeNumber !== null
-                    ? `S${historyItem.seasonNumber} E${historyItem.episodeNumber}`
-                    : media?.mediaType === "tv"
-                      ? "TV"
-                      : "Movie";
-
-                return (
                   <Link
-                    key={historyItem.id}
-                    href={`/media/${media.tmdbId}?type=${media.mediaType}`}
-                    className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:-translate-y-0.5 hover:border-violet-500/50"
+                    href="/next-up"
+                    className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-3 py-1.5 text-xs font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
                   >
-                    <div className="relative aspect-[2/3] overflow-hidden">
-                      <img
-                        src={getPosterUrl(media.posterPath || null)}
-                        alt={media.title}
-                        className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                        onError={(e) => {
-                          e.currentTarget.src = "/placeholder-poster.svg";
-                        }}
-                      />
-                    </div>
-
-                    <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
-                      <div className="text-[10px] font-medium uppercase tracking-[0.15em] text-violet-300">
-                        {media.mediaType}
-                      </div>
-                      <div className="line-clamp-2 text-xs font-semibold text-white">
-                        {media.title}
-                      </div>
-                      {episodeLabel && (
-                        <div className="text-[10px] text-zinc-400">
-                          {episodeLabel}
-                        </div>
-                      )}
-                      <div className="pt-1 text-[10px] text-zinc-500">
-                        {watchedDate.toLocaleDateString(undefined, {
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </div>
-                    </div>
+                    View all
                   </Link>
-                );
-              })}
-            </div>
-          </section>
-        ) : null}
+                </div>
+
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+                  {nextUp.map((item) => (
+                    <Link
+                      key={`${item.tmdbId}-${item.seasonNumber}-${item.episodeNumber}`}
+                      href={`/media/${item.tmdbId}?type=tv`}
+                      className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:-translate-y-0.5 hover:border-violet-500/50"
+                    >
+                      <div className="relative aspect-[2/3] overflow-hidden">
+                        <img
+                          src={getPosterUrl(item.posterPath || null)}
+                          alt={item.episodeTitle}
+                          className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                          onError={(e) => {
+                            e.currentTarget.src = "/placeholder-poster.svg";
+                          }}
+                        />
+                      </div>
+
+                      <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
+                        <div className="text-[10px] font-medium uppercase tracking-[0.15em] text-violet-300">
+                          S{item.seasonNumber} • E{item.episodeNumber}
+                        </div>
+                        <div className="line-clamp-2 text-xs font-semibold text-white">
+                          {item.episodeTitle}
+                        </div>
+                        <div className="line-clamp-1 text-[10px] text-zinc-400">
+                          {item.title}
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {!searching && recentHistory.length > 0 && (
+              <section className="mb-8">
+                <div className="mb-4 flex items-center justify-between gap-4">
+                  <div>
+                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-violet-400/80">
+                      Recently watched
+                    </p>
+                    <h2 className="text-xl font-bold text-white">History</h2>
+                  </div>
+
+                  <Link
+                    href="/next-up"
+                    className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-3 py-1.5 text-xs font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
+                  >
+                    View all
+                  </Link>
+                </div>
+
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+                  {recentHistory.map((historyItem) => {
+                    const media = historyItem.media;
+                    const watchedDate = new Date(historyItem.watchedAt);
+                    const episodeLabel =
+                      historyItem.seasonNumber !== null &&
+                      historyItem.episodeNumber !== null
+                        ? `S${historyItem.seasonNumber} E${historyItem.episodeNumber}`
+                        : media?.mediaType === "tv"
+                          ? "TV"
+                          : "Movie";
+
+                    return (
+                      <Link
+                        key={historyItem.id}
+                        href={`/media/${media.tmdbId}?type=${media.mediaType}`}
+                        className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:-translate-y-0.5 hover:border-violet-500/50"
+                      >
+                        <div className="relative aspect-[2/3] overflow-hidden">
+                          <img
+                            src={getPosterUrl(media.posterPath || null)}
+                            alt={media.title}
+                            className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                            onError={(e) => {
+                              e.currentTarget.src = "/placeholder-poster.svg";
+                            }}
+                          />
+                        </div>
+
+                        <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
+                          <div className="text-[10px] font-medium uppercase tracking-[0.15em] text-violet-300">
+                            {media.mediaType}
+                          </div>
+                          <div className="line-clamp-2 text-xs font-semibold text-white">
+                            {media.title}
+                          </div>
+                          {episodeLabel && (
+                            <div className="text-[10px] text-zinc-400">
+                              {episodeLabel}
+                            </div>
+                          )}
+                          <div className="pt-1 text-[10px] text-zinc-500">
+                            {watchedDate.toLocaleDateString(undefined, {
+                              month: "short",
+                              day: "numeric",
+                            })}
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+          </>
+        )}
 
         {searchResults.length > 0 && (
           <div>

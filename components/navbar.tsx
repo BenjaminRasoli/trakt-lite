@@ -61,6 +61,12 @@ export default function Navbar() {
                   New
                 </Link>
                 <Link
+                  href="/next-up"
+                  className="text-sm font-medium text-zinc-300 transition-colors hover:text-violet-400 sm:text-base"
+                >
+                  Next Up
+                </Link>
+                <Link
                   href="/history"
                   className="text-sm font-medium text-zinc-300 transition-colors hover:text-violet-400 sm:text-base"
                 >
