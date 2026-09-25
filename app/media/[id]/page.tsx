@@ -400,42 +400,75 @@ export default function MediaDetailsPage() {
                     Watch History
                   </h2>
                   <div className="space-y-2">
-                    {watchHistory
-                      .sort(
-                        (a, b) =>
-                          new Date(b.watchedAt).getTime() -
-                          new Date(a.watchedAt).getTime(),
-                      )
-                      .slice(
-                        0,
-                        showExpandedWatchHistory
-                          ? undefined
-                          : watchHistory.length >= 4
-                            ? 1
-                            : watchHistory.length,
-                      )
-                      .map((watch) => (
-                        <div
-                          key={watch.id}
-                          className="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg border border-zinc-700/50"
-                        >
-                          <div className="flex items-center gap-3">
-                            <span className="text-zinc-300">
-                              {watch.seasonNumber !== null &&
-                              watch.episodeNumber !== null
-                                ? `S${watch.seasonNumber} E${watch.episodeNumber} - `
-                                : ""}
-                              {new Date(watch.watchedAt).toLocaleString()}
-                            </span>
-                          </div>
-                          <button
-                            onClick={() => handleDeleteWatch(watch.id)}
-                            className="px-3 py-1 cursor-pointer text-red-400 hover:text-red-300 text-sm"
-                          >
-                            Remove
-                          </button>
+                    {showExpandedWatchHistory ? (
+                      <div className="max-h-72 overflow-y-auto pr-1 [scrollbar-width:thin] [scrollbar-color:rgba(168,85,247,0.8)_rgba(39,39,42,0.8)]">
+                        <div className="space-y-2">
+                          {watchHistory
+                            .sort(
+                              (a, b) =>
+                                new Date(b.watchedAt).getTime() -
+                                new Date(a.watchedAt).getTime(),
+                            )
+                            .map((watch) => (
+                              <div
+                                key={watch.id}
+                                className="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg border border-zinc-700/50"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <span className="text-zinc-300">
+                                    {watch.seasonNumber !== null &&
+                                    watch.episodeNumber !== null
+                                      ? `S${watch.seasonNumber} E${watch.episodeNumber} - `
+                                      : ""}
+                                    {new Date(watch.watchedAt).toLocaleString()}
+                                  </span>
+                                </div>
+                                <button
+                                  onClick={() => handleDeleteWatch(watch.id)}
+                                  className="px-3 py-1 cursor-pointer text-red-400 hover:text-red-300 text-sm"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            ))}
                         </div>
-                      ))}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {watchHistory
+                          .sort(
+                            (a, b) =>
+                              new Date(b.watchedAt).getTime() -
+                              new Date(a.watchedAt).getTime(),
+                          )
+                          .slice(
+                            0,
+                            watchHistory.length >= 4 ? 1 : watchHistory.length,
+                          )
+                          .map((watch) => (
+                            <div
+                              key={watch.id}
+                              className="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg border border-zinc-700/50"
+                            >
+                              <div className="flex items-center gap-3">
+                                <span className="text-zinc-300">
+                                  {watch.seasonNumber !== null &&
+                                  watch.episodeNumber !== null
+                                    ? `S${watch.seasonNumber} E${watch.episodeNumber} - `
+                                    : ""}
+                                  {new Date(watch.watchedAt).toLocaleString()}
+                                </span>
+                              </div>
+                              <button
+                                onClick={() => handleDeleteWatch(watch.id)}
+                                className="px-3 py-1 cursor-pointer text-red-400 hover:text-red-300 text-sm"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          ))}
+                      </div>
+                    )}
                     {watchHistory.length >= 4 && !showExpandedWatchHistory && (
                       <button
                         onClick={() => setShowExpandedWatchHistory(true)}

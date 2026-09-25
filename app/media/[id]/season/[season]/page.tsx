@@ -257,6 +257,41 @@ export default function SeasonPage() {
               </h1>
             </div>
           </div>
+
+          <div className="flex items-center gap-2">
+            <Link
+              href={
+                seasonNumber > 1
+                  ? `/media/${mediaId}/season/${seasonNumber - 1}?type=tv`
+                  : "#"
+              }
+              aria-disabled={seasonNumber <= 1}
+              className={`inline-flex items-center justify-center rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+                seasonNumber > 1
+                  ? "border-violet-500/40 bg-violet-500/10 text-violet-100 hover:border-violet-400 hover:bg-violet-500/20"
+                  : "pointer-events-none cursor-not-allowed border-zinc-700 bg-zinc-800 text-zinc-500"
+              }`}
+            >
+              ← Previous season
+            </Link>
+            <Link
+              href={
+                show?.number_of_seasons && seasonNumber < show.number_of_seasons
+                  ? `/media/${mediaId}/season/${seasonNumber + 1}?type=tv`
+                  : "#"
+              }
+              aria-disabled={
+                !show?.number_of_seasons || seasonNumber >= show.number_of_seasons
+              }
+              className={`inline-flex items-center justify-center rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+                show?.number_of_seasons && seasonNumber < show.number_of_seasons
+                  ? "border-violet-500/40 bg-violet-500/10 text-violet-100 hover:border-violet-400 hover:bg-violet-500/20"
+                  : "pointer-events-none cursor-not-allowed border-zinc-700 bg-zinc-800 text-zinc-500"
+              }`}
+            >
+              Next season →
+            </Link>
+          </div>
         </div>
 
         <div className="mb-8 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4 md:flex md:items-center md:gap-5">
