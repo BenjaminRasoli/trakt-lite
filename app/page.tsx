@@ -80,6 +80,7 @@ function HomeContent() {
   const [searching, setSearching] = useState(false);
   const [recentHistory, setRecentHistory] = useState<any[]>([]);
   const [nextUp, setNextUp] = useState<any[]>([]);
+  const [upcoming, setUpcoming] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [mediaCache, setMediaCache] = useState<Record<number, any>>({});
   const supabase = useSupabase();
@@ -130,11 +131,12 @@ function HomeContent() {
 
       try {
         const response = await fetch(
-          "/api/watch-history?limit=6&nextUpLimit=6&nextUp=true",
+          "/api/watch-history?limit=6&nextUpLimit=6&nextUp=true&upcoming=true",
         );
         if (!response.ok) {
           setRecentHistory([]);
           setNextUp([]);
+          setUpcoming([]);
           return;
         }
 
@@ -145,8 +147,12 @@ function HomeContent() {
         const nextUpItems = Array.isArray(responseData.nextUp)
           ? responseData.nextUp.slice(0, 6)
           : [];
+        const upcomingItems = Array.isArray(responseData.upcoming)
+          ? responseData.upcoming.slice(0, 6)
+          : [];
 
         setNextUp(nextUpItems);
+        setUpcoming(upcomingItems);
 
         const enrichedData = await Promise.all(
           data.slice(0, 6).map(async (historyItem: any) => {
@@ -188,6 +194,7 @@ function HomeContent() {
     setSearching(true);
     setRecentHistory([]);
     setNextUp([]);
+    setUpcoming([]);
     const results = await searchMedia(searchQuery);
     setSearchResults(results);
     setSearching(false);
@@ -215,6 +222,9 @@ function HomeContent() {
     user?.user_metadata?.username || user?.email?.split("@")[0] || "User";
   const capitalizedUsername =
     username.charAt(0).toUpperCase() + username.slice(1);
+  const visibleNextUp = nextUp.slice(0, 6);
+  const visibleHistory = recentHistory.slice(0, 6);
+  const visibleUpcoming = upcoming.slice(0, 6);
   const hasSearchResults = searchResults.length > 0 || searching;
 
   if (loading) {
@@ -356,7 +366,7 @@ function HomeContent() {
           <RecentHistorySkeleton />
         ) : (
           <>
-            {!searching && nextUp.length > 0 && (
+            {!searching && visibleNextUp.length > 0 && (
               <section className="mb-8">
                 <div className="mb-4 flex items-center justify-between gap-4">
                   <div>
@@ -375,7 +385,7 @@ function HomeContent() {
                 </div>
 
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
-                  {nextUp.map((item) => (
+                  {visibleNextUp.map((item) => (
                     <Link
                       key={`${item.tmdbId}-${item.seasonNumber}-${item.episodeNumber}`}
                       href={`/media/${item.tmdbId}?type=tv`}
@@ -409,7 +419,65 @@ function HomeContent() {
               </section>
             )}
 
-            {!searching && recentHistory.length > 0 && (
+            {!searching && visibleUpcoming.length > 0 && (
+              <section className="mb-8">
+                <div className="mb-4 flex items-center justify-between gap-4">
+                  <div>
+                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-violet-400/80">
+                      Upcoming
+                    </p>
+                    <h2 className="text-xl font-bold text-white">Calendar</h2>
+                  </div>
+
+                  <Link
+                    href="/calendar"
+                    className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-3 py-1.5 text-xs font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
+                  >
+                    View all
+                  </Link>
+                </div>
+
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+                  {visibleUpcoming.map((item) => (
+                    <Link
+                      key={`${item.tmdbId}-${item.seasonNumber}-${item.episodeNumber}-${item.airDate || "unknown"}`}
+                      href={`/media/${item.tmdbId}?type=tv`}
+                      className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:-translate-y-0.5 hover:border-violet-500/50"
+                    >
+                      <div className="relative aspect-[2/3] overflow-hidden">
+                        <img
+                          src={getPosterUrl(item.posterPath || null)}
+                          alt={item.episodeTitle}
+                          className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                          onError={(e) => {
+                            e.currentTarget.src = "/placeholder-poster.svg";
+                          }}
+                        />
+                      </div>
+
+                      <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
+                        <div className="text-[10px] font-medium uppercase tracking-[0.15em] text-violet-300">
+                          {item.airDate
+                            ? new Date(item.airDate).toLocaleDateString(undefined, {
+                                month: "short",
+                                day: "numeric",
+                              })
+                            : "Coming soon"}
+                        </div>
+                        <div className="line-clamp-2 text-xs font-semibold text-white">
+                          {item.episodeTitle}
+                        </div>
+                        <div className="line-clamp-1 text-[10px] text-zinc-400">
+                          {item.title}
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {!searching && visibleHistory.length > 0 && (
               <section className="mb-8">
                 <div className="mb-4 flex items-center justify-between gap-4">
                   <div>
@@ -420,7 +488,7 @@ function HomeContent() {
                   </div>
 
                   <Link
-                    href="/next-up"
+                    href="/history"
                     className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-3 py-1.5 text-xs font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
                   >
                     View all
@@ -428,7 +496,7 @@ function HomeContent() {
                 </div>
 
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
-                  {recentHistory.map((historyItem) => {
+                  {visibleHistory.map((historyItem) => {
                     const media = historyItem.media;
                     const watchedDate = new Date(historyItem.watchedAt);
                     const episodeLabel =

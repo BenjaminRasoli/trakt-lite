@@ -67,6 +67,12 @@ export default function Navbar() {
                   Next Up
                 </Link>
                 <Link
+                  href="/calendar"
+                  className="text-sm font-medium text-zinc-300 transition-colors hover:text-violet-400 sm:text-base"
+                >
+                  Calendar
+                </Link>
+                <Link
                   href="/history"
                   className="text-sm font-medium text-zinc-300 transition-colors hover:text-violet-400 sm:text-base"
                 >

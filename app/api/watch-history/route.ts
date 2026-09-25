@@ -58,18 +58,22 @@ async function hydrateMissingMediaMetadata(media: {
   return hydratedMedia;
 }
 
-function isReleasedEpisode(
-  episode:
-    | {
-        air_date?: string | null;
-      }
-    | null
-    | undefined,
-) {
+function isReleasedEpisode(episode: {
+  air_date?: string | null;
+} | null | undefined) {
   if (!episode?.air_date) return false;
 
   const airDate = new Date(episode.air_date);
   return Number.isFinite(airDate.getTime()) && airDate <= new Date();
+}
+
+function isFutureEpisode(episode: {
+  air_date?: string | null;
+} | null | undefined) {
+  if (!episode?.air_date) return false;
+
+  const airDate = new Date(episode.air_date);
+  return Number.isFinite(airDate.getTime()) && airDate > new Date();
 }
 
 async function getNextUpQueue(userId: string, limit = 6) {
@@ -225,6 +229,159 @@ async function getNextUpQueue(userId: string, limit = 6) {
   return computedShows.filter(Boolean).slice(0, limit) as typeof nextUp;
 }
 
+async function getUpcomingEpisodesQueue(userId: string, limit = 6) {
+  const watchHistory = await prisma.watchHistory.findMany({
+    where: { userId },
+    include: { media: true },
+    orderBy: {
+      watchedAt: "desc",
+    },
+  });
+
+  const latestByShow = new Map<
+    number,
+    {
+      tmdbId: number;
+      title: string;
+      posterPath: string | null;
+      backdropPath: string | null;
+      seasonNumber: number;
+      episodeNumber: number;
+      watchedAt: Date;
+    }
+  >();
+
+  for (const item of watchHistory) {
+    if (
+      item.media.mediaType !== "tv" ||
+      item.seasonNumber == null ||
+      item.episodeNumber == null
+    ) {
+      continue;
+    }
+
+    const current = latestByShow.get(item.media.tmdbId);
+    const isLater =
+      !current ||
+      item.seasonNumber > current.seasonNumber ||
+      (item.seasonNumber === current.seasonNumber &&
+        item.episodeNumber > current.episodeNumber);
+
+    if (isLater) {
+      latestByShow.set(item.media.tmdbId, {
+        tmdbId: item.media.tmdbId,
+        title: item.media.title,
+        posterPath: item.media.posterPath,
+        backdropPath: item.media.backdropPath,
+        seasonNumber: item.seasonNumber,
+        episodeNumber: item.episodeNumber,
+        watchedAt: item.watchedAt,
+      });
+    }
+  }
+
+  const { getTVSeasonDetails } = await import("@/lib/tmdb");
+  const seasonDetailCache = new Map<string, any>();
+  const getCachedSeasonDetails = async (
+    tmdbId: number,
+    seasonNumber: number,
+  ) => {
+    const key = `${tmdbId}:${seasonNumber}`;
+    if (seasonDetailCache.has(key)) {
+      return seasonDetailCache.get(key);
+    }
+
+    const seasonDetails = await getTVSeasonDetails(tmdbId, seasonNumber);
+    seasonDetailCache.set(key, seasonDetails ?? null);
+    return seasonDetails ?? null;
+  };
+
+  const upcoming = await Promise.all(
+    [...latestByShow.values()].map(async (show) => {
+      const currentSeason = show.seasonNumber;
+      const currentEpisode = show.episodeNumber;
+      const now = new Date();
+
+      const currentSeasonDetails = await getCachedSeasonDetails(
+        show.tmdbId,
+        currentSeason,
+      );
+      const nextFutureEpisodeInCurrentSeason = currentSeasonDetails?.episodes
+        ?.filter(
+          (episode: { episode_number?: number; air_date?: string | null }) =>
+            Number(episode.episode_number) > currentEpisode &&
+            isFutureEpisode(episode),
+        )
+        .sort(
+          (
+            a: { air_date?: string | null },
+            b: { air_date?: string | null },
+          ) =>
+            new Date(a.air_date || now).getTime() -
+            new Date(b.air_date || now).getTime(),
+        )[0];
+
+      if (nextFutureEpisodeInCurrentSeason) {
+        return {
+          tmdbId: show.tmdbId,
+          title: show.title,
+          posterPath: show.posterPath,
+          backdropPath: show.backdropPath,
+          seasonNumber: currentSeason,
+          episodeNumber: Number(nextFutureEpisodeInCurrentSeason.episode_number),
+          episodeTitle:
+            nextFutureEpisodeInCurrentSeason.name ||
+            `Episode ${Number(nextFutureEpisodeInCurrentSeason.episode_number)}`,
+          overview: nextFutureEpisodeInCurrentSeason.overview || null,
+          airDate: nextFutureEpisodeInCurrentSeason.air_date || null,
+        };
+      }
+
+      const nextSeasonDetails = await getCachedSeasonDetails(
+        show.tmdbId,
+        currentSeason + 1,
+      );
+      const firstFutureEpisodeNextSeason = nextSeasonDetails?.episodes
+        ?.filter(
+          (episode: { episode_number?: number; air_date?: string | null }) =>
+            Number(episode.episode_number) >= 1 && isFutureEpisode(episode),
+        )
+        .sort(
+          (
+            a: { air_date?: string | null },
+            b: { air_date?: string | null },
+          ) =>
+            new Date(a.air_date || now).getTime() -
+            new Date(b.air_date || now).getTime(),
+        )[0];
+
+      if (!firstFutureEpisodeNextSeason) return null;
+
+      return {
+        tmdbId: show.tmdbId,
+        title: show.title,
+        posterPath: show.posterPath,
+        backdropPath: show.backdropPath,
+        seasonNumber: currentSeason + 1,
+        episodeNumber: Number(firstFutureEpisodeNextSeason.episode_number),
+        episodeTitle:
+          firstFutureEpisodeNextSeason.name ||
+          `Episode ${Number(firstFutureEpisodeNextSeason.episode_number)}`,
+        overview: firstFutureEpisodeNextSeason.overview || null,
+        airDate: firstFutureEpisodeNextSeason.air_date || null,
+      };
+    }),
+  );
+
+  return upcoming
+    .filter(Boolean)
+    .sort(
+      (a: any, b: any) =>
+        new Date(a.airDate || 0).getTime() - new Date(b.airDate || 0).getTime(),
+    )
+    .slice(0, limit);
+}
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -234,6 +391,7 @@ export async function GET(request: NextRequest) {
     const limitParam = searchParams.get("limit");
     const offsetParam = searchParams.get("offset");
     const nextUpParam = searchParams.get("nextUp");
+    const upcomingParam = searchParams.get("upcoming");
     const nextUpLimitParam = searchParams.get("nextUpLimit");
 
     const supabase = await createClient();
@@ -334,31 +492,62 @@ export async function GET(request: NextRequest) {
           ? await getNextUpQueue(dbUser.id, safeNextUpLimit)
           : [];
 
-      const hydratedNextUp = await Promise.all(
-        nextUp.map(async (item) => {
-          const hydrated = await hydrateMissingMediaMetadata({
-            tmdbId: item.tmdbId,
-            title: item.title,
-            mediaType: "tv",
-            posterPath: item.posterPath,
-            backdropPath: item.backdropPath,
-            overview: item.overview,
-          });
+      const upcoming =
+        upcomingParam === "true"
+          ? await getUpcomingEpisodesQueue(dbUser.id, safeNextUpLimit)
+          : [];
 
-          return {
-            ...item,
-            title: hydrated.title,
-            posterPath: hydrated.posterPath || null,
-            backdropPath: hydrated.backdropPath || null,
-            overview: hydrated.overview || null,
-          };
-        }),
+      const hydratedNextUp = await Promise.all(
+        nextUp
+          .filter((item): item is NonNullable<typeof item> => Boolean(item))
+          .map(async (item) => {
+            const hydrated = await hydrateMissingMediaMetadata({
+              tmdbId: item.tmdbId,
+              title: item.title,
+              mediaType: "tv",
+              posterPath: item.posterPath,
+              backdropPath: item.backdropPath,
+              overview: item.overview,
+            });
+
+            return {
+              ...item,
+              title: hydrated.title,
+              posterPath: hydrated.posterPath || null,
+              backdropPath: hydrated.backdropPath || null,
+              overview: hydrated.overview || null,
+            };
+          }),
+      );
+
+      const hydratedUpcoming = await Promise.all(
+        upcoming
+          .filter((item): item is NonNullable<typeof item> => Boolean(item))
+          .map(async (item) => {
+            const hydrated = await hydrateMissingMediaMetadata({
+              tmdbId: item.tmdbId,
+              title: item.title,
+              mediaType: "tv",
+              posterPath: item.posterPath,
+              backdropPath: item.backdropPath,
+              overview: item.overview,
+            });
+
+            return {
+              ...item,
+              title: hydrated.title,
+              posterPath: hydrated.posterPath || null,
+              backdropPath: hydrated.backdropPath || null,
+              overview: hydrated.overview || null,
+            };
+          }),
       );
 
       return NextResponse.json({
         items: itemsWithPosters,
         hasMore,
         nextUp: hydratedNextUp,
+        upcoming: hydratedUpcoming,
       });
     }
 
