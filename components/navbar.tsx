@@ -35,8 +35,10 @@ export default function Navbar() {
     router.push("/auth");
   };
 
-  const username = user?.user_metadata?.username || user?.email?.split("@")[0] || "User";
-  const capitalizedUsername = username.charAt(0).toUpperCase() + username.slice(1);
+  const username =
+    user?.user_metadata?.username || user?.email?.split("@")[0] || "User";
+  const capitalizedUsername =
+    username.charAt(0).toUpperCase() + username.slice(1);
 
   return (
     <nav className="bg-gradient-to-r from-zinc-900 via-zinc-800 to-zinc-900 border-b border-zinc-700/50 backdrop-blur-sm">
@@ -58,6 +60,12 @@ export default function Navbar() {
                   New
                 </a>
                 <a
+                  href="/history"
+                  className="text-zinc-300 hover:text-violet-400 transition-colors cursor-pointer font-medium"
+                >
+                  History
+                </a>
+                <a
                   href="/settings"
                   className="text-zinc-300 hover:text-violet-400 transition-colors cursor-pointer font-medium"
                 >
@@ -73,7 +81,10 @@ export default function Navbar() {
             ) : user ? (
               <>
                 <div className="text-zinc-300">
-                  Welcome back, <span className="text-violet-400 font-semibold">{capitalizedUsername}</span>
+                  Welcome back,{" "}
+                  <span className="text-violet-400 font-semibold">
+                    {capitalizedUsername}
+                  </span>
                 </div>
                 <button
                   onClick={handleSignOut}

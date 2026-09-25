@@ -8,13 +8,8 @@ export async function GET(request: NextRequest) {
     const mediaId = searchParams.get("mediaId");
     const seasonNumber = searchParams.get("seasonNumber");
     const episodeNumber = searchParams.get("episodeNumber");
-
-    if (!mediaId) {
-      return NextResponse.json(
-        { error: "Media ID is required" },
-        { status: 400 },
-      );
-    }
+    const limitParam = searchParams.get("limit");
+    const offsetParam = searchParams.get("offset");
 
     const supabase = await createClient();
     const {
@@ -38,6 +33,91 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    if (!mediaId) {
+      const parsedLimit =
+        limitParam && limitParam !== "all"
+          ? Number.parseInt(limitParam, 10)
+          : 40;
+      const parsedOffset =
+        offsetParam && offsetParam !== "all"
+          ? Number.parseInt(offsetParam, 10)
+          : 0;
+
+      const safeLimit =
+        Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 40;
+      const safeOffset =
+        Number.isFinite(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0;
+
+      const watchHistory = await prisma.watchHistory.findMany({
+        where: {
+          userId: dbUser.id,
+        },
+        include: {
+          media: true,
+        },
+        orderBy: {
+          watchedAt: "desc",
+        },
+        skip: safeOffset,
+        take: safeLimit + 1,
+      });
+
+      const hasMore = watchHistory.length > safeLimit;
+      const pageItems = hasMore
+        ? watchHistory.slice(0, safeLimit)
+        : watchHistory;
+
+      const { getMediaDetails } = await import("@/lib/tmdb");
+      const itemsWithPosters = await Promise.all(
+        pageItems.map(async (entry) => {
+          let posterPath = entry.media.posterPath;
+          let backdropPath = entry.media.backdropPath;
+          let overview = entry.media.overview;
+
+          if (!posterPath && entry.media.tmdbId) {
+            try {
+              const tmdbMedia = await getMediaDetails(
+                entry.media.tmdbId,
+                entry.media.mediaType as "movie" | "tv"
+              );
+              if (tmdbMedia) {
+                posterPath = tmdbMedia.poster_path;
+                backdropPath = tmdbMedia.backdrop_path;
+                overview = tmdbMedia.overview;
+
+                await prisma.media.update({
+                  where: { id: entry.media.id },
+                  data: {
+                    posterPath: posterPath || null,
+                    backdropPath: backdropPath || null,
+                    overview: overview || null,
+                  },
+                });
+              }
+            } catch (error) {
+              console.error("Error fetching poster from TMDB:", error);
+            }
+          }
+
+          return {
+            ...entry,
+            media: {
+              ...entry.media,
+              title: entry.media.title || "Unknown",
+              posterPath: posterPath || null,
+              backdropPath: backdropPath || null,
+              overview: overview || "",
+            },
+          };
+        })
+      );
+
+      return NextResponse.json({
+        items: itemsWithPosters,
+        hasMore,
+      });
+    }
+
     const media = await prisma.media.findUnique({
       where: { tmdbId: parseInt(mediaId) },
     });
@@ -46,7 +126,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json([]);
     }
 
-    const whereClause: any = {
+    const whereClause: {
+      userId: string;
+      mediaId: number;
+      seasonNumber?: number;
+      episodeNumber?: number;
+    } = {
       userId: dbUser.id,
       mediaId: media.id,
     };
@@ -60,9 +145,13 @@ export async function GET(request: NextRequest) {
 
     const watchHistory = await prisma.watchHistory.findMany({
       where: whereClause,
+      include: {
+        media: true,
+      },
       orderBy: {
         watchedAt: "desc",
       },
+      take: limitParam ? parseInt(limitParam) : undefined,
     });
 
     return NextResponse.json(watchHistory);

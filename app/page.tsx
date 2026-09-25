@@ -1,18 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSupabase } from "@/components/supabase-provider";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import MediaCard from "@/components/media-card";
-import { searchMedia } from "@/lib/tmdb";
+import { getPosterUrl, searchMedia } from "@/lib/tmdb";
 
-export default function Home() {
+function HomeContent() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
+  const [recentHistory, setRecentHistory] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [mediaCache, setMediaCache] = useState<Record<number, any>>({});
   const supabase = useSupabase();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -49,6 +52,66 @@ export default function Home() {
     }
   }, [searchParams]);
 
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchRecentHistory = async () => {
+      setHistoryLoading(true);
+
+      try {
+        const response = await fetch("/api/watch-history?limit=6");
+        if (!response.ok) {
+          setRecentHistory([]);
+          return;
+        }
+
+        const responseData = await response.json();
+        const data = responseData.items || responseData; // Handle both old and new response formats
+        
+        // Fetch media details for items without poster data with batching
+        const batchSize = 3; // Process 3 items at a time to respect rate limits
+        const enrichedData: any[] = [];
+        
+        for (let i = 0; i < data.length; i += batchSize) {
+          const batch = data.slice(i, i + batchSize);
+          
+          const mediaPromises = batch.map(async (historyItem: any) => {
+            const media = historyItem.media;
+            if (!media.posterPath && media.tmdbId) {
+              try {
+                const mediaResponse = await fetch(`/api/media/${media.tmdbId}?type=${media.mediaType}`);
+                if (mediaResponse.ok) {
+                  const updatedMedia = await mediaResponse.json();
+                  return { ...historyItem, media: updatedMedia };
+                }
+              } catch (error) {
+                console.error("Error fetching media details:", error);
+              }
+            }
+            return historyItem;
+          });
+
+          const batchResults = await Promise.all(mediaPromises);
+          enrichedData.push(...batchResults);
+          
+          // Add delay between batches to respect rate limits
+          if (i + batchSize < data.length) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
+        
+        setRecentHistory(enrichedData);
+      } catch (error) {
+        console.error("Error fetching recent history:", error);
+        setRecentHistory([]);
+      } finally {
+        setHistoryLoading(false);
+      }
+    };
+
+    fetchRecentHistory();
+  }, [user]);
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
@@ -60,8 +123,10 @@ export default function Home() {
     setSearching(false);
   };
 
-  const username = user?.user_metadata?.username || user?.email?.split("@")[0] || "User";
-  const capitalizedUsername = username.charAt(0).toUpperCase() + username.slice(1);
+  const username =
+    user?.user_metadata?.username || user?.email?.split("@")[0] || "User";
+  const capitalizedUsername =
+    username.charAt(0).toUpperCase() + username.slice(1);
 
   if (loading) {
     return (
@@ -113,7 +178,9 @@ export default function Home() {
         <div className="mb-12">
           <div className="flex items-center gap-4 mb-8">
             <h1 className="text-3xl font-bold text-white">Welcome</h1>
-            <p className="text-3xl text-violet-400 font-semibold">{capitalizedUsername}</p>
+            <p className="text-3xl text-violet-400 font-semibold">
+              {capitalizedUsername}
+            </p>
           </div>
 
           <form onSubmit={handleSearch} className="flex gap-4 max-w-2xl">
@@ -134,9 +201,84 @@ export default function Home() {
           </form>
         </div>
 
+        {!historyLoading && recentHistory.length > 0 && (
+          <section className="mb-8">
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <div>
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-violet-400/80">
+                  Recently watched
+                </p>
+                <h2 className="text-xl font-bold text-white">History</h2>
+              </div>
+
+              <Link
+                href="/history"
+                className="inline-flex items-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-3 py-1.5 text-xs font-semibold text-violet-300 transition hover:border-violet-400 hover:bg-violet-500/20"
+              >
+                View all
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+              {recentHistory.map((historyItem) => {
+                const media = historyItem.media;
+                const watchedDate = new Date(historyItem.watchedAt);
+                const episodeLabel =
+                  historyItem.seasonNumber !== null &&
+                  historyItem.episodeNumber !== null
+                    ? `S${historyItem.seasonNumber} E${historyItem.episodeNumber}`
+                    : media?.mediaType === "tv"
+                      ? "TV"
+                      : "Movie";
+
+                return (
+                  <Link
+                    key={historyItem.id}
+                    href={`/media/${media.tmdbId}?type=${media.mediaType}`}
+                    className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:-translate-y-0.5 hover:border-violet-500/50"
+                  >
+                    <div className="relative aspect-[2/3] overflow-hidden">
+                      <img
+                        src={getPosterUrl(media.posterPath || null)}
+                        alt={media.title}
+                        className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                        onError={(e) => {
+                          e.currentTarget.src = "/placeholder-poster.svg";
+                        }}
+                      />
+                    </div>
+
+                    <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
+                      <div className="text-[10px] font-medium uppercase tracking-[0.15em] text-violet-300">
+                        {media.mediaType}
+                      </div>
+                      <div className="line-clamp-2 text-xs font-semibold text-white">
+                        {media.title}
+                      </div>
+                      {episodeLabel && (
+                        <div className="text-[10px] text-zinc-400">
+                          {episodeLabel}
+                        </div>
+                      )}
+                      <div className="pt-1 text-[10px] text-zinc-500">
+                        {watchedDate.toLocaleDateString(undefined, {
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         {searchResults.length > 0 && (
           <div>
-            <h2 className="text-2xl font-bold text-white mb-6">Search Results</h2>
+            <h2 className="text-2xl font-bold text-white mb-6">
+              Search Results
+            </h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {searchResults.map((media) => (
                 <MediaCard key={media.id} media={media} />
@@ -146,5 +288,19 @@ export default function Home() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-black text-white">
+          Loading...
+        </div>
+      }
+    >
+      <HomeContent />
+    </Suspense>
   );
 }

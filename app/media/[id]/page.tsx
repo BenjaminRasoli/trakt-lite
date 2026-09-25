@@ -126,7 +126,8 @@ export default function MediaDetailsPage() {
           return;
         }
         const data = await response.json();
-        setWatchHistory(data);
+        const watchHistoryData = data.items || data; // Handle both formats
+        setWatchHistory(watchHistoryData);
       } catch (error) {
         console.error("Error fetching watch history:", error);
         setWatchHistory([]);
