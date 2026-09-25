@@ -109,7 +109,9 @@ export async function getGenres(): Promise<TMDBGenre[]> {
   }
 }
 
-export async function getMovieDetails(movieId: number): Promise<TMDBMedia | null> {
+export async function getMovieDetails(
+  movieId: number,
+): Promise<TMDBMedia | null> {
   if (!TMDB_API_KEY) {
     console.error("TMDB API key is not configured");
     return null;
@@ -127,7 +129,9 @@ export async function getMovieDetails(movieId: number): Promise<TMDBMedia | null
   }
 }
 
-export async function getTVShowDetails(tvId: number): Promise<TMDBMedia | null> {
+export async function getTVShowDetails(
+  tvId: number,
+): Promise<TMDBMedia | null> {
   if (!TMDB_API_KEY) {
     console.error("TMDB API key is not configured");
     return null;
@@ -145,7 +149,10 @@ export async function getTVShowDetails(tvId: number): Promise<TMDBMedia | null> 
   }
 }
 
-export async function getMediaDetails(mediaId: number, mediaType: "movie" | "tv"): Promise<TMDBMedia | null> {
+export async function getMediaDetails(
+  mediaId: number,
+  mediaType: "movie" | "tv",
+): Promise<TMDBMedia | null> {
   if (mediaType === "movie") {
     return getMovieDetails(mediaId);
   } else {
@@ -153,7 +160,9 @@ export async function getMediaDetails(mediaId: number, mediaType: "movie" | "tv"
   }
 }
 
-export async function getMovieCredits(movieId: number): Promise<{ cast: TMDBActor[]; crew: TMDBCrew[] } | null> {
+export async function getMovieCredits(
+  movieId: number,
+): Promise<{ cast: TMDBActor[]; crew: TMDBCrew[] } | null> {
   if (!TMDB_API_KEY) {
     console.error("TMDB API key is not configured");
     return null;
@@ -171,7 +180,9 @@ export async function getMovieCredits(movieId: number): Promise<{ cast: TMDBActo
   }
 }
 
-export async function getTVCredits(tvId: number): Promise<{ cast: TMDBActor[]; crew: TMDBCrew[] } | null> {
+export async function getTVCredits(
+  tvId: number,
+): Promise<{ cast: TMDBActor[]; crew: TMDBCrew[] } | null> {
   if (!TMDB_API_KEY) {
     console.error("TMDB API key is not configured");
     return null;
@@ -189,7 +200,10 @@ export async function getTVCredits(tvId: number): Promise<{ cast: TMDBActor[]; c
   }
 }
 
-export async function getMediaCredits(mediaId: number, mediaType: "movie" | "tv"): Promise<{ cast: TMDBActor[]; crew: TMDBCrew[] } | null> {
+export async function getMediaCredits(
+  mediaId: number,
+  mediaType: "movie" | "tv",
+): Promise<{ cast: TMDBActor[]; crew: TMDBCrew[] } | null> {
   if (mediaType === "movie") {
     return getMovieCredits(mediaId);
   } else {
@@ -233,7 +247,10 @@ export async function getTVReviews(tvId: number): Promise<TMDBReview[]> {
   }
 }
 
-export async function getMediaReviews(mediaId: number, mediaType: "movie" | "tv"): Promise<TMDBReview[]> {
+export async function getMediaReviews(
+  mediaId: number,
+  mediaType: "movie" | "tv",
+): Promise<TMDBReview[]> {
   if (mediaType === "movie") {
     return getMovieReviews(mediaId);
   } else {
@@ -241,7 +258,9 @@ export async function getMediaReviews(mediaId: number, mediaType: "movie" | "tv"
   }
 }
 
-export async function getMovieRecommendations(movieId: number): Promise<TMDBMedia[]> {
+export async function getMovieRecommendations(
+  movieId: number,
+): Promise<TMDBMedia[]> {
   if (!TMDB_API_KEY) {
     console.error("TMDB API key is not configured");
     return [];
@@ -279,7 +298,10 @@ export async function getTVRecommendations(tvId: number): Promise<TMDBMedia[]> {
   }
 }
 
-export async function getMediaRecommendations(mediaId: number, mediaType: "movie" | "tv"): Promise<TMDBMedia[]> {
+export async function getMediaRecommendations(
+  mediaId: number,
+  mediaType: "movie" | "tv",
+): Promise<TMDBMedia[]> {
   if (mediaType === "movie") {
     return getMovieRecommendations(mediaId);
   } else {
@@ -293,6 +315,27 @@ export function getPosterUrl(
 ): string {
   if (!path) return "/placeholder-poster.svg";
   return `https://image.tmdb.org/t/p/${size}${path}`;
+}
+
+export function getBackdropUrl(
+  path: string | null,
+  size: string = "original",
+): string {
+  if (!path) return "";
+  return `https://image.tmdb.org/t/p/${size}${path}`;
+}
+
+export function getRandomBackdropUrl(mediaList: TMDBMedia[] = []): string {
+  const validBackdrops = mediaList
+    .map((media) => media.backdrop_path)
+    .filter((path): path is string => Boolean(path));
+
+  if (!validBackdrops.length) return "";
+
+  const randomBackdrop =
+    validBackdrops[Math.floor(Math.random() * validBackdrops.length)];
+
+  return getBackdropUrl(randomBackdrop, "original");
 }
 
 export function getProfileUrl(
@@ -316,7 +359,10 @@ export function getMediaType(media: TMDBMedia): string {
   return media.title ? "movie" : "tv";
 }
 
-export async function getTVSeasonDetails(tvId: number, seasonNumber: number): Promise<any> {
+export async function getTVSeasonDetails(
+  tvId: number,
+  seasonNumber: number,
+): Promise<any> {
   if (!TMDB_API_KEY) {
     console.error("TMDB API key is not configured");
     return null;

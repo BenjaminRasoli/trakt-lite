@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useSupabase } from "./supabase-provider";
 import { useRouter } from "next/navigation";
 
@@ -41,65 +42,70 @@ export default function Navbar() {
     username.charAt(0).toUpperCase() + username.slice(1);
 
   return (
-    <nav className="bg-gradient-to-r from-zinc-900 via-zinc-800 to-zinc-900 border-b border-zinc-700/50 backdrop-blur-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          <div className="flex items-center gap-8">
-            <a
+    <nav className="border-b border-zinc-700/50 bg-gradient-to-r from-zinc-900 via-zinc-800 to-zinc-900 backdrop-blur-sm">
+      <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:py-0 sm:h-16">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-8">
+            <Link
               href="/"
-              className="text-2xl font-bold text-white hover:text-violet-400 transition-colors cursor-pointer"
+              className="text-xl font-bold text-white transition-colors hover:text-violet-400 sm:text-2xl"
             >
               Trakt Lite
-            </a>
+            </Link>
             {user && (
               <>
-                <a
+                <Link
                   href="/new"
-                  className="text-zinc-300 hover:text-violet-400 transition-colors cursor-pointer font-medium"
+                  className="text-sm font-medium text-zinc-300 transition-colors hover:text-violet-400 sm:text-base"
                 >
                   New
-                </a>
-                <a
+                </Link>
+                <Link
                   href="/history"
-                  className="text-zinc-300 hover:text-violet-400 transition-colors cursor-pointer font-medium"
+                  className="text-sm font-medium text-zinc-300 transition-colors hover:text-violet-400 sm:text-base"
                 >
                   History
-                </a>
-                <a
+                </Link>
+                <Link
                   href="/settings"
-                  className="text-zinc-300 hover:text-violet-400 transition-colors cursor-pointer font-medium"
+                  className="text-sm font-medium text-zinc-300 transition-colors hover:text-violet-400 sm:text-base"
                 >
                   Settings
-                </a>
+                </Link>
               </>
             )}
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-4">
             {loading ? (
-              <div className="text-zinc-400">Loading...</div>
+              <div className="flex items-center gap-2 text-violet-300">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-violet-300" />
+                <span className="text-[10px] font-medium uppercase tracking-[0.2em] sm:text-xs">
+                  Loading
+                </span>
+              </div>
             ) : user ? (
               <>
-                <div className="text-zinc-300">
+                <div className="max-w-[150px] truncate text-xs text-zinc-300 sm:max-w-none sm:text-sm">
                   Welcome back,{" "}
-                  <span className="text-violet-400 font-semibold">
+                  <span className="font-semibold text-violet-400">
                     {capitalizedUsername}
                   </span>
                 </div>
                 <button
                   onClick={handleSignOut}
-                  className="px-4 py-2 cursor-pointer bg-zinc-700/50 text-zinc-300 rounded-lg hover:bg-zinc-700 transition-all text-sm"
+                  className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20 sm:px-4 sm:py-2 sm:text-sm"
                 >
                   Sign Out
                 </button>
               </>
             ) : (
-              <a
+              <Link
                 href="/auth"
-                className="px-4 py-2 cursor-pointer bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold rounded-lg hover:from-violet-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-violet-500/25"
+                className="inline-flex cursor-pointer items-center justify-center rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-lg transition-all hover:from-violet-700 hover:to-indigo-700 hover:shadow-violet-500/25"
               >
                 Sign In
-              </a>
+              </Link>
             )}
           </div>
         </div>

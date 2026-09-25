@@ -2,25 +2,44 @@
 
 import { useState, useEffect } from "react";
 import MediaCard from "@/components/media-card";
-import { getTrendingMedia } from "@/lib/tmdb";
+import { getRandomBackdropUrl, getTrendingMedia } from "@/lib/tmdb";
 
 export default function NewPage() {
   const [trendingMedia, setTrendingMedia] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pageBackdrop, setPageBackdrop] = useState("");
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchTrending = async () => {
       const media = await getTrendingMedia();
+      if (!isMounted) return;
       setTrendingMedia(media);
+      setPageBackdrop(getRandomBackdropUrl(media));
       setLoading(false);
     };
 
-    fetchTrending();
+    void fetchTrending();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   return (
-    <div className="flex flex-col flex-1 items-center font-sans min-h-screen bg-black">
-      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 flex-1">
+    <div className="relative flex flex-col flex-1 items-center font-sans min-h-screen bg-black overflow-x-hidden">
+      <div className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-b from-black/70 via-black/40 to-black/80">
+        {pageBackdrop && (
+          <div
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-40"
+            style={{ backgroundImage: `url(${pageBackdrop})` }}
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/50 to-black/80" />
+      </div>
+
+      <main className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 flex-1">
         <div className="mb-12">
           <h1 className="text-4xl font-bold text-white mb-4 tracking-tight">
             New & Trending

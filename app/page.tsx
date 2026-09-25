@@ -5,7 +5,12 @@ import { useSupabase } from "@/components/supabase-provider";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import MediaCard from "@/components/media-card";
-import { getPosterUrl, searchMedia } from "@/lib/tmdb";
+import {
+  getPosterUrl,
+  getRandomBackdropUrl,
+  getTrendingMedia,
+  searchMedia,
+} from "@/lib/tmdb";
 
 function RecentHistorySkeleton() {
   return (
@@ -158,6 +163,24 @@ function HomeContent() {
     setSearching(false);
   };
 
+  const [homeBackdrop, setHomeBackdrop] = useState<string>("");
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadBackdrop = async () => {
+      const trendingMedia = await getTrendingMedia();
+      if (!isMounted) return;
+      setHomeBackdrop(getRandomBackdropUrl(trendingMedia));
+    };
+
+    void loadBackdrop();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const username =
     user?.user_metadata?.username || user?.email?.split("@")[0] || "User";
   const capitalizedUsername =
@@ -203,17 +226,16 @@ function HomeContent() {
   if (!user) {
     return (
       <div className="flex flex-col flex-1 items-center justify-center font-sans min-h-screen relative overflow-hidden">
-        <div
-          className="absolute inset-0 z-0"
-          style={{
-            backgroundImage:
-              "url(https://image.tmdb.org/t/p/original/8ZTVqvKDQ8emSGUEMjsS4yHAwrp.jpg)",
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            backgroundRepeat: "no-repeat",
-          }}
-        >
-          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80"></div>
+        <div className="absolute inset-0 z-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80">
+          {homeBackdrop && (
+            <div
+              className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-70"
+              style={{
+                backgroundImage: `url(${homeBackdrop})`,
+              }}
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/40 to-black/70"></div>
         </div>
 
         <main className="relative z-10 flex flex-col items-center justify-center w-full max-w-4xl px-8 py-16 gap-12 flex-1">
@@ -237,8 +259,20 @@ function HomeContent() {
   }
 
   return (
-    <div className="flex flex-col flex-1 items-center font-sans min-h-screen bg-black">
-      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 flex-1">
+    <div className="relative flex flex-col flex-1 items-center font-sans min-h-screen bg-black overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-b from-black/75 via-black/55 to-black/85">
+        {homeBackdrop && (
+          <div
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-50"
+            style={{
+              backgroundImage: `url(${homeBackdrop})`,
+            }}
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/60 to-black/85" />
+      </div>
+
+      <main className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 flex-1">
         <div className="mb-12">
           <div className="flex items-center gap-4 mb-8">
             <h1 className="text-3xl font-bold text-white">Welcome</h1>
@@ -261,11 +295,11 @@ function HomeContent() {
             <button
               type="submit"
               disabled={searching}
-              className="h-[58px] w-[58px] shrink-0 cursor-pointer bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold rounded-lg hover:from-violet-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-violet-500/25 flex items-center justify-center"
+              className="inline-flex h-[58px] w-[58px] cursor-pointer items-center justify-center rounded-xl border border-violet-500/40 bg-violet-500/10 text-violet-100 shadow-lg shadow-violet-500/10 transition hover:border-violet-400 hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <div className="flex h-5 w-5 items-center justify-center">
                 {searching ? (
-                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-violet-200" />
                 ) : (
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -302,7 +336,7 @@ function HomeContent() {
 
               <Link
                 href="/history"
-                className="inline-flex items-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-3 py-1.5 text-xs font-semibold text-violet-300 transition hover:border-violet-400 hover:bg-violet-500/20"
+                className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-3 py-1.5 text-xs font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
               >
                 View all
               </Link>

@@ -5,7 +5,11 @@ import type { User } from "@supabase/supabase-js";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSupabase } from "@/components/supabase-provider";
-import { getPosterUrl } from "@/lib/tmdb";
+import {
+  getPosterUrl,
+  getRandomBackdropUrl,
+  getTrendingMedia,
+} from "@/lib/tmdb";
 
 interface HistoryResponse {
   items: HistoryItem[];
@@ -38,6 +42,7 @@ export default function HistoryPage() {
   const [historyLoading, setHistoryLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
+  const [pageBackdrop, setPageBackdrop] = useState("");
   const router = useRouter();
   const supabase = useSupabase();
   const historyLengthRef = useRef(0);
@@ -97,10 +102,13 @@ export default function HistoryPage() {
   );
 
   useEffect(() => {
+    let isMounted = true;
+
     const getUser = async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
+      if (!isMounted) return;
       setUser(user);
       setLoading(false);
     };
@@ -110,10 +118,22 @@ export default function HistoryPage() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!isMounted) return;
       setUser(session?.user ?? null);
     });
 
-    return () => subscription.unsubscribe();
+    const fetchBackdrop = async () => {
+      const trendingMedia = await getTrendingMedia();
+      if (!isMounted) return;
+      setPageBackdrop(getRandomBackdropUrl(trendingMedia));
+    };
+
+    void fetchBackdrop();
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, [supabase]);
 
   useEffect(() => {
@@ -181,9 +201,19 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      <main className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="mb-8 flex items-center justify-between gap-4">
+    <div className="relative min-h-screen bg-black text-white overflow-x-hidden">
+      <div className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-b from-black/70 via-black/40 to-black/80">
+        {pageBackdrop && (
+          <div
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-35"
+            style={{ backgroundImage: `url(${pageBackdrop})` }}
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/55 to-black/80" />
+      </div>
+
+      <main className="relative z-10 mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-violet-400/80">
               your activity
@@ -195,7 +225,7 @@ export default function HistoryPage() {
 
           <Link
             href="/"
-            className="rounded-full border border-zinc-700 bg-zinc-900 px-4 py-2 text-sm font-medium text-zinc-200 transition hover:border-violet-500/50 hover:text-violet-300"
+            className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
           >
             Back home
           </Link>
@@ -212,7 +242,7 @@ export default function HistoryPage() {
           </div>
         ) : (
           <>
-            <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+            <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
               {sortedHistory.map((entry) => {
                 const watchedDate = new Date(entry.watchedAt);
                 const label =

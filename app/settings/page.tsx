@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSupabase } from "@/components/supabase-provider";
 import { useRouter } from "next/navigation";
+import { getRandomBackdropUrl, getTrendingMedia } from "@/lib/tmdb";
 
 export default function SettingsPage() {
   const [user, setUser] = useState<any>(null);
@@ -13,14 +14,18 @@ export default function SettingsPage() {
   const [importSuccess, setImportSuccess] = useState(false);
   const [importProgress, setImportProgress] = useState<string>("");
   const [exportProgress, setExportProgress] = useState<string>("");
+  const [pageBackdrop, setPageBackdrop] = useState("");
   const supabase = useSupabase();
   const router = useRouter();
 
   useEffect(() => {
+    let isMounted = true;
+
     const getUser = async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
+      if (!isMounted) return;
       setUser(user);
       setLoading(false);
     };
@@ -30,10 +35,22 @@ export default function SettingsPage() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!isMounted) return;
       setUser(session?.user ?? null);
     });
 
-    return () => subscription.unsubscribe();
+    const fetchBackdrop = async () => {
+      const trendingMedia = await getTrendingMedia();
+      if (!isMounted) return;
+      setPageBackdrop(getRandomBackdropUrl(trendingMedia));
+    };
+
+    void fetchBackdrop();
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, [supabase]);
 
   const handleImport = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -140,8 +157,18 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="flex flex-col flex-1 font-sans min-h-screen bg-black">
-      <main className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1">
+    <div className="relative flex flex-col flex-1 font-sans min-h-screen bg-black overflow-x-hidden">
+      <div className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-b from-black/70 via-black/40 to-black/80">
+        {pageBackdrop && (
+          <div
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-35"
+            style={{ backgroundImage: `url(${pageBackdrop})` }}
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/55 to-black/80" />
+      </div>
+
+      <main className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1">
         <h1 className="text-3xl font-bold text-white mb-8">Settings</h1>
 
         <div className="space-y-8">
@@ -175,11 +202,11 @@ export default function SettingsPage() {
               <button
                 type="submit"
                 disabled={importing}
-                className="px-6 py-3 cursor-pointer bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold rounded-lg hover:from-violet-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-violet-500/25 flex items-center justify-center gap-2"
+                className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-5 py-2.5 text-sm font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {importing ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                     Importing...
                   </>
                 ) : (
@@ -199,11 +226,11 @@ export default function SettingsPage() {
             <button
               onClick={handleExport}
               disabled={exporting}
-              className="px-6 py-3 cursor-pointer bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold rounded-lg hover:from-violet-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-violet-500/25 flex items-center justify-center gap-2"
+              className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-5 py-2.5 text-sm font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {exporting ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   Exporting...
                 </>
               ) : (
