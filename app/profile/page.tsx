@@ -526,7 +526,7 @@ export default function ProfilePage() {
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/85" />
       </div>
 
-      <main className="relative z-10 mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 lg:px-8 overflow-y-auto">
+      <main className="relative z-10 mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8 overflow-y-auto">
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-violet-300">
