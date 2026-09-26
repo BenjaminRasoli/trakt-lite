@@ -783,52 +783,62 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <div className="mt-6 grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-            <div className="min-w-0 rounded-2xl border border-zinc-800 bg-zinc-950/40 p-4">
-              <h4 className="text-sm font-semibold uppercase tracking-[0.25em] text-zinc-300">
-                Year breakdown
-              </h4>
-              <div className="mt-4 overflow-x-auto pb-1">
-                <div className="flex min-w-[640px] items-end gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3 pt-5">
-                  {stats.yearBreakdown.length === 0 ? (
-                    <div className="w-full rounded-2xl border border-dashed border-zinc-700 bg-zinc-950/40 p-4 text-sm text-zinc-400">
-                      No watch activity yet.
-                    </div>
-                  ) : (
-                    stats.yearBreakdown.map(([year, count]) => {
-                      const maxCount = Math.max(
-                        ...stats.yearBreakdown.map(([, value]) => value),
-                        1,
-                      );
-                      const height = Math.max((count / maxCount) * 100, 8);
-                      return (
-                        <div
-                          key={year}
-                          className="flex w-full min-w-[52px] flex-col items-center justify-end gap-1.5"
-                        >
-                          <div className="flex h-36 w-full items-end justify-center rounded-t-xl bg-zinc-800 p-0.5">
-                            <div
-                              className="w-[52%] rounded-t-xl bg-violet-500 shadow-[0_0_16px_rgba(168,85,247,0.5)]"
-                              style={{ height: `${height}%` }}
-                            />
-                          </div>
-                          <div className="text-center">
-                            <div className="text-xs font-semibold text-zinc-300">
-                              {year}
+          <div
+            className={`mt-6 grid gap-6 ${
+              selectedYear ? "xl:grid-cols-1" : "xl:grid-cols-[1.15fr_0.85fr]"
+            }`}
+          >
+            {!selectedYear && (
+              <div className="min-w-0 rounded-2xl border border-zinc-800 bg-zinc-950/40 p-4">
+                <h4 className="text-sm font-semibold uppercase tracking-[0.25em] text-zinc-300">
+                  Year breakdown
+                </h4>
+                <div className="mt-4 overflow-x-auto pb-1">
+                  <div className="flex min-w-[640px] items-end gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3 pt-5">
+                    {stats.yearBreakdown.length === 0 ? (
+                      <div className="w-full rounded-2xl border border-dashed border-zinc-700 bg-zinc-950/40 p-4 text-sm text-zinc-400">
+                        No watch activity yet.
+                      </div>
+                    ) : (
+                      stats.yearBreakdown.map(([year, count]) => {
+                        const maxCount = Math.max(
+                          ...stats.yearBreakdown.map(([, value]) => value),
+                          1,
+                        );
+                        const height = Math.max((count / maxCount) * 100, 8);
+                        return (
+                          <div
+                            key={year}
+                            className="flex w-full min-w-[52px] flex-col items-center justify-end gap-1.5"
+                          >
+                            <div className="flex h-36 w-full items-end justify-center rounded-t-xl bg-zinc-800 p-0.5">
+                              <div
+                                className="w-[52%] rounded-t-xl bg-violet-500 shadow-[0_0_16px_rgba(168,85,247,0.5)]"
+                                style={{ height: `${height}%` }}
+                              />
                             </div>
-                            <div className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">
-                              {count}
+                            <div className="text-center">
+                              <div className="text-xs font-semibold text-zinc-300">
+                                {year}
+                              </div>
+                              <div className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">
+                                {count}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })
-                  )}
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
-            <div className="min-w-0 rounded-2xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <div
+              className={`min-w-0 rounded-2xl border border-zinc-800 bg-zinc-950/40 p-4 ${
+                selectedYear ? "xl:col-span-1" : ""
+              }`}
+            >
               <h4 className="text-sm font-semibold uppercase tracking-[0.25em] text-zinc-300">
                 Top titles
               </h4>
