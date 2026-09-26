@@ -698,7 +698,7 @@ export default function MediaDetailsPage() {
 
       {showWatchDialog && (
         <div
-          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-4"
           onClick={(event) => {
             if (event.target === event.currentTarget) {
               setShowWatchDialog(false);
@@ -708,10 +708,10 @@ export default function MediaDetailsPage() {
             }
           }}
         >
-          <div className="bg-zinc-900 rounded-lg p-6 w-full max-w-md border border-zinc-700 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold text-white mb-4">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-6 max-w-md w-full mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-semibold text-white mb-2">
               {type === "tv" ? "Mark Episode as Watched" : "Mark as Watched"}
-            </h2>
+            </h3>
             <form onSubmit={handleAddWatch}>
               {type === "tv" && (
                 <div className="space-y-4 mb-6">
@@ -842,7 +842,7 @@ export default function MediaDetailsPage() {
                 </div>
               )}
 
-              <div className="flex gap-3">
+              <div className="flex gap-3 justify-end">
                 <button
                   type="button"
                   onClick={() => {
@@ -851,14 +851,14 @@ export default function MediaDetailsPage() {
                     setWatchDate("");
                     setWatchTime("");
                   }}
-                  className="flex-1 px-4 py-2 cursor-pointer bg-zinc-700 text-white rounded hover:bg-zinc-600 transition-colors"
+                  className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-medium text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={addingWatch}
-                  className="flex-1 px-4 py-2 cursor-pointer bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded hover:from-violet-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  className="px-4 py-2 rounded-lg bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition cursor-pointer"
                 >
                   {addingWatch ? "Adding..." : "Add"}
                 </button>
@@ -870,7 +870,7 @@ export default function MediaDetailsPage() {
 
       {showDeleteConfirm && (
         <div
-          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-4"
           onClick={(event) => {
             if (event.target === event.currentTarget) {
               setShowDeleteConfirm(false);
@@ -878,26 +878,26 @@ export default function MediaDetailsPage() {
             }
           }}
         >
-          <div className="bg-zinc-900 rounded-lg p-6 w-full max-w-md border border-zinc-700 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold text-white mb-4">
-              Confirm Removal
-            </h2>
+          <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-6 w-full max-w-sm mx-4 shadow-2xl">
+            <h3 className="text-lg font-semibold text-white mb-2">
+              Are you sure?
+            </h3>
             <p className="text-zinc-300 mb-6">
-              Are you sure you want to remove this watch history entry?
+              Do you really want to remove this watch history entry?
             </p>
-            <div className="flex gap-3">
+            <div className="flex gap-3 justify-end">
               <button
                 onClick={() => {
                   setShowDeleteConfirm(false);
                   setWatchToDelete(null);
                 }}
-                className="flex-1 px-4 py-2 cursor-pointer bg-zinc-700 text-white rounded hover:bg-zinc-600 transition-colors"
+                className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-medium text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmDeleteWatch}
-                className="flex-1 px-4 py-2 cursor-pointer bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition cursor-pointer"
               >
                 Remove
               </button>
