@@ -263,9 +263,44 @@ function HomeContent() {
   const visibleUpcoming = upcoming.slice(0, 6);
   const hasSearchResults = searchResults.length > 0 || searching;
 
+  if (loading && user === null) {
+    return (
+      <div className="flex flex-col flex-1 items-center justify-center font-sans h-screen relative overflow-hidden">
+        <div className="pointer-events-none fixed inset-0 z-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80">
+          {homeBackdrop && (
+            <div
+              className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-70"
+              style={{
+                backgroundImage: `url(${homeBackdrop})`,
+              }}
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/40 to-black/70"></div>
+        </div>
+
+        <main className="relative z-10 flex flex-col items-center justify-center w-full max-w-4xl px-8 py-8 gap-12 h-full">
+          <div className="text-center">
+            <h1 className="text-5xl font-bold text-white mb-4 tracking-tight">
+              Trakt Lite
+            </h1>
+            <p className="text-xl text-zinc-300 max-w-2xl mb-8">
+              Track your favorite movies and TV shows
+            </p>
+            <Link
+              href="/auth"
+              className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-8 py-3 text-base font-semibold text-violet-100 shadow-lg shadow-violet-500/10 transition hover:border-violet-400 hover:bg-violet-500/20"
+            >
+              Get Started
+            </Link>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
-      <div className="flex flex-col flex-1 items-center font-sans min-h-screen bg-black">
+      <div className="flex flex-col flex-1 items-center font-sans min-h-screen bg-black overflow-hidden">
         <div className="w-full max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 py-16 flex-1 animate-pulse">
           <div className="mb-12">
             <div className="flex items-center gap-4 mb-8">
@@ -301,7 +336,7 @@ function HomeContent() {
 
   if (!user) {
     return (
-      <div className="flex flex-col flex-1 items-center justify-center font-sans min-h-screen relative overflow-hidden">
+      <div className="flex flex-col flex-1 items-center justify-center font-sans h-screen relative overflow-hidden">
         <div className="pointer-events-none fixed inset-0 z-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80">
           {homeBackdrop && (
             <div

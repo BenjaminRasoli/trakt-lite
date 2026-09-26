@@ -88,6 +88,10 @@ export default function Navbar() {
   const capitalizedUsername =
     username.charAt(0).toUpperCase() + username.slice(1);
 
+  if (loading || (!user && !loading)) {
+    return null;
+  }
+
   return (
     <>
       <nav className="sticky top-0 z-40 border-b border-zinc-700/50 bg-zinc-950/85 backdrop-blur-md">
