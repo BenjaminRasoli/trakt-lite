@@ -203,7 +203,15 @@ export default function ProfilePage() {
   }, [user]);
 
   useEffect(() => {
-    if (watchHistory.length === 0) {
+    const filteredHistory = selectedYear
+      ? watchHistory.filter(
+          (entry) => new Date(entry.watchedAt).getFullYear() === selectedYear,
+        )
+      : watchHistory;
+
+    if (filteredHistory.length === 0) {
+      setRuntimeStats({ movieMinutes: 0, tvMinutes: 0, totalMinutes: 0 });
+      setLoadingRuntime(false);
       return;
     }
 
@@ -216,8 +224,7 @@ export default function ProfilePage() {
         { type: "movie" | "tv"; count: number }
       >();
 
-      for (const item of watchHistory) {
-        // Determine media type: if it has season/episode, it's TV, otherwise movie
+      for (const item of filteredHistory) {
         const mediaType =
           item.media?.mediaType === "tv" ||
           (item.seasonNumber != null && item.episodeNumber != null)
@@ -236,7 +243,6 @@ export default function ProfilePage() {
       let movieMinutes = 0;
       let tvMinutes = 0;
 
-      // Process in batches to avoid overwhelming the API
       const batchSize = 10;
       const mediaIds = Array.from(mediaById.keys());
 
@@ -287,7 +293,7 @@ export default function ProfilePage() {
     return () => {
       isMounted = false;
     };
-  }, [watchHistory]);
+  }, [watchHistory, selectedYear]);
 
   const stats = useMemo(() => {
     // Filter by year if selected
@@ -327,7 +333,7 @@ export default function ProfilePage() {
     );
 
     const years = new Map<number, number>();
-    for (const entry of watchHistory) {
+    for (const entry of filteredHistory) {
       const year = new Date(entry.watchedAt).getFullYear();
       years.set(year, (years.get(year) ?? 0) + 1);
     }
@@ -362,6 +368,18 @@ export default function ProfilePage() {
       hourOfDayStats.set(hour, (hourOfDayStats.get(hour) ?? 0) + 1);
     }
 
+    // Calculate available years from full history (not filtered)
+    const allYears = new Map<number, number>();
+    for (const entry of watchHistory) {
+      const year = new Date(entry.watchedAt).getFullYear();
+      allYears.set(year, (allYears.get(year) ?? 0) + 1);
+    }
+
+    // Calculate overall best year from full history (not filtered)
+    const overallTopYear = [...allYears.entries()].sort(
+      (a, b) => b[1] - a[1],
+    )[0];
+
     return {
       totalEntries: filteredHistory.length,
       movieEntries: movieEntries.length,
@@ -372,10 +390,11 @@ export default function ProfilePage() {
       topTitle,
       titleBreakdown,
       topYear,
+      overallTopYear,
       yearBreakdown: [...years.entries()].sort((a, b) => b[0] - a[0]),
       dayOfWeekStats: [...dayOfWeekStats.entries()].sort((a, b) => a[0] - b[0]),
       hourOfDayStats: [...hourOfDayStats.entries()].sort((a, b) => a[0] - b[0]),
-      availableYears: [...years.keys()].sort((a, b) => b - a),
+      availableYears: [...allYears.keys()].sort((a, b) => b - a),
     };
   }, [watchHistory, selectedYear]);
 
@@ -508,17 +527,20 @@ export default function ProfilePage() {
       </div>
 
       <main className="relative z-10 mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 lg:px-8 overflow-y-auto">
-        <div className="mb-8 flex items-center justify-between">
-          <div>
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-violet-300">
               Profile
             </p>
             <h1 className="mt-2 text-3xl font-bold text-white">Your stats</h1>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
             <div className="flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-800/50 px-3 py-1.5">
               <button
-                onClick={() => setViewFilter("all")}
+                onClick={() => {
+                  setViewFilter("all");
+                  setSelectedYear(null);
+                }}
                 className={`text-xs font-semibold uppercase tracking-[0.2em] transition cursor-pointer ${
                   viewFilter === "all"
                     ? "text-violet-300"
@@ -706,13 +728,21 @@ export default function ProfilePage() {
 
             <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.25em] text-zinc-400">
-                Best year
+                {selectedYear ? "Selected year" : "Best year"}
               </p>
               <p className="mt-3 text-lg font-semibold text-violet-200">
-                {stats.topYear ? stats.topYear[0] : "No data yet"}
+                {selectedYear
+                  ? selectedYear
+                  : stats.overallTopYear
+                    ? stats.overallTopYear[0]
+                    : "No data yet"}
               </p>
               <p className="mt-1 text-sm text-zinc-400">
-                {stats.topYear ? `${stats.topYear[1]} entries` : "No year yet"}
+                {selectedYear
+                  ? `${stats.totalEntries} entries`
+                  : stats.overallTopYear
+                    ? `${stats.overallTopYear[1]} entries`
+                    : "No year yet"}
               </p>
             </div>
 
@@ -754,12 +784,12 @@ export default function ProfilePage() {
           </div>
 
           <div className="mt-6 grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <div className="min-w-0 rounded-2xl border border-zinc-800 bg-zinc-950/40 p-4">
               <h4 className="text-sm font-semibold uppercase tracking-[0.25em] text-zinc-300">
                 Year breakdown
               </h4>
               <div className="mt-4 overflow-x-auto pb-1">
-                <div className="flex min-w-[460px] items-end gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3 pt-5">
+                <div className="flex min-w-[640px] items-end gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3 pt-5">
                   {stats.yearBreakdown.length === 0 ? (
                     <div className="w-full rounded-2xl border border-dashed border-zinc-700 bg-zinc-950/40 p-4 text-sm text-zinc-400">
                       No watch activity yet.
@@ -798,12 +828,12 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <div className="min-w-0 rounded-2xl border border-zinc-800 bg-zinc-950/40 p-4">
               <h4 className="text-sm font-semibold uppercase tracking-[0.25em] text-zinc-300">
                 Top titles
               </h4>
               <div className="mt-4 overflow-x-auto pb-1">
-                <div className="flex min-w-[260px] items-end gap-2.5 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3 pt-5">
+                <div className="flex min-w-[640px] items-end gap-2.5 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3 pt-5">
                   {stats.titleBreakdown.length === 0 ? (
                     <div className="w-full rounded-2xl border border-dashed border-zinc-700 bg-zinc-950/40 p-4 text-sm text-zinc-400">
                       No titles yet.
@@ -915,8 +945,8 @@ export default function ProfilePage() {
                 </span>
               </div>
               <div className="overflow-x-auto pb-1">
-                <div className="w-full min-w-[640px] rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3 pt-5">
-                  <div className="flex h-[220px] items-end gap-1.5">
+                <div className="min-w-[960px] rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3 pt-5">
+                  <div className="flex h-[220px] w-full items-end gap-1.5">
                     {stats.hourOfDayStats.length === 0 ? (
                       <div className="w-full rounded-2xl border border-dashed border-zinc-700 bg-zinc-950/40 p-4 text-sm text-zinc-400">
                         No data yet.
