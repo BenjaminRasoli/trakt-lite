@@ -33,7 +33,7 @@ interface HistoryItem {
   };
 }
 
-const PAGE_SIZE = 40;
+const PAGE_SIZE = 42;
 
 export default function HistoryPage() {
   const [user, setUser] = useState<User | null>(null);
