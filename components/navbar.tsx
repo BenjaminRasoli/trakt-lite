@@ -3,13 +3,14 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useSupabase } from "./supabase-provider";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 export default function Navbar() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const supabase = useSupabase();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     const updateUser = (nextUser: any) => {
@@ -62,42 +63,31 @@ export default function Navbar() {
             </Link>
             {user && (
               <>
-                <Link
-                  href="/new"
-                  className="text-sm font-medium text-zinc-300 transition-colors hover:text-violet-400 sm:text-base"
-                >
-                  New
-                </Link>
-                <Link
-                  href="/next-up"
-                  className="text-sm font-medium text-zinc-300 transition-colors hover:text-violet-400 sm:text-base"
-                >
-                  Next Up
-                </Link>
-                <Link
-                  href="/calendar"
-                  className="text-sm font-medium text-zinc-300 transition-colors hover:text-violet-400 sm:text-base"
-                >
-                  Calendar
-                </Link>
-                <Link
-                  href="/history"
-                  className="text-sm font-medium text-zinc-300 transition-colors hover:text-violet-400 sm:text-base"
-                >
-                  History
-                </Link>
-                <Link
-                  href="/profile"
-                  className="text-sm font-medium text-zinc-300 transition-colors hover:text-violet-400 sm:text-base"
-                >
-                  Profile
-                </Link>
-                <Link
-                  href="/settings"
-                  className="text-sm font-medium text-zinc-300 transition-colors hover:text-violet-400 sm:text-base"
-                >
-                  Settings
-                </Link>
+                {[
+                  { href: "/new", label: "New" },
+                  { href: "/next-up", label: "Next Up" },
+                  { href: "/calendar", label: "Calendar" },
+                  { href: "/history", label: "History" },
+                  { href: "/profile", label: "Profile" },
+                  { href: "/settings", label: "Settings" },
+                ].map(({ href, label }) => {
+                  const isActive = pathname === href;
+
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      className={[
+                        "text-sm font-medium transition-colors sm:text-base",
+                        isActive
+                          ? "text-violet-400"
+                          : "text-zinc-300 hover:text-violet-400",
+                      ].join(" ")}
+                    >
+                      {label}
+                    </Link>
+                  );
+                })}
               </>
             )}
           </div>
