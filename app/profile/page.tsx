@@ -804,7 +804,7 @@ export default function ProfilePage() {
                       return (
                         <div
                           key={year}
-                          className="flex w-full min-w-[52px] flex-col items-center justify-end gap-2"
+                          className="flex w-full min-w-[52px] flex-col items-center justify-end gap-1.5"
                         >
                           <div className="flex h-36 w-full items-end justify-center rounded-t-xl bg-zinc-800 p-0.5">
                             <div
@@ -833,7 +833,7 @@ export default function ProfilePage() {
                 Top titles
               </h4>
               <div className="mt-4 overflow-x-auto pb-1">
-                <div className="flex min-w-[640px] items-end gap-2.5 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3 pt-5">
+                <div className="flex min-w-[640px] items-end gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3 pt-5">
                   {stats.titleBreakdown.length === 0 ? (
                     <div className="w-full rounded-2xl border border-dashed border-zinc-700 bg-zinc-950/40 p-4 text-sm text-zinc-400">
                       No titles yet.
@@ -850,7 +850,7 @@ export default function ProfilePage() {
                           key={`${title}-${index}`}
                           className="flex w-full min-w-[56px] flex-col items-center justify-end gap-1.5"
                         >
-                          <div className="flex h-32 w-full items-end justify-center rounded-t-xl bg-zinc-800 p-0.5">
+                          <div className="flex h-36 w-full items-end justify-center rounded-t-xl bg-zinc-800 p-0.5">
                             <div
                               className="w-[58%] rounded-t-xl bg-violet-500 shadow-[0_0_16px_rgba(168,85,247,0.5)]"
                               style={{ height: `${height}%` }}
