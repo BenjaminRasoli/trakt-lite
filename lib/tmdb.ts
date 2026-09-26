@@ -372,25 +372,41 @@ export function getMediaType(media: TMDBMedia): string {
   return media.title ? "movie" : "tv";
 }
 
-export async function getTVSeasonDetails(
-  tvId: number,
-  seasonNumber: number,
-): Promise<any> {
+async function fetchTmdbJson<T>(url: string): Promise<T | null> {
   if (!TMDB_API_KEY) {
     console.error("TMDB API key is not configured");
     return null;
   }
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+
   try {
-    const response = await fetch(
-      `${TMDB_BASE_URL}/tv/${tvId}/season/${seasonNumber}?api_key=${TMDB_API_KEY}`,
-    );
-    const data = await response.json();
-    return data;
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) {
+      const text = await response.text();
+      console.error(
+        `TMDB request failed (${response.status}): ${text.slice(0, 200)}`,
+      );
+      return null;
+    }
+
+    return (await response.json()) as T;
   } catch (error) {
-    console.error("Error fetching TV season details:", error);
+    console.error(`Error fetching TMDB data for ${url}:`, error);
     return null;
+  } finally {
+    clearTimeout(timeout);
   }
+}
+
+export async function getTVSeasonDetails(
+  tvId: number,
+  seasonNumber: number,
+): Promise<any> {
+  return fetchTmdbJson(
+    `${TMDB_BASE_URL}/tv/${tvId}/season/${seasonNumber}?api_key=${TMDB_API_KEY}`,
+  );
 }
 
 export async function getTVEpisodeDetails(
@@ -398,21 +414,9 @@ export async function getTVEpisodeDetails(
   seasonNumber: number,
   episodeNumber: number,
 ): Promise<TMDBEpisode | null> {
-  if (!TMDB_API_KEY) {
-    console.error("TMDB API key is not configured");
-    return null;
-  }
-
-  try {
-    const response = await fetch(
-      `${TMDB_BASE_URL}/tv/${tvId}/season/${seasonNumber}/episode/${episodeNumber}?api_key=${TMDB_API_KEY}`,
-    );
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error("Error fetching TV episode details:", error);
-    return null;
-  }
+  return fetchTmdbJson<TMDBEpisode>(
+    `${TMDB_BASE_URL}/tv/${tvId}/season/${seasonNumber}/episode/${episodeNumber}?api_key=${TMDB_API_KEY}`,
+  );
 }
 
 export async function getTVEpisodeCredits(

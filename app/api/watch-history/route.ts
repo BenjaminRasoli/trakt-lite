@@ -3,6 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { getMediaDetails } from "@/lib/tmdb";
 
+// Cache for TMDB API calls to reduce redundant requests
+const mediaCache = new Map<string, any>();
+
 async function hydrateMissingMediaMetadata(media: {
   tmdbId: number;
   title: string;
@@ -13,6 +16,18 @@ async function hydrateMissingMediaMetadata(media: {
 }) {
   if (!media.tmdbId || media.posterPath) {
     return media;
+  }
+
+  const cacheKey = `${media.tmdbId}:${media.mediaType}`;
+  if (mediaCache.has(cacheKey)) {
+    const cached = mediaCache.get(cacheKey);
+    return {
+      ...media,
+      title: cached.title || media.title,
+      posterPath: cached.posterPath || media.posterPath,
+      backdropPath: cached.backdropPath || media.backdropPath,
+      overview: cached.overview || media.overview,
+    };
   }
 
   const mediaType = media.mediaType === "tv" ? "tv" : "movie";
@@ -30,7 +45,16 @@ async function hydrateMissingMediaMetadata(media: {
     overview: tmdbMedia.overview || media.overview || "",
   };
 
-  await prisma.media.upsert({
+  // Cache the result
+  mediaCache.set(cacheKey, {
+    title: hydratedMedia.title,
+    posterPath: hydratedMedia.posterPath,
+    backdropPath: hydratedMedia.backdropPath,
+    overview: hydratedMedia.overview,
+  });
+
+  // Update database asynchronously without blocking
+  prisma.media.upsert({
     where: { tmdbId: media.tmdbId },
     update: {
       title: hydratedMedia.title,
@@ -53,7 +77,7 @@ async function hydrateMissingMediaMetadata(media: {
           ? new Date(tmdbMedia.release_date || tmdbMedia.first_air_date || "")
           : null,
     },
-  });
+  }).catch(err => console.error("Error updating media metadata:", err));
 
   return hydratedMedia;
 }
@@ -86,13 +110,44 @@ function isFutureEpisode(
   return Number.isFinite(airDate.getTime()) && airDate > new Date();
 }
 
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  mapper: (item: T) => Promise<R>,
+): Promise<R[]> {
+  if (items.length === 0) return [];
+
+  const results = new Array<R>(items.length);
+  let index = 0;
+
+  const workers = Array.from(
+    { length: Math.min(concurrency, items.length) },
+    async () => {
+      while (index < items.length) {
+        const currentIndex = index++;
+        results[currentIndex] = await mapper(items[currentIndex]);
+      }
+    },
+  );
+
+  await Promise.all(workers);
+  return results;
+}
+
 async function getNextUpQueue(userId: string, limit = 6) {
+  // Only fetch TV shows with season/episode info, ordered by watchedAt
   const watchHistory = await prisma.watchHistory.findMany({
-    where: { userId },
+    where: { 
+      userId,
+      media: { mediaType: "tv" },
+      seasonNumber: { not: null },
+      episodeNumber: { not: null },
+    },
     include: { media: true },
     orderBy: {
       watchedAt: "desc",
     },
+    take: 500, // Limit to recent history to improve performance
   });
 
   const latestByShow = new Map<
@@ -109,20 +164,12 @@ async function getNextUpQueue(userId: string, limit = 6) {
   >();
 
   for (const item of watchHistory) {
-    if (
-      item.media.mediaType !== "tv" ||
-      item.seasonNumber == null ||
-      item.episodeNumber == null
-    ) {
-      continue;
-    }
-
     const current = latestByShow.get(item.media.tmdbId);
     const isLater =
       !current ||
-      item.seasonNumber > current.seasonNumber ||
+      item.seasonNumber! > current.seasonNumber ||
       (item.seasonNumber === current.seasonNumber &&
-        item.episodeNumber > current.episodeNumber);
+        item.episodeNumber! > current.episodeNumber);
 
     if (isLater) {
       latestByShow.set(item.media.tmdbId, {
@@ -130,8 +177,8 @@ async function getNextUpQueue(userId: string, limit = 6) {
         title: item.media.title,
         posterPath: item.media.posterPath,
         backdropPath: item.media.backdropPath,
-        seasonNumber: item.seasonNumber,
-        episodeNumber: item.episodeNumber,
+        seasonNumber: item.seasonNumber!,
+        episodeNumber: item.episodeNumber!,
         watchedAt: item.watchedAt,
       });
     }
@@ -168,8 +215,10 @@ async function getNextUpQueue(userId: string, limit = 6) {
     (a, b) => b.watchedAt.getTime() - a.watchedAt.getTime(),
   );
 
-  const computedShows = await Promise.all(
-    sortedShows.map(async (show) => {
+  const computedShows = await mapWithConcurrency(
+    sortedShows,
+    3,
+    async (show) => {
       const currentSeason = show.seasonNumber;
       const currentEpisode = show.episodeNumber;
       const now = new Date();
@@ -233,19 +282,26 @@ async function getNextUpQueue(userId: string, limit = 6) {
           `Episode ${Number(firstReleasedEpisodeNextSeason.episode_number)}`,
         overview: firstReleasedEpisodeNextSeason.overview || null,
       };
-    }),
+    },
   );
 
   return computedShows.filter(Boolean).slice(0, limit) as typeof nextUp;
 }
 
 async function getUpcomingEpisodesQueue(userId: string, limit = 6) {
+  // Only fetch TV shows with season/episode info, ordered by watchedAt
   const watchHistory = await prisma.watchHistory.findMany({
-    where: { userId },
+    where: { 
+      userId,
+      media: { mediaType: "tv" },
+      seasonNumber: { not: null },
+      episodeNumber: { not: null },
+    },
     include: { media: true },
     orderBy: {
       watchedAt: "desc",
     },
+    take: 500, // Limit to recent history to improve performance
   });
 
   const latestByShow = new Map<
@@ -262,20 +318,12 @@ async function getUpcomingEpisodesQueue(userId: string, limit = 6) {
   >();
 
   for (const item of watchHistory) {
-    if (
-      item.media.mediaType !== "tv" ||
-      item.seasonNumber == null ||
-      item.episodeNumber == null
-    ) {
-      continue;
-    }
-
     const current = latestByShow.get(item.media.tmdbId);
     const isLater =
       !current ||
-      item.seasonNumber > current.seasonNumber ||
+      item.seasonNumber! > current.seasonNumber ||
       (item.seasonNumber === current.seasonNumber &&
-        item.episodeNumber > current.episodeNumber);
+        item.episodeNumber! > current.episodeNumber);
 
     if (isLater) {
       latestByShow.set(item.media.tmdbId, {
@@ -283,8 +331,8 @@ async function getUpcomingEpisodesQueue(userId: string, limit = 6) {
         title: item.media.title,
         posterPath: item.media.posterPath,
         backdropPath: item.media.backdropPath,
-        seasonNumber: item.seasonNumber,
-        episodeNumber: item.episodeNumber,
+        seasonNumber: item.seasonNumber!,
+        episodeNumber: item.episodeNumber!,
         watchedAt: item.watchedAt,
       });
     }
@@ -306,8 +354,10 @@ async function getUpcomingEpisodesQueue(userId: string, limit = 6) {
     return seasonDetails ?? null;
   };
 
-  const upcoming = await Promise.all(
-    [...latestByShow.values()].map(async (show) => {
+  const upcoming = await mapWithConcurrency(
+    [...latestByShow.values()],
+    3,
+    async (show) => {
       const currentSeason = show.seasonNumber;
       const currentEpisode = show.episodeNumber;
       const now = new Date();
@@ -376,7 +426,7 @@ async function getUpcomingEpisodesQueue(userId: string, limit = 6) {
         overview: firstFutureEpisodeNextSeason.overview || null,
         airDate: firstFutureEpisodeNextSeason.air_date || null,
       };
-    }),
+    },
   );
 
   return upcoming
@@ -411,6 +461,9 @@ export async function GET(request: NextRequest) {
 
     let dbUser = await prisma.user.findUnique({
       where: { email: user.email! },
+    }).catch(err => {
+      console.error("Database error finding user:", err);
+      throw new Error("Database connection failed. Please try again.");
     });
 
     if (!dbUser) {
@@ -426,7 +479,7 @@ export async function GET(request: NextRequest) {
       const parsedLimit =
         limitParam && limitParam !== "all"
           ? Number.parseInt(limitParam, 10)
-          : 40;
+          : 10000; // Fetch all items when limit is "all"
       const parsedOffset =
         offsetParam && offsetParam !== "all"
           ? Number.parseInt(offsetParam, 10)
@@ -636,6 +689,9 @@ export async function POST(request: NextRequest) {
 
     let dbUser = await prisma.user.findUnique({
       where: { email: user.email! },
+    }).catch(err => {
+      console.error("Database error finding user:", err);
+      throw new Error("Database connection failed. Please try again.");
     });
 
     if (!dbUser) {

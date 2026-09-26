@@ -23,6 +23,30 @@ type TraktHistoryEntry = {
   watched_at?: string;
 };
 
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  mapper: (item: T) => Promise<R>,
+): Promise<R[]> {
+  if (items.length === 0) return [];
+
+  const results = new Array<R>(items.length);
+  let index = 0;
+
+  const workers = Array.from(
+    { length: Math.min(concurrency, items.length) },
+    async () => {
+      while (index < items.length) {
+        const currentIndex = index++;
+        results[currentIndex] = await mapper(items[currentIndex]);
+      }
+    },
+  );
+
+  await Promise.all(workers);
+  return results;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
@@ -36,6 +60,9 @@ export async function POST(request: NextRequest) {
 
     const dbUser = await prisma.user.findUnique({
       where: { email: user.email! },
+    }).catch(err => {
+      console.error("Database error finding user:", err);
+      throw new Error("Database connection failed. Please try again.");
     });
 
     if (!dbUser) {
@@ -70,128 +97,137 @@ export async function POST(request: NextRequest) {
       allWatchedHistory.push(...history);
     }
 
+    // Group entries by tmdbId to reduce API calls
+    const entriesByTmdbId = new Map<number, TraktHistoryEntry[]>();
+    for (const entry of allWatchedHistory) {
+      let tmdbId: number | null = null;
+      if (entry.type === "movie") {
+        tmdbId = entry.movie?.ids?.tmdb ?? null;
+      } else if (entry.type === "episode") {
+        tmdbId = entry.show?.ids?.tmdb ?? null;
+      }
+      
+      if (tmdbId != null) {
+        if (!entriesByTmdbId.has(tmdbId)) {
+          entriesByTmdbId.set(tmdbId, []);
+        }
+        entriesByTmdbId.get(tmdbId)!.push(entry);
+      }
+    }
+
     await prisma.watchHistory.deleteMany({
       where: { userId: dbUser.id },
     });
 
-    // Process entries without fetching TMDB data (just store ID and type)
-    const importPromises = allWatchedHistory.map(async (entry) => {
-      try {
-        let tmdbId: number;
-        let mediaType: "movie" | "tv";
-        let title: string;
-        let seasonNumber: number | null = null;
-        let episodeNumber: number | null = null;
-        let releaseDate: Date | null = null;
+    // Process media in batches with lower concurrency to avoid timeouts
+    const batchSize = 50;
+    const tmdbIds = Array.from(entriesByTmdbId.keys());
+    let importedCount = 0;
 
-        if (entry.type === "movie") {
-          const movieTmdbId = entry.movie?.ids?.tmdb;
-          if (movieTmdbId == null) return;
+    for (let i = 0; i < tmdbIds.length; i += batchSize) {
+      const batch = tmdbIds.slice(i, i + batchSize);
+      
+      const batchResults = await mapWithConcurrency(
+        batch,
+        2, // Reduced concurrency to avoid database timeouts
+        async (tmdbId) => {
+          try {
+            const entries = entriesByTmdbId.get(tmdbId);
+            if (!entries || entries.length === 0) return 0;
 
-          tmdbId = movieTmdbId;
-          mediaType = "movie";
-          title = entry.movie?.title || "Unknown";
-          releaseDate = entry.movie?.year
-            ? new Date(`${entry.movie.year}-01-01`)
-            : null;
-        } else if (entry.type === "episode") {
-          const showTmdbId = entry.show?.ids?.tmdb;
-          if (showTmdbId == null) return;
+            const firstEntry = entries[0];
+            let mediaType: "movie" | "tv";
+            let title: string;
+            let releaseDate: Date | null = null;
 
-          tmdbId = showTmdbId;
-          mediaType = "tv";
-          title = entry.show?.title || "Unknown";
-          seasonNumber = entry.episode?.season ?? null;
-          episodeNumber = entry.episode?.number ?? null;
-          releaseDate = entry.show?.year
-            ? new Date(`${entry.show.year}-01-01`)
-            : null;
-        } else {
-          return;
-        }
+            if (firstEntry.type === "movie") {
+              mediaType = "movie";
+              title = firstEntry.movie?.title || "Unknown";
+              releaseDate = firstEntry.movie?.year
+                ? new Date(`${firstEntry.movie.year}-01-01`)
+                : null;
+            } else if (firstEntry.type === "episode") {
+              mediaType = "tv";
+              title = firstEntry.show?.title || "Unknown";
+              releaseDate = firstEntry.show?.year
+                ? new Date(`${firstEntry.show.year}-01-01`)
+                : null;
+            } else {
+              return 0;
+            }
 
-        if (!tmdbId) return;
+            const tmdbMedia = await getMediaDetails(tmdbId, mediaType);
+            const nextReleaseDate =
+              tmdbMedia?.release_date || tmdbMedia?.first_air_date;
 
-        let media = await prisma.media.findUnique({
-          where: { tmdbId },
-        });
-
-        const tmdbMedia = await getMediaDetails(tmdbId, mediaType);
-
-        if (tmdbMedia) {
-          const nextReleaseDate =
-            tmdbMedia.release_date || tmdbMedia.first_air_date;
-
-          if (media) {
-            media = await prisma.media.update({
-              where: { id: media.id },
-              data: {
-                title: tmdbMedia.title || tmdbMedia.name || title,
+            const media = await prisma.media.upsert({
+              where: { tmdbId },
+              update: {
+                title: tmdbMedia?.title || tmdbMedia?.name || title,
                 mediaType,
-                posterPath: tmdbMedia.poster_path || media.posterPath || "",
-                backdropPath:
-                  tmdbMedia.backdrop_path || media.backdropPath || "",
-                overview: tmdbMedia.overview || media.overview || "",
+                posterPath: tmdbMedia?.poster_path || "",
+                backdropPath: tmdbMedia?.backdrop_path || "",
+                overview: tmdbMedia?.overview || "",
                 releaseDate: nextReleaseDate
                   ? new Date(nextReleaseDate)
-                  : media.releaseDate,
-                voteAverage: tmdbMedia.vote_average || media.voteAverage || 0,
-                genreIds: tmdbMedia.genre_ids || media.genreIds || [],
+                  : releaseDate,
+                voteAverage: tmdbMedia?.vote_average || 0,
+                genreIds: tmdbMedia?.genre_ids || [],
               },
-            });
-          } else {
-            media = await prisma.media.create({
-              data: {
+              create: {
                 tmdbId,
-                title: tmdbMedia.title || tmdbMedia.name || title,
+                title: tmdbMedia?.title || tmdbMedia?.name || title,
                 mediaType,
-                posterPath: tmdbMedia.poster_path || "",
-                backdropPath: tmdbMedia.backdrop_path || "",
-                overview: tmdbMedia.overview || "",
-                releaseDate: nextReleaseDate ? new Date(nextReleaseDate) : null,
-                voteAverage: tmdbMedia.vote_average || 0,
-                genreIds: tmdbMedia.genre_ids || [],
+                posterPath: tmdbMedia?.poster_path || "",
+                backdropPath: tmdbMedia?.backdrop_path || "",
+                overview: tmdbMedia?.overview || "",
+                releaseDate: nextReleaseDate
+                  ? new Date(nextReleaseDate)
+                  : releaseDate,
+                voteAverage: tmdbMedia?.vote_average || 0,
+                genreIds: tmdbMedia?.genre_ids || [],
               },
             });
+
+            // Create watch history entries for this media
+            let count = 0;
+            for (const entry of entries) {
+              const watchedAt = entry.watched_at;
+              if (!watchedAt) continue;
+
+              let seasonNumber: number | null = null;
+              let episodeNumber: number | null = null;
+
+              if (entry.type === "episode") {
+                seasonNumber = entry.episode?.season ?? null;
+                episodeNumber = entry.episode?.number ?? null;
+              }
+
+              await prisma.watchHistory.create({
+                data: {
+                  userId: dbUser.id,
+                  mediaId: media.id,
+                  seasonNumber,
+                  episodeNumber,
+                  watchedAt: new Date(watchedAt),
+                },
+              });
+              count++;
+            }
+            return count;
+          } catch (error) {
+            console.error("Error importing media:", error);
+            return 0;
           }
-        } else if (!media) {
-          media = await prisma.media.create({
-            data: {
-              tmdbId,
-              title,
-              mediaType,
-              posterPath: "",
-              backdropPath: "",
-              overview: "",
-              releaseDate,
-              voteAverage: 0,
-              genreIds: [],
-            },
-          });
-        }
+        },
+      );
 
-        const watchedAt = entry.watched_at;
-        if (!watchedAt) return;
-
-        await prisma.watchHistory.create({
-          data: {
-            userId: dbUser.id,
-            mediaId: media.id,
-            seasonNumber,
-            episodeNumber,
-            watchedAt: new Date(watchedAt),
-          },
-        });
-      } catch (error) {
-        console.error("Error importing entry:", error);
-      }
-    });
-
-    await Promise.all(importPromises);
+      importedCount += batchResults.reduce((sum, count) => sum + count, 0);
+    }
 
     return NextResponse.json({
       success: true,
-      imported: allWatchedHistory.length,
+      imported: importedCount,
     });
   } catch (error) {
     console.error("Error importing data:", error);

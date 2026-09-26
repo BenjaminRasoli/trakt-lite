@@ -87,6 +87,12 @@ export default function Navbar() {
                   History
                 </Link>
                 <Link
+                  href="/profile"
+                  className="text-sm font-medium text-zinc-300 transition-colors hover:text-violet-400 sm:text-base"
+                >
+                  Profile
+                </Link>
+                <Link
                   href="/settings"
                   className="text-sm font-medium text-zinc-300 transition-colors hover:text-violet-400 sm:text-base"
                 >
