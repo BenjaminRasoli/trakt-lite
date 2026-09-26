@@ -14,26 +14,67 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, skipped: true }, { status: 200 });
     }
 
+    const playbackPositionTicks = Number(
+      body?.PlaybackPositionTicks ??
+        body?.PositionTicks ??
+        body?.Session?.PlayState?.PositionTicks ??
+        body?.Session?.PlaybackPositionTicks ??
+        item?.UserData?.PlayState?.PositionTicks ??
+        item?.PlayState?.PositionTicks ??
+        0,
+    );
+    const runtimeTicks = Number(
+      body?.RunTimeTicks ??
+        body?.RuntimeTicks ??
+        item?.RunTimeTicks ??
+        item?.RuntimeTicks ??
+        0,
+    );
+    const watchedThresholdReached =
+      runtimeTicks > 0 && playbackPositionTicks > 0
+        ? playbackPositionTicks / runtimeTicks >= 0.8
+        : false;
+
     const isCompletionEvent =
       eventName.includes("playbackstop") ||
       eventName.includes("playbackstopped") ||
       eventName.includes("itemcompleted") ||
-      eventName.includes("itemcompleted") ||
       eventName.includes("playbackfinished") ||
-      eventName.includes("markwatched");
+      eventName.includes("markwatched") ||
+      watchedThresholdReached;
 
     if (!isCompletionEvent) {
       return NextResponse.json({ ok: true, skipped: true }, { status: 200 });
     }
 
-    const userId = String(body?.UserId || body?.userId || "").trim();
-    const user = userId
-      ? await prisma.user.findFirst({ where: { id: userId } })
+    const jellyfinUserId = String(
+      body?.UserId ||
+        body?.userId ||
+        body?.Session?.UserId ||
+        item?.UserId ||
+        item?.User?.Id ||
+        "",
+    ).trim();
+
+    const matchingConnection = jellyfinUserId
+      ? await prisma.jellyfinConnection.findFirst({
+          where: {
+            jellyfinUserId,
+            enabled: true,
+          },
+          include: { user: true },
+        })
       : null;
+
+    const user = matchingConnection?.user ?? null;
     if (!user) {
       return NextResponse.json(
-        { ok: false, error: "Unknown user" },
-        { status: 404 },
+        {
+          ok: false,
+          skipped: true,
+          reason: "no_matching_jellyfin_user",
+        },
+        { status: 200 },
       );
     }
 

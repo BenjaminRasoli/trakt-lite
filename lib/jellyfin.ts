@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { searchMedia } from "@/lib/tmdb";
+import { searchMedia, getMediaDetails } from "@/lib/tmdb";
 
 export type JellyfinConfig = {
   serverUrl: string;
@@ -100,7 +100,6 @@ export function getJellyfinTmdbId(item: Record<string, any>): number | null {
     item?.ProviderIds?.TMDb,
     item?.TmdbId,
     item?.tmdbId,
-    item?.Id,
   ];
 
   for (const candidate of candidates) {
@@ -119,13 +118,23 @@ export async function resolveJellyfinTmdbId(
   const direct = getJellyfinTmdbId(item);
   if (direct) return direct;
 
+  const mediaType = getJellyfinMediaType(item);
   const title =
-    item?.Name || item?.OriginalTitle || item?.SeriesName || item?.Title || "";
+    mediaType === "tv"
+      ? item?.SeriesName ||
+        item?.Name ||
+        item?.OriginalTitle ||
+        item?.Title ||
+        ""
+      : item?.Name ||
+        item?.OriginalTitle ||
+        item?.SeriesName ||
+        item?.Title ||
+        "";
 
   if (!title) return null;
 
   const results = await searchMedia(title);
-  const mediaType = getJellyfinMediaType(item);
   const productionYear = Number(
     item?.ProductionYear ||
       item?.Year ||
@@ -223,12 +232,23 @@ export async function upsertJellyfinWatchEntry({
   const seasonNumber =
     parentIndexNumber ?? toNumber(item?.SeasonIndex ?? item?.SeasonNumber);
 
+  // Fetch TMDB poster
+  let tmdbPosterPath = null;
+  try {
+    const mediaDetails = await getMediaDetails(tmdbId, mediaType);
+    if (mediaDetails?.poster_path) {
+      tmdbPosterPath = mediaDetails.poster_path;
+    }
+  } catch (error) {
+    console.error("Error fetching TMDB poster for history:", error);
+  }
+
   const media = await prisma.media.upsert({
     where: { tmdbId },
     update: {
       title,
       mediaType,
-      posterPath: item?.ImageTags?.Primary ? `${item.ImageTags.Primary}` : null,
+      posterPath: tmdbPosterPath || (item?.ImageTags?.Primary ? `${item.ImageTags.Primary}` : null),
       backdropPath: null,
       overview: item?.Overview || item?.ProviderIds?.Overview || null,
       releaseDate: item?.ProductionYear
@@ -240,7 +260,7 @@ export async function upsertJellyfinWatchEntry({
       tmdbId,
       title,
       mediaType,
-      posterPath: item?.ImageTags?.Primary ? `${item.ImageTags.Primary}` : null,
+      posterPath: tmdbPosterPath || (item?.ImageTags?.Primary ? `${item.ImageTags.Primary}` : null),
       backdropPath: null,
       overview: item?.Overview || item?.ProviderIds?.Overview || null,
       releaseDate: item?.ProductionYear
@@ -265,7 +285,8 @@ export async function upsertJellyfinWatchEntry({
     orderBy: { watchedAt: "desc" },
   });
 
-  if (existing) {
+  // Only skip if the existing entry is very recent (within 5 minutes)
+  if (existing && (watchedAt.getTime() - existing.watchedAt.getTime()) < 1000 * 60 * 5) {
     return { created: false, reason: "duplicate_recent_entry" };
   }
 

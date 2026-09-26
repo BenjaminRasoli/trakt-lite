@@ -155,7 +155,7 @@ export async function GET(request: NextRequest) {
     }
 
     let completed = false;
-    if (normalizedPercent >= 95) {
+    if (normalizedPercent >= 80) {
       const result = await upsertJellyfinWatchEntry({
         userId: dbUser.id,
         item,
