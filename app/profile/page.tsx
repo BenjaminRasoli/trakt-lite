@@ -47,6 +47,7 @@ export default function ProfilePage() {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [viewFilter, setViewFilter] = useState<"all" | "year">("all");
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const formatEuropeanDate = (date: Date | string) => {
     const normalizedDate = date instanceof Date ? date : new Date(date);
@@ -107,6 +108,38 @@ export default function ProfilePage() {
       subscription.unsubscribe();
     };
   }, [supabase]);
+
+  useEffect(() => {
+    document.body.style.overflow = showDeleteConfirm ? "hidden" : "";
+
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showDeleteConfirm]);
+
+  useEffect(() => {
+    if (!showDeleteConfirm) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setShowDeleteConfirm(false);
+      }
+    };
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const modal = document.getElementById("delete-photo-modal");
+      if (modal && !modal.contains(event.target as Node)) {
+        setShowDeleteConfirm(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showDeleteConfirm]);
 
   useEffect(() => {
     if (!user) return;
@@ -404,8 +437,14 @@ export default function ProfilePage() {
 
   const handlePhotoDelete = async () => {
     if (!avatarUrl) return;
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmPhotoDelete = async () => {
+    if (!avatarUrl) return;
 
     setUploading(true);
+    setShowDeleteConfirm(false);
 
     try {
       const response = await fetch("/api/profile-picture", {
@@ -539,7 +578,6 @@ export default function ProfilePage() {
                   alt={displayName}
                   width={112}
                   height={112}
-                  unoptimized
                   className="h-24 w-24 rounded-full border border-violet-500/50 object-cover shadow-lg shadow-violet-500/20 sm:h-28 sm:w-28"
                 />
               ) : (
@@ -946,6 +984,36 @@ export default function ProfilePage() {
           </div>
         </div>
       </main>
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div
+            id="delete-photo-modal"
+            className="bg-zinc-900 border border-zinc-700 rounded-lg p-6 max-w-sm w-full mx-4 shadow-2xl"
+          >
+            <h3 className="text-lg font-semibold text-white mb-2">
+              Remove profile picture?
+            </h3>
+            <p className="text-zinc-300 mb-6">
+              Are you sure you want to remove your profile picture? This action cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-medium text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmPhotoDelete}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition cursor-pointer"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

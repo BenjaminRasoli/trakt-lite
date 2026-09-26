@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import NextImage from "next/image";
 import { useSupabase } from "./supabase-provider";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -87,6 +88,11 @@ export default function Navbar() {
     user?.user_metadata?.username || user?.email?.split("@")[0] || "User";
   const capitalizedUsername =
     username.charAt(0).toUpperCase() + username.slice(1);
+  const avatarUrl =
+    user?.user_metadata?.avatar_url ||
+    user?.user_metadata?.profile_picture ||
+    user?.user_metadata?.avatarUrl ||
+    "";
 
   if (loading || (!user && !loading)) {
     return null;
@@ -145,12 +151,29 @@ export default function Navbar() {
                 </div>
               ) : user ? (
                 <>
-                  <div className="max-w-[150px] truncate text-xs text-zinc-300 sm:max-w-none sm:text-sm">
-                    Welcome back,{" "}
-                    <span className="font-semibold text-violet-400">
-                      {capitalizedUsername}
-                    </span>
-                  </div>
+                  <Link
+                    href="/profile"
+                    className="flex items-center gap-2 sm:gap-3"
+                  >
+                    {avatarUrl ? (
+                      <NextImage
+                        src={avatarUrl}
+                        alt={capitalizedUsername}
+                        width={32}
+                        height={32}
+                        className="h-8 w-8 rounded-full border border-violet-500/50 object-cover shadow-lg shadow-violet-500/20 sm:h-9 sm:w-9"
+                      />
+                    ) : (
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full border border-violet-500/50 bg-gradient-to-br from-violet-500 to-indigo-600 text-xs font-bold text-white shadow-lg shadow-violet-500/20 sm:h-9 sm:w-9 sm:text-sm">
+                        {capitalizedUsername.slice(0, 2).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="hidden sm:block max-w-[150px] truncate text-xs text-zinc-300 sm:max-w-none sm:text-sm">
+                      <span className="font-semibold text-violet-400">
+                        {capitalizedUsername}
+                      </span>
+                    </div>
+                  </Link>
                   <button
                     onClick={handleSignOut}
                     className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20 sm:px-4 sm:py-2 sm:text-sm"
