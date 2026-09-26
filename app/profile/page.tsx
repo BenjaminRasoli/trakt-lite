@@ -892,9 +892,6 @@ export default function ProfilePage() {
                 <h4 className="text-sm font-semibold uppercase tracking-[0.25em] text-zinc-300">
                   Watch time by day
                 </h4>
-                <span className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">
-                  Weekly
-                </span>
               </div>
               <div className="overflow-x-auto pb-1">
                 <div className="flex min-w-[640px] items-end gap-2.5 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3 pt-5">
@@ -950,9 +947,6 @@ export default function ProfilePage() {
                 <h4 className="text-sm font-semibold uppercase tracking-[0.25em] text-zinc-300">
                   Watch time by hour
                 </h4>
-                <span className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">
-                  Daily
-                </span>
               </div>
               <div className="overflow-x-auto pb-1">
                 <div className="min-w-[960px] rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3 pt-5">
