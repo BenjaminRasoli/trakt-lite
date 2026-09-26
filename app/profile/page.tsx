@@ -30,54 +30,7 @@ type RuntimeStats = {
   totalMinutes: number;
 };
 
-type SupabaseAuthLike = {
-  auth: {
-    updateUser: (payload: {
-      data: Record<string, string | null>;
-    }) => Promise<{ error?: unknown } | null>;
-  };
-};
 
-const PROFILE_PHOTO_STORAGE_KEY = "trakt-lite-profile-photo";
-
-function getStoredProfilePhoto(): string {
-  if (typeof window === "undefined") return "";
-
-  try {
-    return localStorage.getItem(PROFILE_PHOTO_STORAGE_KEY) || "";
-  } catch {
-    return "";
-  }
-}
-
-function setStoredProfilePhoto(imageDataUrl: string) {
-  if (typeof window === "undefined") return;
-
-  try {
-    if (imageDataUrl) {
-      localStorage.setItem(PROFILE_PHOTO_STORAGE_KEY, imageDataUrl);
-      return;
-    }
-
-    localStorage.removeItem(PROFILE_PHOTO_STORAGE_KEY);
-  } catch {
-    // Ignore localStorage write errors silently to avoid breaking sign-in flows.
-  }
-}
-
-async function clearLargeAvatarMetadata(supabase: SupabaseAuthLike) {
-  try {
-    await supabase.auth.updateUser({
-      data: {
-        avatar_url: null,
-        profile_picture: null,
-        avatarUrl: null,
-      },
-    });
-  } catch {
-    // Ignore this cleanup error; older metadata can remain until the user is able to sign in again.
-  }
-}
 
 export default function ProfilePage() {
   const [user, setUser] = useState<User | null>(null);
@@ -123,27 +76,12 @@ export default function ProfilePage() {
       });
     };
 
-    const mergeStoredAvatar = (nextUser: User | null) => {
-      if (!nextUser) return null;
-
-      const storedAvatar = getStoredProfilePhoto();
-      if (!storedAvatar) return nextUser;
-
-      return {
-        ...nextUser,
-        user_metadata: {
-          ...(nextUser.user_metadata ?? {}),
-          avatar_url: storedAvatar,
-        },
-      } as User;
-    };
-
     const getUser = async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!isMounted) return;
-      updateUser(mergeStoredAvatar(user));
+      updateUser(user);
       setLoading(false);
     };
 
@@ -153,7 +91,7 @@ export default function ProfilePage() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!isMounted) return;
-      updateUser(mergeStoredAvatar(session?.user ?? null));
+      updateUser(session?.user ?? null);
     });
 
     const fetchBackdrop = async () => {
@@ -415,21 +353,11 @@ export default function ProfilePage() {
   const displayName =
     user?.user_metadata?.username || user?.email?.split("@")[0] || "User";
   const email = user?.email || "No email";
-  const avatarUrl = (() => {
-    const metadataAvatar =
-      user?.user_metadata?.avatar_url ||
-      user?.user_metadata?.profile_picture ||
-      user?.user_metadata?.avatarUrl ||
-      "";
-
-    const storedAvatar = getStoredProfilePhoto();
-    const chosenAvatar =
-      typeof metadataAvatar === "string" && metadataAvatar.length > 250000
-        ? ""
-        : metadataAvatar || storedAvatar;
-
-    return chosenAvatar || storedAvatar || "";
-  })();
+  const avatarUrl =
+    user?.user_metadata?.avatar_url ||
+    user?.user_metadata?.profile_picture ||
+    user?.user_metadata?.avatarUrl ||
+    "";
 
   const handlePhotoUpload = async (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -437,63 +365,77 @@ export default function ProfilePage() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const originalDataUrl = String(reader.result || "");
-      if (!originalDataUrl) return;
+    setUploading(true);
 
-      setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
 
-      try {
-        await clearLargeAvatarMetadata(supabase);
+      const response = await fetch("/api/profile-picture", {
+        method: "POST",
+        body: formData,
+      });
 
-        const img = new window.Image();
-        const objectUrl = URL.createObjectURL(file);
-
-        await new Promise<void>((resolve, reject) => {
-          img.onload = () => resolve();
-          img.onerror = () => reject(new Error("Image load failed"));
-          img.src = objectUrl;
-        });
-
-        const maxDimension = 512;
-        const scale = Math.min(
-          1,
-          maxDimension / Math.max(img.width, img.height),
-        );
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.max(1, Math.round(img.width * scale));
-        canvas.height = Math.max(1, Math.round(img.height * scale));
-
-        const context = canvas.getContext("2d");
-        if (!context) {
-          throw new Error("Canvas not available");
-        }
-
-        context.drawImage(img, 0, 0, canvas.width, canvas.height);
-        const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.72);
-
-        setStoredProfilePhoto(compressedDataUrl);
-        setUser(
-          (currentUser) =>
-            ({
-              ...(currentUser ?? {}),
-              user_metadata: {
-                ...(currentUser?.user_metadata ?? {}),
-                avatar_url: compressedDataUrl,
-              },
-            }) as User,
-        );
-
-        URL.revokeObjectURL(objectUrl);
-      } catch (error) {
-        console.error("Error updating profile photo:", error);
-      } finally {
-        setUploading(false);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to upload profile picture");
       }
-    };
 
-    reader.readAsDataURL(file);
+      const data = await response.json();
+
+      // Update local state with new avatar URL
+      setUser(
+        (currentUser) =>
+          ({
+            ...(currentUser ?? {}),
+            user_metadata: {
+              ...(currentUser?.user_metadata ?? {}),
+              avatar_url: data.url,
+            },
+          }) as User,
+      );
+    } catch (error) {
+      console.error("Error updating profile photo:", error);
+      alert(error instanceof Error ? error.message : "Failed to upload profile picture");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handlePhotoDelete = async () => {
+    if (!avatarUrl) return;
+
+    setUploading(true);
+
+    try {
+      const response = await fetch("/api/profile-picture", {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to delete profile picture");
+      }
+
+      // Update local state to remove avatar
+      setUser(
+        (currentUser) =>
+          ({
+            ...(currentUser ?? {}),
+            user_metadata: {
+              ...(currentUser?.user_metadata ?? {}),
+              avatar_url: null,
+              profile_picture: null,
+              avatarUrl: null,
+            },
+          }) as User,
+      );
+    } catch (error) {
+      console.error("Error deleting profile photo:", error);
+      alert(error instanceof Error ? error.message : "Failed to delete profile picture");
+    } finally {
+      setUploading(false);
+    }
   };
 
   if (loading) {
@@ -606,15 +548,26 @@ export default function ProfilePage() {
                 </div>
               )}
 
-              <label className="absolute -bottom-2 -right-2 inline-flex cursor-pointer items-center justify-center rounded-full border border-violet-500/40 bg-zinc-900 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-200 shadow-lg shadow-violet-500/10 transition hover:border-violet-400 hover:bg-zinc-800">
-                {uploading ? "Saving..." : "Photo"}
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handlePhotoUpload}
-                />
-              </label>
+              <div className="absolute -bottom-2 -right-2 flex gap-2">
+                {avatarUrl && (
+                  <button
+                    onClick={handlePhotoDelete}
+                    disabled={uploading}
+                    className="inline-flex cursor-pointer items-center justify-center rounded-full border border-red-500/40 bg-zinc-900 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-red-200 shadow-lg shadow-red-500/10 transition hover:border-red-400 hover:bg-zinc-800 disabled:opacity-50"
+                  >
+                    {uploading ? "..." : "Delete"}
+                  </button>
+                )}
+                <label className="inline-flex cursor-pointer items-center justify-center rounded-full border border-violet-500/40 bg-zinc-900 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-200 shadow-lg shadow-violet-500/10 transition hover:border-violet-400 hover:bg-zinc-800">
+                  {uploading ? "Saving..." : "Photo"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handlePhotoUpload}
+                  />
+                </label>
+              </div>
             </div>
 
             <div className="flex-1 space-y-2">
