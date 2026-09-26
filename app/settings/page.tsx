@@ -27,6 +27,7 @@ export default function SettingsPage() {
   const [loadingLiveSession, setLoadingLiveSession] = useState(false);
   const lastActiveSessionRef = useRef<any>(null);
   const lastActiveAtRef = useRef<number>(0);
+  const initialLiveCheckRef = useRef(false);
   const supabase = useSupabase();
   const router = useRouter();
 
@@ -106,8 +107,13 @@ export default function SettingsPage() {
     if (!user) return;
 
     const fetchLiveSession = async () => {
-      try {
+      const isInitialLoad = !initialLiveCheckRef.current;
+      if (isInitialLoad) {
+        initialLiveCheckRef.current = true;
         setLoadingLiveSession(true);
+      }
+
+      try {
         const response = await fetch("/api/jellyfin/live");
         if (!response.ok) {
           if (
@@ -149,7 +155,9 @@ export default function SettingsPage() {
           setLiveSession(null);
         }
       } finally {
-        setLoadingLiveSession(false);
+        if (isInitialLoad) {
+          setLoadingLiveSession(false);
+        }
       }
     };
 
