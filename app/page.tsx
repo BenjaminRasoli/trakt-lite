@@ -81,6 +81,7 @@ function HomeContent() {
   const [recentHistory, setRecentHistory] = useState<any[]>([]);
   const [nextUp, setNextUp] = useState<any[]>([]);
   const [upcoming, setUpcoming] = useState<any[]>([]);
+  const [liveSession, setLiveSession] = useState<any>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [mediaCache, setMediaCache] = useState<Record<number, any>>({});
   const supabase = useSupabase();
@@ -192,6 +193,33 @@ function HomeContent() {
     };
 
     fetchRecentHistory();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchLiveSession = async () => {
+      try {
+        const response = await fetch("/api/jellyfin/live");
+        if (!response.ok) {
+          setLiveSession((current: any) => current ?? null);
+          return;
+        }
+
+        const data = await response.json();
+        const nextSession = data?.active ?? null;
+        setLiveSession(nextSession);
+      } catch {
+        setLiveSession((current: any) => current ?? null);
+      }
+    };
+
+    void fetchLiveSession();
+    const interval = setInterval(() => {
+      void fetchLiveSession();
+    }, 15000);
+
+    return () => clearInterval(interval);
   }, [user]);
 
   const handleSearch = async (e: React.FormEvent) => {
@@ -374,6 +402,61 @@ function HomeContent() {
           <RecentHistorySkeleton />
         ) : (
           <>
+            {!searching && liveSession && (
+              <section className="mb-8">
+                <div className="mb-4 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <span className="h-3 w-3 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_18px_rgba(52,211,153,0.9)] [animation-duration:1.2s]" />
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-emerald-300">
+                      Live now
+                    </p>
+                  </div>
+                </div>
+
+                <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+                  <div className="flex gap-4">
+                    <div className="relative h-28 w-20 shrink-0 overflow-hidden rounded-xl border border-emerald-500/30 bg-zinc-900">
+                      <img
+                        src={liveSession.posterUrl}
+                        alt={liveSession.title}
+                        className="h-full w-full object-cover"
+                        onError={(event) => {
+                          event.currentTarget.src = "/placeholder-poster.svg";
+                        }}
+                      />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <p className="text-lg font-bold text-white">
+                        {liveSession.title}
+                      </p>
+                      <p className="mt-1 text-sm text-zinc-300">
+                        {liveSession.episodeLabel
+                          ? `${liveSession.type} • ${liveSession.episodeLabel}`
+                          : liveSession.type}
+                        {" • "}
+                        {Math.round(liveSession.percent)}% watched
+                      </p>
+                      <p className="mt-1 text-xs text-emerald-200">
+                        {liveSession.remainingMinutes > 0
+                          ? `${liveSession.remainingMinutes} min left`
+                          : "Finishing up"}
+                      </p>
+
+                      <div className="mt-3 h-2 w-[85%] min-w-[140px] max-w-[450px] overflow-hidden rounded-full bg-zinc-800">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-violet-500 to-emerald-400"
+                          style={{
+                            width: `${Math.min(100, Math.max(0, liveSession.percent))}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            )}
+
             {!searching && visibleNextUp.length > 0 && (
               <section className="mb-8">
                 <div className="mb-4 flex items-center justify-between gap-4">

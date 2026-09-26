@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSupabase } from "@/components/supabase-provider";
 import { useRouter } from "next/navigation";
 import { getRandomBackdropUrl, getTrendingMedia } from "@/lib/tmdb";
@@ -15,6 +15,18 @@ export default function SettingsPage() {
   const [importProgress, setImportProgress] = useState<string>("");
   const [exportProgress, setExportProgress] = useState<string>("");
   const [pageBackdrop, setPageBackdrop] = useState("");
+  const [jellyfinConfig, setJellyfinConfig] = useState({
+    serverUrl: "",
+    apiKey: "",
+    jellyfinUserId: "",
+    enabled: true,
+  });
+  const [jellyfinStatus, setJellyfinStatus] = useState<string | null>(null);
+  const [savingJellyfin, setSavingJellyfin] = useState(false);
+  const [liveSession, setLiveSession] = useState<any>(null);
+  const [loadingLiveSession, setLoadingLiveSession] = useState(false);
+  const lastActiveSessionRef = useRef<any>(null);
+  const lastActiveAtRef = useRef<number>(0);
   const supabase = useSupabase();
   const router = useRouter();
 
@@ -60,6 +72,94 @@ export default function SettingsPage() {
       subscription.unsubscribe();
     };
   }, [supabase]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const loadJellyfinSettings = async () => {
+      try {
+        const response = await fetch("/api/settings/jellyfin");
+        if (!response.ok) {
+          return;
+        }
+
+        const data = await response.json();
+        if (!data || typeof data !== "object") {
+          return;
+        }
+
+        setJellyfinConfig({
+          serverUrl: data.serverUrl || "",
+          apiKey: data.apiKey || "",
+          jellyfinUserId: data.jellyfinUserId || "",
+          enabled: data.enabled ?? true,
+        });
+      } catch {
+        // Ignore config load errors; the form can remain blank.
+      }
+    };
+
+    void loadJellyfinSettings();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchLiveSession = async () => {
+      try {
+        setLoadingLiveSession(true);
+        const response = await fetch("/api/jellyfin/live");
+        if (!response.ok) {
+          if (
+            lastActiveSessionRef.current &&
+            Date.now() - lastActiveAtRef.current < 45000
+          ) {
+            setLiveSession(lastActiveSessionRef.current);
+          } else {
+            lastActiveSessionRef.current = null;
+            setLiveSession(null);
+          }
+          return;
+        }
+
+        const data = await response.json();
+        const nextSession = data?.active ?? null;
+
+        if (nextSession) {
+          lastActiveSessionRef.current = nextSession;
+          lastActiveAtRef.current = Date.now();
+          setLiveSession(nextSession);
+        } else if (
+          lastActiveSessionRef.current &&
+          Date.now() - lastActiveAtRef.current < 45000
+        ) {
+          setLiveSession(lastActiveSessionRef.current);
+        } else {
+          lastActiveSessionRef.current = null;
+          setLiveSession(null);
+        }
+      } catch {
+        if (
+          lastActiveSessionRef.current &&
+          Date.now() - lastActiveAtRef.current < 45000
+        ) {
+          setLiveSession(lastActiveSessionRef.current);
+        } else {
+          lastActiveSessionRef.current = null;
+          setLiveSession(null);
+        }
+      } finally {
+        setLoadingLiveSession(false);
+      }
+    };
+
+    void fetchLiveSession();
+    const interval = setInterval(() => {
+      void fetchLiveSession();
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, [user]);
 
   const handleImport = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -143,6 +243,37 @@ export default function SettingsPage() {
       setExportProgress("");
     } finally {
       setExporting(false);
+    }
+  };
+
+  const handleJellyfinSave = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setSavingJellyfin(true);
+    setJellyfinStatus(null);
+
+    try {
+      const response = await fetch("/api/settings/jellyfin", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(jellyfinConfig),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Unable to save Jellyfin settings");
+      }
+
+      setJellyfinStatus("Jellyfin scrobble sync saved successfully.");
+    } catch (error) {
+      setJellyfinStatus(
+        error instanceof Error
+          ? error.message
+          : "Unable to save Jellyfin settings.",
+      );
+    } finally {
+      setSavingJellyfin(false);
     }
   };
 
@@ -245,6 +376,176 @@ export default function SettingsPage() {
                 "Export Data"
               )}
             </button>
+          </div>
+
+          <div className="bg-zinc-900 rounded-lg p-6 border border-zinc-700/50">
+            <div className="mb-5 flex items-center justify-between gap-3">
+              <h2 className="text-xl font-bold text-white">
+                Jellyfin scrobble sync
+              </h2>
+              {liveSession && (
+                <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-200">
+                  Live
+                </span>
+              )}
+            </div>
+
+            {loadingLiveSession ? (
+              <p className="mb-4 text-sm text-zinc-400">
+                Checking Jellyfin session...
+              </p>
+            ) : liveSession ? (
+              <div className="mb-5 overflow-hidden rounded-2xl border border-emerald-500/30 bg-emerald-500/10">
+                <div className="flex gap-4 p-4">
+                  <div className="relative h-24 w-16 shrink-0 overflow-hidden rounded-lg border border-emerald-500/30 bg-zinc-900">
+                    {liveSession.posterUrl ? (
+                      <img
+                        src={liveSession.posterUrl}
+                        alt={liveSession.title}
+                        className="h-full w-full object-cover"
+                        onError={(event) => {
+                          event.currentTarget.src = "/placeholder-poster.svg";
+                        }}
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">
+                        Live
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-2 flex items-center gap-2">
+                      <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.85)]" />
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-emerald-200">
+                        Now playing
+                      </p>
+                    </div>
+                    <p className="truncate text-lg font-bold text-white">
+                      {liveSession.title}
+                    </p>
+                    <p className="mt-1 text-sm text-zinc-300">
+                      {liveSession.episodeLabel
+                        ? `${liveSession.type} • ${liveSession.episodeLabel}`
+                        : liveSession.type}
+                      {" • "}
+                      {Math.round(liveSession.percent)}% watched
+                    </p>
+                    <p className="mt-1 text-xs text-emerald-200">
+                      {liveSession.remainingMinutes > 0
+                        ? `${liveSession.remainingMinutes} min left`
+                        : "Finishing up"}
+                    </p>
+                    <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-zinc-800">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-violet-500 to-emerald-400"
+                        style={{
+                          width: `${Math.min(100, Math.max(0, liveSession.percent))}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="mb-5 text-sm text-zinc-400">
+                No active Jellyfin session right now.
+              </p>
+            )}
+
+            <p className="text-zinc-400 mb-4">
+              Connect your Jellyfin server so playback completion from Jellyfin
+              can be synced into this app as watched history.
+            </p>
+
+            <form onSubmit={handleJellyfinSave} className="space-y-4">
+              <div>
+                <label className="mb-2 block text-sm text-zinc-300">
+                  Jellyfin server URL
+                </label>
+                <input
+                  type="url"
+                  value={jellyfinConfig.serverUrl}
+                  onChange={(event) =>
+                    setJellyfinConfig((current) => ({
+                      ...current,
+                      serverUrl: event.target.value,
+                    }))
+                  }
+                  placeholder="https://jellyfin.example.com"
+                  className="w-full rounded border border-zinc-600 bg-zinc-800 px-4 py-2 text-white outline-none focus:border-violet-500"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm text-zinc-300">
+                  Jellyfin API key
+                </label>
+                <input
+                  type="password"
+                  value={jellyfinConfig.apiKey}
+                  onChange={(event) =>
+                    setJellyfinConfig((current) => ({
+                      ...current,
+                      apiKey: event.target.value,
+                    }))
+                  }
+                  placeholder="Enter your Jellyfin API key"
+                  className="w-full rounded border border-zinc-600 bg-zinc-800 px-4 py-2 text-white outline-none focus:border-violet-500"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm text-zinc-300">
+                  Jellyfin user ID
+                </label>
+                <input
+                  type="text"
+                  value={jellyfinConfig.jellyfinUserId}
+                  onChange={(event) =>
+                    setJellyfinConfig((current) => ({
+                      ...current,
+                      jellyfinUserId: event.target.value,
+                    }))
+                  }
+                  placeholder="Copy the user ID from Jellyfin"
+                  className="w-full rounded border border-zinc-600 bg-zinc-800 px-4 py-2 text-white outline-none focus:border-violet-500"
+                />
+              </div>
+
+              <label className="flex items-center gap-3 text-sm text-zinc-300">
+                <input
+                  type="checkbox"
+                  checked={jellyfinConfig.enabled}
+                  onChange={(event) =>
+                    setJellyfinConfig((current) => ({
+                      ...current,
+                      enabled: event.target.checked,
+                    }))
+                  }
+                  className="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-violet-500"
+                />
+                Enable Jellyfin scrobble sync
+              </label>
+
+              {jellyfinStatus && (
+                <p className="text-sm text-violet-200">{jellyfinStatus}</p>
+              )}
+
+              <button
+                type="submit"
+                disabled={savingJellyfin}
+                className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-5 py-2.5 text-sm font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {savingJellyfin ? (
+                  <>
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Jellyfin settings"
+                )}
+              </button>
+            </form>
           </div>
         </div>
       </main>
