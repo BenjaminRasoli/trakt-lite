@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import NextImage from "next/image";
 import { type User } from "@supabase/supabase-js";
 import { useSupabase } from "@/components/supabase-provider";
 import { useRouter } from "next/navigation";
@@ -32,7 +32,9 @@ type RuntimeStats = {
 
 type SupabaseAuthLike = {
   auth: {
-    updateUser: (payload: { data: Record<string, string | null> }) => Promise<{ error?: unknown } | null>;
+    updateUser: (payload: {
+      data: Record<string, string | null>;
+    }) => Promise<{ error?: unknown } | null>;
   };
 };
 
@@ -90,14 +92,20 @@ export default function ProfilePage() {
   });
   const [loadingRuntime, setLoadingRuntime] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
-  const [viewFilter, setViewFilter] = useState<'all' | 'year'>('all');
+  const [viewFilter, setViewFilter] = useState<"all" | "year">("all");
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
 
   const formatEuropeanDate = (date: Date | string) => {
-    return date.toLocaleDateString('en-GB', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+    const normalizedDate = date instanceof Date ? date : new Date(date);
+
+    if (Number.isNaN(normalizedDate.getTime())) {
+      return "Unknown date";
+    }
+
+    return normalizedDate.toLocaleDateString("en-GB", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   };
 
@@ -168,7 +176,9 @@ export default function ProfilePage() {
     const fetchHistory = async () => {
       setLoadingHistory(true);
       try {
-        const response = await fetch("/api/watch-history?limit=all&nextUp=false&upcoming=false");
+        const response = await fetch(
+          "/api/watch-history?limit=all&nextUp=false&upcoming=false",
+        );
         if (!response.ok) {
           setWatchHistory([]);
           return;
@@ -208,9 +218,11 @@ export default function ProfilePage() {
 
       for (const item of watchHistory) {
         // Determine media type: if it has season/episode, it's TV, otherwise movie
-        const mediaType = item.media?.mediaType === "tv" || 
-                         (item.seasonNumber != null && item.episodeNumber != null) 
-                         ? "tv" : "movie";
+        const mediaType =
+          item.media?.mediaType === "tv" ||
+          (item.seasonNumber != null && item.episodeNumber != null)
+            ? "tv"
+            : "movie";
         const mediaId = item.media?.tmdbId ?? item.mediaId;
         if (!mediaId) continue;
 
@@ -227,31 +239,31 @@ export default function ProfilePage() {
       // Process in batches to avoid overwhelming the API
       const batchSize = 10;
       const mediaIds = Array.from(mediaById.keys());
-      
+
       for (let i = 0; i < mediaIds.length; i += batchSize) {
         const batch = mediaIds.slice(i, i + batchSize);
-        
+
         const batchPromises = batch.map(async (mediaId) => {
           const info = mediaById.get(mediaId)!;
           const mediaType = info.type;
-          const details = await getMediaDetails(mediaId, mediaType) as {
+          const details = (await getMediaDetails(mediaId, mediaType)) as {
             runtime?: number;
             episode_run_time?: number[];
           } | null;
           const runtime =
             mediaType === "movie"
               ? (details?.runtime ?? 90)
-              : ((details?.episode_run_time?.[0] ?? details?.runtime ?? 45));
+              : (details?.episode_run_time?.[0] ?? details?.runtime ?? 45);
 
           return {
             mediaType,
             runtime,
-            count: info.count
+            count: info.count,
           };
         });
 
         const batchResults = await Promise.all(batchPromises);
-        
+
         for (const result of batchResults) {
           if (result.mediaType === "movie") {
             movieMinutes += result.runtime * result.count;
@@ -279,21 +291,23 @@ export default function ProfilePage() {
 
   const stats = useMemo(() => {
     // Filter by year if selected
-    const filteredHistory = selectedYear 
-      ? watchHistory.filter(entry => new Date(entry.watchedAt).getFullYear() === selectedYear)
+    const filteredHistory = selectedYear
+      ? watchHistory.filter(
+          (entry) => new Date(entry.watchedAt).getFullYear() === selectedYear,
+        )
       : watchHistory;
-    
+
     // Movies: entries where mediaType is "movie" OR no season/episode info
     const movieEntries = filteredHistory.filter((entry) => {
       const type = entry.media?.mediaType;
       return type === "movie" || (type !== "tv" && entry.seasonNumber == null);
     });
-    
+
     // Episodes: entries with both season and episode numbers
     const episodeEntries = filteredHistory.filter(
       (entry) => entry.seasonNumber != null && entry.episodeNumber != null,
     );
-    
+
     // TV shows: entries where mediaType is "tv"
     const tvEntries = filteredHistory.filter((entry) => {
       const type = entry.media?.mediaType;
@@ -324,7 +338,9 @@ export default function ProfilePage() {
       titleCounts.set(title, (titleCounts.get(title) ?? 0) + 1);
     }
 
-    const titleBreakdown = [...titleCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const titleBreakdown = [...titleCounts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
     const topTitle = titleBreakdown[0];
     const topYear = [...years.entries()].sort((a, b) => b[1] - a[1])[0];
 
@@ -333,7 +349,10 @@ export default function ProfilePage() {
     for (const entry of filteredHistory) {
       const day = new Date(entry.watchedAt).getDay();
       const europeanDay = day === 0 ? 6 : day - 1; // Convert Sunday(0) to 6, shift others
-      dayOfWeekStats.set(europeanDay, (dayOfWeekStats.get(europeanDay) ?? 0) + 1);
+      dayOfWeekStats.set(
+        europeanDay,
+        (dayOfWeekStats.get(europeanDay) ?? 0) + 1,
+      );
     }
 
     // Watch time by hour of day
@@ -409,7 +428,7 @@ export default function ProfilePage() {
       try {
         await clearLargeAvatarMetadata(supabase);
 
-        const img = new Image();
+        const img = new window.Image();
         const objectUrl = URL.createObjectURL(file);
 
         await new Promise<void>((resolve, reject) => {
@@ -436,13 +455,16 @@ export default function ProfilePage() {
         const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.72);
 
         setStoredProfilePhoto(compressedDataUrl);
-        setUser((currentUser) => ({
-          ...(currentUser ?? {}),
-          user_metadata: {
-            ...(currentUser?.user_metadata ?? {}),
-            avatar_url: compressedDataUrl,
-          },
-        } as User));
+        setUser(
+          (currentUser) =>
+            ({
+              ...(currentUser ?? {}),
+              user_metadata: {
+                ...(currentUser?.user_metadata ?? {}),
+                avatar_url: compressedDataUrl,
+              },
+            }) as User,
+        );
 
         URL.revokeObjectURL(objectUrl);
       } catch (error) {
@@ -496,32 +518,42 @@ export default function ProfilePage() {
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-800/50 px-3 py-1.5">
               <button
-                onClick={() => setViewFilter('all')}
+                onClick={() => setViewFilter("all")}
                 className={`text-xs font-semibold uppercase tracking-[0.2em] transition cursor-pointer ${
-                  viewFilter === 'all' ? 'text-violet-300' : 'text-zinc-400 hover:text-zinc-300'
+                  viewFilter === "all"
+                    ? "text-violet-300"
+                    : "text-zinc-400 hover:text-zinc-300"
                 }`}
               >
                 All Time
               </button>
               <span className="text-zinc-600">|</span>
               <button
-                onClick={() => setViewFilter('year')}
+                onClick={() => setViewFilter("year")}
                 className={`text-xs font-semibold uppercase tracking-[0.2em] transition cursor-pointer ${
-                  viewFilter === 'year' ? 'text-violet-300' : 'text-zinc-400 hover:text-zinc-300'
+                  viewFilter === "year"
+                    ? "text-violet-300"
+                    : "text-zinc-400 hover:text-zinc-300"
                 }`}
               >
                 By Year
               </button>
             </div>
-            {viewFilter === 'year' && stats.availableYears.length > 0 && (
+            {viewFilter === "year" && stats.availableYears.length > 0 && (
               <select
-                value={selectedYear || ''}
-                onChange={(e) => setSelectedYear(e.target.value ? Number(e.target.value) : null)}
+                value={selectedYear || ""}
+                onChange={(e) =>
+                  setSelectedYear(
+                    e.target.value ? Number(e.target.value) : null,
+                  )
+                }
                 className="rounded-full border border-zinc-700 bg-zinc-800/50 px-3 py-1.5 text-sm text-white outline-none focus:border-violet-500 cursor-pointer"
               >
                 <option value="">All Years</option>
-                {stats.availableYears.map(year => (
-                  <option key={year} value={year}>{year}</option>
+                {stats.availableYears.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
                 ))}
               </select>
             )}
@@ -538,7 +570,7 @@ export default function ProfilePage() {
           <div className="flex flex-col gap-6 md:flex-row md:items-center">
             <div className="relative">
               {avatarUrl ? (
-                <Image
+                <NextImage
                   src={avatarUrl}
                   alt={displayName}
                   width={112}
@@ -576,7 +608,9 @@ export default function ProfilePage() {
               <div className="flex flex-wrap gap-4 text-sm text-zinc-400">
                 <span>
                   Joined{" "}
-                  {formatEuropeanDate(new Date(user.created_at ?? "1970-01-01T00:00:00.000Z"))}
+                  {formatEuropeanDate(
+                    new Date(user.created_at ?? "1970-01-01T00:00:00.000Z"),
+                  )}
                 </span>
                 {loadingHistory ? (
                   <span>Loading stats...</span>
@@ -678,9 +712,7 @@ export default function ProfilePage() {
                 {stats.topYear ? stats.topYear[0] : "No data yet"}
               </p>
               <p className="mt-1 text-sm text-zinc-400">
-                {stats.topYear
-                  ? `${stats.topYear[1]} entries`
-                  : "No year yet"}
+                {stats.topYear ? `${stats.topYear[1]} entries` : "No year yet"}
               </p>
             </div>
 
@@ -734,10 +766,16 @@ export default function ProfilePage() {
                     </div>
                   ) : (
                     stats.yearBreakdown.map(([year, count]) => {
-                      const maxCount = Math.max(...stats.yearBreakdown.map(([, value]) => value), 1);
+                      const maxCount = Math.max(
+                        ...stats.yearBreakdown.map(([, value]) => value),
+                        1,
+                      );
                       const height = Math.max((count / maxCount) * 100, 8);
                       return (
-                        <div key={year} className="flex w-full min-w-[52px] flex-col items-center justify-end gap-2">
+                        <div
+                          key={year}
+                          className="flex w-full min-w-[52px] flex-col items-center justify-end gap-2"
+                        >
                           <div className="flex h-36 w-full items-end justify-center rounded-t-xl bg-zinc-800 p-0.5">
                             <div
                               className="w-[52%] rounded-t-xl bg-violet-500 shadow-[0_0_16px_rgba(168,85,247,0.5)]"
@@ -745,8 +783,12 @@ export default function ProfilePage() {
                             />
                           </div>
                           <div className="text-center">
-                            <div className="text-xs font-semibold text-zinc-300">{year}</div>
-                            <div className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">{count}</div>
+                            <div className="text-xs font-semibold text-zinc-300">
+                              {year}
+                            </div>
+                            <div className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">
+                              {count}
+                            </div>
                           </div>
                         </div>
                       );
@@ -768,10 +810,16 @@ export default function ProfilePage() {
                     </div>
                   ) : (
                     stats.titleBreakdown.map(([title, count], index) => {
-                      const maxCount = Math.max(...stats.titleBreakdown.map(([, value]) => value), 1);
+                      const maxCount = Math.max(
+                        ...stats.titleBreakdown.map(([, value]) => value),
+                        1,
+                      );
                       const height = Math.max((count / maxCount) * 100, 8);
                       return (
-                        <div key={`${title}-${index}`} className="flex w-full min-w-[56px] flex-col items-center justify-end gap-1.5">
+                        <div
+                          key={`${title}-${index}`}
+                          className="flex w-full min-w-[56px] flex-col items-center justify-end gap-1.5"
+                        >
                           <div className="flex h-32 w-full items-end justify-center rounded-t-xl bg-zinc-800 p-0.5">
                             <div
                               className="w-[58%] rounded-t-xl bg-violet-500 shadow-[0_0_16px_rgba(168,85,247,0.5)]"
@@ -779,8 +827,15 @@ export default function ProfilePage() {
                             />
                           </div>
                           <div className="text-center">
-                            <div className="max-w-[70px] truncate text-[10px] font-medium text-zinc-300" title={title}>{title}</div>
-                            <div className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">{count}</div>
+                            <div
+                              className="max-w-[70px] truncate text-[10px] font-medium text-zinc-300"
+                              title={title}
+                            >
+                              {title}
+                            </div>
+                            <div className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">
+                              {count}
+                            </div>
                           </div>
                         </div>
                       );
@@ -797,7 +852,9 @@ export default function ProfilePage() {
                 <h4 className="text-sm font-semibold uppercase tracking-[0.25em] text-zinc-300">
                   Watch time by day
                 </h4>
-                <span className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">Weekly</span>
+                <span className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">
+                  Weekly
+                </span>
               </div>
               <div className="overflow-x-auto pb-1">
                 <div className="flex min-w-[640px] items-end gap-2.5 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3 pt-5">
@@ -807,11 +864,25 @@ export default function ProfilePage() {
                     </div>
                   ) : (
                     stats.dayOfWeekStats.map(([day, count]) => {
-                      const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-                      const maxCount = Math.max(...stats.dayOfWeekStats.map(([, c]) => c), 1);
+                      const dayNames = [
+                        "Monday",
+                        "Tuesday",
+                        "Wednesday",
+                        "Thursday",
+                        "Friday",
+                        "Saturday",
+                        "Sunday",
+                      ];
+                      const maxCount = Math.max(
+                        ...stats.dayOfWeekStats.map(([, c]) => c),
+                        1,
+                      );
                       const height = Math.max((count / maxCount) * 100, 8);
                       return (
-                        <div key={day} className="flex w-full min-w-[70px] flex-col items-center justify-end gap-1.5">
+                        <div
+                          key={day}
+                          className="flex w-full min-w-[70px] flex-col items-center justify-end gap-1.5"
+                        >
                           <div className="flex h-32 w-full items-end justify-center rounded-t-xl bg-zinc-800 p-0.5">
                             <div
                               className="w-[58%] rounded-t-xl bg-violet-500 shadow-[0_0_16px_rgba(168,85,247,0.5)]"
@@ -819,8 +890,12 @@ export default function ProfilePage() {
                             />
                           </div>
                           <div className="text-center">
-                            <div className="text-xs font-medium text-zinc-300">{dayNames[day]}</div>
-                            <div className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">{count}</div>
+                            <div className="text-xs font-medium text-zinc-300">
+                              {dayNames[day]}
+                            </div>
+                            <div className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">
+                              {count}
+                            </div>
                           </div>
                         </div>
                       );
@@ -835,7 +910,9 @@ export default function ProfilePage() {
                 <h4 className="text-sm font-semibold uppercase tracking-[0.25em] text-zinc-300">
                   Watch time by hour
                 </h4>
-                <span className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">Daily</span>
+                <span className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">
+                  Daily
+                </span>
               </div>
               <div className="overflow-x-auto pb-1">
                 <div className="w-full min-w-[640px] rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3 pt-5">
@@ -846,11 +923,17 @@ export default function ProfilePage() {
                       </div>
                     ) : (
                       stats.hourOfDayStats.map(([hour, count]) => {
-                        const maxCount = Math.max(...stats.hourOfDayStats.map(([, c]) => c), 1);
+                        const maxCount = Math.max(
+                          ...stats.hourOfDayStats.map(([, c]) => c),
+                          1,
+                        );
                         const height = Math.max((count / maxCount) * 100, 8);
-                        const formattedHour = `${hour.toString().padStart(2, '0')}:00`;
+                        const formattedHour = `${hour.toString().padStart(2, "0")}:00`;
                         return (
-                          <div key={hour} className="flex h-full w-full min-w-[34px] flex-col items-center justify-end gap-1.5">
+                          <div
+                            key={hour}
+                            className="flex h-full w-full min-w-[34px] flex-col items-center justify-end gap-1.5"
+                          >
                             <div className="flex h-full w-full items-end justify-center rounded-t-xl bg-zinc-800 p-0.5">
                               <div
                                 className="w-[60%] rounded-t-xl bg-violet-500 shadow-[0_0_16px_rgba(168,85,247,0.5)]"
@@ -858,8 +941,12 @@ export default function ProfilePage() {
                               />
                             </div>
                             <div className="text-center">
-                              <div className="text-[10px] font-medium text-zinc-300">{formattedHour}</div>
-                              <div className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">{count}</div>
+                              <div className="text-[10px] font-medium text-zinc-300">
+                                {formattedHour}
+                              </div>
+                              <div className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">
+                                {count}
+                              </div>
                             </div>
                           </div>
                         );
