@@ -39,7 +39,7 @@ export default function NewPage() {
         <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/50 to-black/80" />
       </div>
 
-      <main className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 flex-1">
+      <main className="relative z-10 w-full max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 py-16 flex-1">
         <div className="mb-12">
           <h1 className="text-4xl font-bold text-white mb-4 tracking-tight">
             New & Trending

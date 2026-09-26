@@ -220,7 +220,7 @@ export default function HistoryPage() {
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/55 to-black/80" />
       </div>
 
-      <main className="relative z-10 mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <main className="relative z-10 mx-auto w-full max-w-[1650px] px-4 py-12 sm:px-6 lg:px-8">
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-violet-400/80">

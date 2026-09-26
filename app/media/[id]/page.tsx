@@ -347,7 +347,7 @@ export default function MediaDetailsPage() {
         }}
       >
         <div className="absolute inset-0 bg-black/20" />
-        <main className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1">
+        <main className="relative z-10 w-full max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1">
           <div className="flex flex-col md:flex-row gap-6 md:gap-8 mb-8">
             <div className="w-full md:w-1/4 flex-shrink-0">
               <img

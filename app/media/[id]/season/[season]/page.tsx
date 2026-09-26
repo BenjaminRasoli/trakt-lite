@@ -252,7 +252,7 @@ export default function SeasonPage() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <main className="mx-auto w-full max-w-[1650px] px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <Link
@@ -294,7 +294,8 @@ export default function SeasonPage() {
                   : "#"
               }
               aria-disabled={
-                !show?.number_of_seasons || seasonNumber >= show.number_of_seasons
+                !show?.number_of_seasons ||
+                seasonNumber >= show.number_of_seasons
               }
               className={`inline-flex items-center justify-center rounded-full border px-3 py-1.5 text-sm font-medium transition ${
                 show?.number_of_seasons && seasonNumber < show.number_of_seasons
@@ -393,9 +394,7 @@ export default function SeasonPage() {
                         onClick={() => openWatchModal(episode)}
                         className="inline-flex cursor-pointer items-center justify-center rounded-full border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:border-violet-500/50 hover:text-violet-200"
                       >
-                        {episodeHistory.length > 0
-                          ? "Update watched"
-                          : "Mark watched"}
+                        Mark as watched
                       </button>
                     </div>
 

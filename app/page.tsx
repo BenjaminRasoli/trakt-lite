@@ -266,7 +266,7 @@ function HomeContent() {
   if (loading) {
     return (
       <div className="flex flex-col flex-1 items-center font-sans min-h-screen bg-black">
-        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 flex-1 animate-pulse">
+        <div className="w-full max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 py-16 flex-1 animate-pulse">
           <div className="mb-12">
             <div className="flex items-center gap-4 mb-8">
               <div className="h-12 w-32 rounded-md bg-zinc-800" />
@@ -348,7 +348,7 @@ function HomeContent() {
         <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/60 to-black/85" />
       </div>
 
-      <main className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 flex-1">
+      <main className="relative z-10 w-full max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 py-16 flex-1">
         <div className="mb-12">
           <div className="flex items-center gap-4 mb-8">
             <h1 className="text-3xl font-bold text-white">Welcome</h1>
