@@ -4,7 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSupabase } from "@/components/supabase-provider";
-import { getPosterUrl } from "@/lib/tmdb";
+import {
+  getPosterUrl,
+  getRandomBackdropUrl,
+  getTrendingMedia,
+} from "@/lib/tmdb";
 
 interface NextUpItem {
   tmdbId: number;
@@ -21,6 +25,7 @@ export default function NextUpPage() {
   const [loading, setLoading] = useState(true);
   const [loadingQueue, setLoadingQueue] = useState(true);
   const [nextUp, setNextUp] = useState<NextUpItem[]>([]);
+  const [pageBackdrop, setPageBackdrop] = useState("");
   const router = useRouter();
   const supabase = useSupabase();
 
@@ -48,6 +53,13 @@ export default function NextUpPage() {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       updateUser(session?.user ?? null);
     });
+
+    const fetchBackdrop = async () => {
+      const trendingMedia = await getTrendingMedia();
+      setPageBackdrop(getRandomBackdropUrl(trendingMedia));
+    };
+
+    void fetchBackdrop();
 
     return () => subscription.unsubscribe();
   }, [supabase]);
@@ -106,8 +118,18 @@ export default function NextUpPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      <main className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+    <div className="relative min-h-screen bg-black text-white overflow-x-hidden">
+      <div className="pointer-events-none fixed inset-0 z-0 bg-gradient-to-b from-black/75 via-black/45 to-black/85">
+        {pageBackdrop && (
+          <div
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-35"
+            style={{ backgroundImage: `url(${pageBackdrop})` }}
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/55 to-black/80" />
+      </div>
+
+      <main className="relative z-10 mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-violet-400/80">

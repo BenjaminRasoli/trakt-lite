@@ -136,7 +136,7 @@ export default function CalendarPage() {
 
   return (
     <div className="relative min-h-screen bg-black text-white overflow-x-hidden">
-      <div className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-b from-black/70 via-black/45 to-black/80">
+      <div className="pointer-events-none fixed inset-0 z-0 bg-gradient-to-b from-black/70 via-black/45 to-black/80">
         {pageBackdrop && (
           <div
             className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-35"

@@ -302,7 +302,7 @@ function HomeContent() {
   if (!user) {
     return (
       <div className="flex flex-col flex-1 items-center justify-center font-sans min-h-screen relative overflow-hidden">
-        <div className="absolute inset-0 z-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80">
+        <div className="pointer-events-none fixed inset-0 z-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80">
           {homeBackdrop && (
             <div
               className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-70"
@@ -336,7 +336,7 @@ function HomeContent() {
 
   return (
     <div className="relative flex flex-col flex-1 items-center font-sans min-h-screen bg-black overflow-hidden">
-      <div className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-b from-black/75 via-black/55 to-black/85">
+      <div className="pointer-events-none fixed inset-0 z-0 bg-gradient-to-b from-black/75 via-black/55 to-black/85">
         {homeBackdrop && (
           <div
             className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-50"

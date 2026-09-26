@@ -519,7 +519,7 @@ export default function ProfilePage() {
       <div className="pointer-events-none fixed inset-0 z-0 bg-gradient-to-b from-black/80 via-black/50 to-black/90">
         {backdrop && (
           <div
-            className="absolute inset-0 bg-cover bg-center bg-fixed bg-no-repeat opacity-40"
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-40"
             style={{ backgroundImage: `url(${backdrop})` }}
           />
         )}

@@ -29,7 +29,7 @@ export default function NewPage() {
 
   return (
     <div className="relative flex flex-col flex-1 items-center font-sans min-h-screen bg-black overflow-x-hidden">
-      <div className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-b from-black/70 via-black/40 to-black/80">
+      <div className="pointer-events-none fixed inset-0 z-0 bg-gradient-to-b from-black/70 via-black/40 to-black/80">
         {pageBackdrop && (
           <div
             className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-40"

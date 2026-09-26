@@ -342,6 +342,8 @@ export default function MediaDetailsPage() {
           backgroundImage: `linear-gradient(180deg, rgba(2,6,23,0.75), rgba(2,6,23,0.96)), url(${backdropUrl})`,
           backgroundSize: "cover",
           backgroundPosition: "center top",
+          backgroundAttachment: "fixed",
+          backgroundRepeat: "no-repeat",
         }}
       >
         <div className="absolute inset-0 bg-black/20" />
