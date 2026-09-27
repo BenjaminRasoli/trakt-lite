@@ -448,7 +448,10 @@ function HomeContent() {
                   </div>
                 </div>
 
-                <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+                <Link
+                  href={liveSession.tmdbId ? `/media/${liveSession.tmdbId}?type=${liveSession.mediaType}` : "#"}
+                  className="w-full max-w-2xl block overflow-hidden rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 transition hover:border-emerald-400 hover:bg-emerald-500/20"
+                >
                   <div className="flex gap-4">
                     <div className="relative h-28 w-20 shrink-0 overflow-hidden rounded-xl border border-emerald-500/30 bg-zinc-900">
                       <img
@@ -488,7 +491,7 @@ function HomeContent() {
                       </div>
                     </div>
                   </div>
-                </div>
+                </Link>
               </section>
             )}
 

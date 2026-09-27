@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useSupabase } from "@/components/supabase-provider";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { getRandomBackdropUrl, getTrendingMedia } from "@/lib/tmdb";
 
 export default function SettingsPage() {
@@ -403,7 +404,10 @@ export default function SettingsPage() {
                 Checking Jellyfin session...
               </p>
             ) : liveSession ? (
-              <div className="mb-5 overflow-hidden rounded-2xl border border-emerald-500/30 bg-emerald-500/10">
+              <Link
+                href={liveSession.tmdbId ? `/media/${liveSession.tmdbId}?type=${liveSession.mediaType}` : "#"}
+                className="mb-5 block overflow-hidden rounded-2xl border border-emerald-500/30 bg-emerald-500/10 transition hover:border-emerald-400 hover:bg-emerald-500/20"
+              >
                 <div className="flex gap-4 p-4">
                   <div className="relative h-24 w-16 shrink-0 overflow-hidden rounded-lg border border-emerald-500/30 bg-zinc-900">
                     {liveSession.posterUrl ? (
@@ -453,7 +457,7 @@ export default function SettingsPage() {
                     </div>
                   </div>
                 </div>
-              </div>
+              </Link>
             ) : (
               <p className="mb-5 text-sm text-zinc-400">
                 No active Jellyfin session right now.

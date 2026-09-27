@@ -90,9 +90,10 @@ export async function GET(request: NextRequest) {
       null;
 
     let posterUrl = "/placeholder-poster.svg";
+    let tmdbId: number | null = null;
 
     if (mediaType === "tv") {
-      let tmdbId = getJellyfinTmdbId(item);
+      tmdbId = getJellyfinTmdbId(item);
 
       if (!tmdbId) {
         const searchTitle =
@@ -137,7 +138,7 @@ export async function GET(request: NextRequest) {
         posterUrl = `${config.serverUrl}/Items/${itemId}/Images/Primary?maxHeight=500&maxWidth=400&quality=90&tag=${encodeURIComponent(itemPosterTag)}&api_key=${encodeURIComponent(config.apiKey)}`;
       }
     } else {
-      const tmdbId = getJellyfinTmdbId(item);
+      tmdbId = getJellyfinTmdbId(item);
       if (tmdbId) {
         try {
           const mediaDetails = await getMediaDetails(tmdbId, "movie");
@@ -175,6 +176,8 @@ export async function GET(request: NextRequest) {
       active: {
         title,
         type: item.Type || "media",
+        mediaType,
+        tmdbId,
         percent: normalizedPercent,
         completed,
         runtimeMinutes: Number.isFinite(runtimeMinutes)
