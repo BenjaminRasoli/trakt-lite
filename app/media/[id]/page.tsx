@@ -337,7 +337,7 @@ export default function MediaDetailsPage() {
   return (
     <div className="flex flex-col flex-1 font-sans min-h-screen bg-black">
       <div
-        className="relative isolate overflow-hidden min-h-[50vh] sm:min-h-[60vh]"
+        className="relative isolate overflow-hidden min-h-[70vh] sm:min-h-[60vh]"
         style={{
           backgroundImage: `linear-gradient(180deg, rgba(2,6,23,0.75), rgba(2,6,23,0.96)), url(${backdropUrl})`,
           backgroundSize: "100% auto",
