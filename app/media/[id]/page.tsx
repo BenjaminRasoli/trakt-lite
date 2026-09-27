@@ -337,17 +337,24 @@ export default function MediaDetailsPage() {
   return (
     <div className="flex flex-col flex-1 font-sans min-h-screen bg-black">
       <div
-        className="relative isolate overflow-hidden min-h-[70vh] sm:min-h-[60vh]"
+        className="fixed inset-0 z-0 bg-cover bg-center bg-no-repeat"
         style={{
-          backgroundImage: `linear-gradient(180deg, rgba(2,6,23,0.75), rgba(2,6,23,0.96)), url(${backdropUrl})`,
-          backgroundSize: "100% auto",
-          backgroundPosition: "center top",
-          backgroundAttachment: "scroll",
-          backgroundRepeat: "no-repeat",
+          backgroundImage: `
+        linear-gradient(
+          180deg,
+          rgba(2,6,23,0.75),
+          rgba(2,6,23,0.96)
+        ),
+        url(${backdropUrl})
+      `,
+          backgroundPosition: "center -55%",
         }}
-      >
-        <div className="absolute inset-0 bg-black/20" />
-        <main className="relative z-10 w-full max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex-1">
+      />
+
+      <div className="fixed inset-0 z-0 bg-black/10 pointer-events-none" />
+
+      <div className="relative z-10 min-h-screen">
+        <main className="w-full max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           <div className="flex flex-col md:flex-row gap-6 md:gap-8 mb-8">
             <div className="w-full md:w-1/4 flex-shrink-0 max-w-[200px] mx-auto md:mx-0">
               <img
@@ -383,9 +390,15 @@ export default function MediaDetailsPage() {
                     {rating}
                   </span>
                 </div>
-                <span className="text-zinc-400 text-sm sm:text-base">{date}</span>
+
+                <span className="text-zinc-400 text-sm sm:text-base">
+                  {date}
+                </span>
+
                 {media.runtime && (
-                  <span className="text-zinc-400 text-sm sm:text-base">{media.runtime} min</span>
+                  <span className="text-zinc-400 text-sm sm:text-base">
+                    {media.runtime} min
+                  </span>
                 )}
               </div>
 
@@ -438,9 +451,9 @@ export default function MediaDetailsPage() {
                             .map((watch) => (
                               <div
                                 key={watch.id}
-                                className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700/50"
+                                className="flex sm:flex-row sm:items-center justify-between gap-2 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700/50"
                               >
-                                <div className="flex items-start gap-2 flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-1 min-w-0">
                                   <span className="text-zinc-300 text-sm break-words">
                                     {watch.seasonNumber !== null &&
                                     watch.episodeNumber !== null
@@ -474,7 +487,7 @@ export default function MediaDetailsPage() {
                           .map((watch) => (
                             <div
                               key={watch.id}
-                              className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700/50"
+                              className="flex sm:flex-row sm:items-center justify-between gap-2 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700/50"
                             >
                               <div className="flex items-start gap-2 flex-1 min-w-0">
                                 <span className="text-zinc-300 text-sm break-words">
@@ -594,7 +607,9 @@ export default function MediaDetailsPage() {
                       ) : (
                         <div
                           className="mb-2 flex aspect-[3/4] w-full items-center justify-center rounded-xl text-2xl font-bold text-white shadow-lg shadow-violet-500/10"
-                          style={{ background: getAvatarColor(actor.name) }}
+                          style={{
+                            background: getAvatarColor(actor.name),
+                          }}
                         >
                           {avatarLabel}
                         </div>
@@ -686,8 +701,8 @@ export default function MediaDetailsPage() {
               <h2 className="text-xl font-bold text-white mb-4">
                 Recommendations
               </h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {recommendations.slice(0, 5).map((rec) => (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4">
+                {recommendations.slice(0, 7).map((rec) => (
                   <MediaCard key={rec.id} media={rec} />
                 ))}
               </div>
