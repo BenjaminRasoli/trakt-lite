@@ -337,19 +337,19 @@ export default function MediaDetailsPage() {
   return (
     <div className="flex flex-col flex-1 font-sans min-h-screen bg-black">
       <div
-        className="relative isolate overflow-hidden"
+        className="relative isolate overflow-hidden min-h-[50vh] sm:min-h-[60vh]"
         style={{
           backgroundImage: `linear-gradient(180deg, rgba(2,6,23,0.75), rgba(2,6,23,0.96)), url(${backdropUrl})`,
-          backgroundSize: "cover",
+          backgroundSize: "100% auto",
           backgroundPosition: "center top",
-          backgroundAttachment: "fixed",
+          backgroundAttachment: "scroll",
           backgroundRepeat: "no-repeat",
         }}
       >
         <div className="absolute inset-0 bg-black/20" />
-        <main className="relative z-10 w-full max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1">
+        <main className="relative z-10 w-full max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex-1">
           <div className="flex flex-col md:flex-row gap-6 md:gap-8 mb-8">
-            <div className="w-full md:w-1/4 flex-shrink-0">
+            <div className="w-full md:w-1/4 flex-shrink-0 max-w-[200px] mx-auto md:mx-0">
               <img
                 src={posterUrl}
                 alt={title}
@@ -372,20 +372,20 @@ export default function MediaDetailsPage() {
                 )}
               </div>
 
-              <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-4">
                 {title}
               </h1>
 
-              <div className="flex items-center gap-4 mb-4">
+              <div className="flex flex-wrap items-center gap-3 sm:gap-4 mb-4">
                 <div className="flex items-center gap-1">
                   <span className="text-yellow-400 text-lg">★</span>
                   <span className="text-white text-lg font-semibold">
                     {rating}
                   </span>
                 </div>
-                <span className="text-zinc-400">{date}</span>
+                <span className="text-zinc-400 text-sm sm:text-base">{date}</span>
                 {media.runtime && (
-                  <span className="text-zinc-400">{media.runtime} min</span>
+                  <span className="text-zinc-400 text-sm sm:text-base">{media.runtime} min</span>
                 )}
               </div>
 
@@ -394,7 +394,7 @@ export default function MediaDetailsPage() {
                   {genres.map((genre) => (
                     <span
                       key={genre}
-                      className="px-3 py-1 bg-zinc-800 text-zinc-300 text-sm rounded-full"
+                      className="px-2 py-1 sm:px-3 sm:py-1 bg-zinc-800 text-zinc-300 text-xs sm:text-sm rounded-full"
                     >
                       {genre}
                     </span>
@@ -404,10 +404,10 @@ export default function MediaDetailsPage() {
 
               {media.overview && (
                 <div className="mb-6">
-                  <h2 className="text-xl font-bold text-white mb-3">
+                  <h2 className="text-lg sm:text-xl font-bold text-white mb-3">
                     Overview
                   </h2>
-                  <p className="text-zinc-300 leading-relaxed">
+                  <p className="text-zinc-300 leading-relaxed text-sm sm:text-base">
                     {media.overview}
                   </p>
                 </div>
@@ -415,7 +415,7 @@ export default function MediaDetailsPage() {
 
               <button
                 onClick={() => setShowWatchDialog(true)}
-                className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-5 py-2.5 text-sm font-semibold text-violet-100 shadow-lg shadow-violet-500/10 transition hover:border-violet-400 hover:bg-violet-500/20"
+                className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-4 py-2 sm:px-5 sm:py-2.5 text-xs sm:text-sm font-semibold text-violet-100 shadow-lg shadow-violet-500/10 transition hover:border-violet-400 hover:bg-violet-500/20"
               >
                 {type === "tv" ? "Mark Episode as Watched" : "Mark as Watched"}
               </button>
@@ -438,10 +438,10 @@ export default function MediaDetailsPage() {
                             .map((watch) => (
                               <div
                                 key={watch.id}
-                                className="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg border border-zinc-700/50"
+                                className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700/50"
                               >
-                                <div className="flex items-center gap-3">
-                                  <span className="text-zinc-300">
+                                <div className="flex items-start gap-2 flex-1 min-w-0">
+                                  <span className="text-zinc-300 text-sm break-words">
                                     {watch.seasonNumber !== null &&
                                     watch.episodeNumber !== null
                                       ? `S${watch.seasonNumber} E${watch.episodeNumber} - `
@@ -451,7 +451,7 @@ export default function MediaDetailsPage() {
                                 </div>
                                 <button
                                   onClick={() => handleDeleteWatch(watch.id)}
-                                  className="px-3 py-1 cursor-pointer text-red-400 hover:text-red-300 text-sm"
+                                  className="px-3 py-1 cursor-pointer text-red-400 hover:text-red-300 text-sm whitespace-nowrap self-end sm:self-center"
                                 >
                                   Remove
                                 </button>
@@ -474,10 +474,10 @@ export default function MediaDetailsPage() {
                           .map((watch) => (
                             <div
                               key={watch.id}
-                              className="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg border border-zinc-700/50"
+                              className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700/50"
                             >
-                              <div className="flex items-center gap-3">
-                                <span className="text-zinc-300">
+                              <div className="flex items-start gap-2 flex-1 min-w-0">
+                                <span className="text-zinc-300 text-sm break-words">
                                   {watch.seasonNumber !== null &&
                                   watch.episodeNumber !== null
                                     ? `S${watch.seasonNumber} E${watch.episodeNumber} - `
@@ -487,7 +487,7 @@ export default function MediaDetailsPage() {
                               </div>
                               <button
                                 onClick={() => handleDeleteWatch(watch.id)}
-                                className="px-3 py-1 cursor-pointer text-red-400 hover:text-red-300 text-sm"
+                                className="px-3 py-1 cursor-pointer text-red-400 hover:text-red-300 text-sm whitespace-nowrap self-end sm:self-center"
                               >
                                 Remove
                               </button>

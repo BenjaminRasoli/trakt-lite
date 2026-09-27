@@ -103,7 +103,7 @@ export default function Navbar() {
       <nav className="sticky top-0 z-40 border-b border-zinc-700/50 bg-zinc-950/85 backdrop-blur-md">
         <div className="mx-auto max-w-[1650px] px-3 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:py-0 sm:h-16">
-            <div className="flex flex-wrap items-center gap-2 sm:gap-8">
+            <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-8 w-full sm:w-auto">
               <Link
                 href="/"
                 className="text-xl font-bold text-white transition-colors hover:text-violet-400 sm:text-2xl"
@@ -111,7 +111,7 @@ export default function Navbar() {
                 Trakt <span className="text-violet-400">Lite</span>
               </Link>
               {user && (
-                <>
+                <div className="hidden sm:flex flex-wrap items-center gap-4">
                   {[
                     { href: "/new", label: "New" },
                     { href: "/next-up", label: "Next Up" },
@@ -137,11 +137,55 @@ export default function Navbar() {
                       </Link>
                     );
                   })}
-                </>
+                </div>
               )}
+              <div className="flex items-center gap-2 sm:hidden">
+                {loading ? (
+                  <div className="flex items-center gap-2 text-violet-300">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-violet-300" />
+                    <span className="text-[10px] font-medium uppercase tracking-[0.2em]">
+                      Loading
+                    </span>
+                  </div>
+                ) : user ? (
+                  <>
+                    <Link
+                      href="/profile"
+                      className="flex items-center gap-2"
+                    >
+                      {avatarUrl ? (
+                        <NextImage
+                          src={avatarUrl}
+                          alt={capitalizedUsername}
+                          width={32}
+                          height={32}
+                          className="h-8 w-8 rounded-full border border-violet-500/50 object-cover shadow-lg shadow-violet-500/20"
+                        />
+                      ) : (
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full border border-violet-500/50 bg-gradient-to-br from-violet-500 to-indigo-600 text-xs font-bold text-white shadow-lg shadow-violet-500/20">
+                          {capitalizedUsername.slice(0, 2).toUpperCase()}
+                        </div>
+                      )}
+                    </Link>
+                    <button
+                      onClick={handleSignOut}
+                      className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
+                    >
+                      Sign Out
+                    </button>
+                  </>
+                ) : (
+                  <Link
+                    href="/auth"
+                    className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-100 shadow-lg shadow-violet-500/10 transition hover:border-violet-400 hover:bg-violet-500/20"
+                  >
+                    Sign In
+                  </Link>
+                )}
+              </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-4">
+            <div className="hidden sm:flex flex-wrap items-center justify-end gap-2 sm:gap-4">
               {loading ? (
                 <div className="flex items-center gap-2 text-violet-300">
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-violet-300" />
@@ -191,6 +235,35 @@ export default function Navbar() {
               )}
             </div>
           </div>
+          {user && (
+            <div className="flex flex-wrap items-start gap-2 sm:hidden pb-2">
+              {[
+                { href: "/new", label: "New" },
+                { href: "/next-up", label: "Next Up" },
+                { href: "/calendar", label: "Calendar" },
+                { href: "/history", label: "History" },
+                { href: "/profile", label: "Profile" },
+                { href: "/settings", label: "Settings" },
+              ].map(({ href, label }) => {
+                const isActive = pathname === href;
+
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={[
+                      "text-xs font-medium transition-colors",
+                      isActive
+                        ? "text-violet-400"
+                        : "text-zinc-300 hover:text-violet-400",
+                    ].join(" ")}
+                  >
+                    {label}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
         </div>
       </nav>
 
