@@ -154,6 +154,12 @@ export async function getMovieDetails(
     const response = await fetch(
       `${TMDB_BASE_URL}/movie/${movieId}?api_key=${TMDB_API_KEY}`,
     );
+    if (!response.ok) {
+      if (response.status !== 404) {
+        console.error(`TMDB movie details request failed (${response.status})`);
+      }
+      return null;
+    }
     const data = await response.json();
     return data;
   } catch (error) {
@@ -174,6 +180,12 @@ export async function getTVShowDetails(
     const response = await fetch(
       `${TMDB_BASE_URL}/tv/${tvId}?api_key=${TMDB_API_KEY}`,
     );
+    if (!response.ok) {
+      if (response.status !== 404) {
+        console.error(`TMDB TV show details request failed (${response.status})`);
+      }
+      return null;
+    }
     const data = await response.json();
     return data;
   } catch (error) {
@@ -404,10 +416,12 @@ async function fetchTmdbJson<T>(url: string): Promise<T | null> {
   try {
     const response = await fetch(url, { signal: controller.signal });
     if (!response.ok) {
-      const text = await response.text();
-      console.error(
-        `TMDB request failed (${response.status}): ${text.slice(0, 200)}`,
-      );
+      if (response.status !== 404) {
+        const text = await response.text();
+        console.error(
+          `TMDB request failed (${response.status}): ${text.slice(0, 200)}`,
+        );
+      }
       return null;
     }
 
