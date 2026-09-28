@@ -198,6 +198,7 @@ export default function SeasonPage() {
           mediaType,
           seasonNumber,
           episodeNumber: selectedEpisode.episode_number,
+          episodeName: selectedEpisode.name,
           watchedAt: watchedAt.toISOString(),
         }),
       });

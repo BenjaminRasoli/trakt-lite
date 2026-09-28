@@ -218,6 +218,15 @@ export default function MediaDetailsPage() {
     }
 
     try {
+      let episodeName = null;
+      if (mediaType === "tv" && selectedSeason && selectedEpisode) {
+        const season = tvShowDetails?.seasons?.[selectedSeason - 1];
+        const episode = season?.episodes?.find(
+          (ep: any) => ep.episode_number === selectedEpisode
+        );
+        episodeName = episode?.name || null;
+      }
+
       const response = await fetch("/api/watch-history", {
         method: "POST",
         headers: {
@@ -229,6 +238,7 @@ export default function MediaDetailsPage() {
           watchedAt: watchedAt.toISOString(),
           seasonNumber: mediaType === "tv" ? selectedSeason : null,
           episodeNumber: mediaType === "tv" ? selectedEpisode : null,
+          episodeName,
         }),
       });
 
