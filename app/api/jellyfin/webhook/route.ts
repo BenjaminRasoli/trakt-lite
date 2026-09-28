@@ -14,34 +14,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, skipped: true }, { status: 200 });
     }
 
-    const playbackPositionTicks = Number(
-      body?.PlaybackPositionTicks ??
-        body?.PositionTicks ??
-        body?.Session?.PlayState?.PositionTicks ??
-        body?.Session?.PlaybackPositionTicks ??
-        item?.UserData?.PlayState?.PositionTicks ??
-        item?.PlayState?.PositionTicks ??
-        0,
-    );
-    const runtimeTicks = Number(
-      body?.RunTimeTicks ??
-        body?.RuntimeTicks ??
-        item?.RunTimeTicks ??
-        item?.RuntimeTicks ??
-        0,
-    );
-    const watchedThresholdReached =
-      runtimeTicks > 0 && playbackPositionTicks > 0
-        ? playbackPositionTicks / runtimeTicks >= 0.8
-        : false;
-
     const isCompletionEvent =
       eventName.includes("playbackstop") ||
       eventName.includes("playbackstopped") ||
       eventName.includes("itemcompleted") ||
       eventName.includes("playbackfinished") ||
-      eventName.includes("markwatched") ||
-      watchedThresholdReached;
+      eventName.includes("markwatched");
 
     if (!isCompletionEvent) {
       return NextResponse.json({ ok: true, skipped: true }, { status: 200 });
