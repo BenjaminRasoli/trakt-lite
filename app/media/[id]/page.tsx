@@ -457,7 +457,7 @@ export default function MediaDetailsPage() {
                                   <span className="text-zinc-300 text-sm break-words">
                                     {watch.seasonNumber !== null &&
                                     watch.episodeNumber !== null
-                                      ? `S${watch.seasonNumber} E${watch.episodeNumber} - `
+                                      ? `S${watch.seasonNumber} E${watch.episodeNumber}${watch.episodeName ? ` - ${watch.episodeName}` : ""} - `
                                       : ""}
                                     {new Date(watch.watchedAt).toLocaleString()}
                                   </span>
@@ -493,7 +493,7 @@ export default function MediaDetailsPage() {
                                 <span className="text-zinc-300 text-sm break-words">
                                   {watch.seasonNumber !== null &&
                                   watch.episodeNumber !== null
-                                    ? `S${watch.seasonNumber} E${watch.episodeNumber} - `
+                                    ? `S${watch.seasonNumber} E${watch.episodeNumber}${watch.episodeName ? ` - ${watch.episodeName}` : ""} - `
                                     : ""}
                                   {new Date(watch.watchedAt).toLocaleString()}
                                 </span>

@@ -165,6 +165,13 @@ export async function resolveJellyfinTmdbId(
 }
 
 export function getJellyfinTitle(item: Record<string, any>) {
+  const mediaType = getJellyfinMediaType(item);
+  
+  // For TV shows, use SeriesName instead of episode Name
+  if (mediaType === "tv") {
+    return item?.SeriesName || item?.Name || item?.OriginalTitle || item?.Title || "Unknown title";
+  }
+  
   return item?.Name || item?.OriginalTitle || item?.Title || "Unknown title";
 }
 
@@ -231,6 +238,11 @@ export async function upsertJellyfinWatchEntry({
   const episodeNumber = toNumber(item?.IndexNumber ?? item?.EpisodeNumber);
   const seasonNumber =
     parentIndexNumber ?? toNumber(item?.SeasonIndex ?? item?.SeasonNumber);
+  
+  // Extract episode name for TV shows
+  const episodeName = mediaType === "tv" 
+    ? (item?.Name || item?.OriginalTitle || item?.Title || null)
+    : null;
 
   // Fetch TMDB poster
   let tmdbPosterPath = null;
@@ -296,6 +308,7 @@ export async function upsertJellyfinWatchEntry({
       mediaId: media.id,
       seasonNumber: seasonNumber ?? null,
       episodeNumber: episodeNumber ?? null,
+      episodeName,
       watchedAt,
     },
   });

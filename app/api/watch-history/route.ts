@@ -659,7 +659,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { mediaId, mediaType, watchedAt, seasonNumber, episodeNumber } = body;
+    const { mediaId, mediaType, watchedAt, seasonNumber, episodeNumber, episodeName } = body;
 
     if (!mediaId || !mediaType || !watchedAt) {
       return NextResponse.json(
@@ -761,6 +761,7 @@ export async function POST(request: NextRequest) {
           mediaId: media.id,
           seasonNumber: mediaType === "tv" ? seasonNumber : null,
           episodeNumber: mediaType === "tv" ? episodeNumber : null,
+          episodeName: mediaType === "tv" ? (episodeName || null) : null,
           watchedAt: new Date(watchedAt),
         },
       });

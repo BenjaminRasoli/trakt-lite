@@ -58,6 +58,7 @@ model WatchHistory {
   mediaId      Int
   seasonNumber Int?
   episodeNumber Int?
+  episodeName  String?
   watchedAt    DateTime
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

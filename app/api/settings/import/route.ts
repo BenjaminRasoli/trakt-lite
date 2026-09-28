@@ -203,12 +203,17 @@ export async function POST(request: NextRequest) {
                 episodeNumber = entry.episode?.number ?? null;
               }
 
+              const episodeName = entry.type === "episode" 
+                ? (entry.episode?.title || null)
+                : null;
+
               await prisma.watchHistory.create({
                 data: {
                   userId: dbUser.id,
                   mediaId: media.id,
                   seasonNumber,
                   episodeNumber,
+                  episodeName,
                   watchedAt: new Date(watchedAt),
                 },
               });
