@@ -326,7 +326,7 @@ function HomeContent() {
         <main className="relative z-10 flex flex-col items-center justify-center w-full max-w-4xl px-8 py-16 gap-12 flex-1">
           <div className="text-center">
             <h1 className="text-5xl font-bold text-white mb-4 tracking-tight">
-              Trakt Lite
+              Trakt <span className="text-violet-400">Lite</span>
             </h1>
             <p className="text-xl text-zinc-300 max-w-2xl mb-8">
               Track your favorite movies and TV shows

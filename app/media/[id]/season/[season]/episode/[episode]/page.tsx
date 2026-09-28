@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams, notFound } from "next/navigation";
 import { useSupabase } from "@/components/supabase-provider";
 import {
   getMediaDetails,
@@ -255,11 +255,7 @@ export default function EpisodePage() {
   }
 
   if (!show || !season || !episode) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-black text-white">
-        Episode not found
-      </div>
-    );
+    notFound();
   }
 
   const title = getMediaTitle(show);

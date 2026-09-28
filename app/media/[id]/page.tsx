@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useSupabase } from "@/components/supabase-provider";
-import { useRouter, useParams, useSearchParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams, notFound } from "next/navigation";
 import {
   getMediaDetails,
   getPosterUrl,
@@ -300,11 +300,7 @@ export default function MediaDetailsPage() {
   }
 
   if (!media) {
-    return (
-      <div className="flex flex-col flex-1 items-center justify-center font-sans min-h-screen bg-black">
-        <div className="text-white">Media not found</div>
-      </div>
-    );
+    notFound();
   }
 
   const title = getMediaTitle(media);
