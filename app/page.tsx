@@ -417,7 +417,11 @@ function HomeContent() {
                 </div>
 
                 <Link
-                  href={liveSession.tmdbId ? `/media/${liveSession.tmdbId}?type=${liveSession.mediaType}` : "#"}
+                  href={
+                    liveSession.tmdbId
+                      ? `/media/${liveSession.tmdbId}?type=${liveSession.mediaType}`
+                      : "#"
+                  }
                   className="w-full max-w-2xl block overflow-hidden rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 transition hover:border-emerald-400 hover:bg-emerald-500/20"
                 >
                   <div className="flex gap-4">
@@ -504,10 +508,10 @@ function HomeContent() {
                           S{item.seasonNumber} • E{item.episodeNumber}
                         </div>
                         <div className="line-clamp-2 text-xs font-semibold text-white">
-                          {item.episodeTitle}
+                          {item.title}
                         </div>
                         <div className="line-clamp-1 text-[10px] text-zinc-400">
-                          {item.title}
+                          {item.episodeTitle}
                         </div>
                       </div>
                     </Link>
@@ -565,10 +569,10 @@ function HomeContent() {
                             : "Coming soon"}
                         </div>
                         <div className="line-clamp-2 text-xs font-semibold text-white">
-                          {item.episodeTitle}
+                          {item.title}
                         </div>
                         <div className="line-clamp-1 text-[10px] text-zinc-400">
-                          {item.title}
+                          {item.episodeTitle}
                         </div>
                       </div>
                     </Link>
@@ -626,9 +630,12 @@ function HomeContent() {
 
                         <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
                           <div className="text-[10px] font-medium uppercase tracking-[0.15em] text-violet-300">
-                            {media.mediaType}
+                            {watchedDate.toLocaleDateString(undefined, {
+                              month: "short",
+                              day: "numeric",
+                            })}{" "}
                           </div>
-                          <div className="line-clamp-2 text-xs font-semibold text-white">
+                          <div className="line-clamp-1 text-xs font-semibold text-white">
                             {media.title}
                           </div>
                           {historyItem.episodeName && (
@@ -641,12 +648,6 @@ function HomeContent() {
                               {episodeLabel}
                             </div>
                           )}
-                          <div className="pt-1 text-[10px] text-zinc-500">
-                            {watchedDate.toLocaleDateString(undefined, {
-                              month: "short",
-                              day: "numeric",
-                            })}
-                          </div>
                         </div>
                       </Link>
                     );

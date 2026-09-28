@@ -19,6 +19,7 @@ type TraktHistoryEntry = {
   episode?: {
     season?: number;
     number?: number;
+    title?: string;
   };
   watched_at?: string;
 };

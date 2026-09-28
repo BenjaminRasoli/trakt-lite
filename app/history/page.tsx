@@ -22,6 +22,7 @@ interface HistoryItem {
   watchedAt: string;
   seasonNumber: number | null;
   episodeNumber: number | null;
+  episodeName: string | null;
   media: {
     id: number;
     tmdbId: number;
@@ -279,18 +280,20 @@ export default function HistoryPage() {
 
                     <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
                       <div className="text-[10px] font-medium uppercase tracking-[0.15em] text-violet-300">
-                        {entry.media.mediaType}
-                      </div>
-                      <div className="line-clamp-2 text-xs font-semibold text-white">
-                        {entry.media.title}
-                      </div>
-                      <div className="text-[10px] text-zinc-400">{label}</div>
-                      <div className="pt-1 text-[10px] text-zinc-500">
                         {watchedDate.toLocaleDateString(undefined, {
                           month: "short",
                           day: "numeric",
                         })}
                       </div>
+                      <div className="line-clamp-1 text-xs font-semibold text-white">
+                        {entry.media.title}
+                      </div>
+                      {entry.episodeName && (
+                        <div className="line-clamp-1 text-[10px] text-zinc-300">
+                          {entry.episodeName}
+                        </div>
+                      )}
+                      <div className="text-[10px] text-zinc-400">{label}</div>
                     </div>
                   </Link>
                 );

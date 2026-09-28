@@ -181,10 +181,10 @@ export default function NextUpPage() {
                     S{item.seasonNumber} • E{item.episodeNumber}
                   </div>
                   <div className="line-clamp-2 text-xs font-semibold text-white">
-                    {item.episodeTitle}
+                    {item.title}
                   </div>
                   <div className="line-clamp-1 text-[10px] text-zinc-400">
-                    {item.title}
+                    {item.episodeTitle}
                   </div>
                 </div>
               </Link>

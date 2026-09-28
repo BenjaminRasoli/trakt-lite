@@ -494,7 +494,16 @@ export async function GET(request: NextRequest) {
         where: {
           userId: dbUser.id,
         },
-        include: {
+        select: {
+          id: true,
+          userId: true,
+          mediaId: true,
+          seasonNumber: true,
+          episodeNumber: true,
+          episodeName: true,
+          watchedAt: true,
+          createdAt: true,
+          updatedAt: true,
           media: true,
         },
         orderBy: {
@@ -522,7 +531,15 @@ export async function GET(request: NextRequest) {
           });
 
           return {
-            ...entry,
+            id: entry.id,
+            userId: entry.userId,
+            mediaId: entry.mediaId,
+            seasonNumber: entry.seasonNumber,
+            episodeNumber: entry.episodeNumber,
+            episodeName: entry.episodeName,
+            watchedAt: entry.watchedAt,
+            createdAt: entry.createdAt,
+            updatedAt: entry.updatedAt,
             media: {
               ...entry.media,
               title: media.title || "Unknown",
@@ -637,7 +654,16 @@ export async function GET(request: NextRequest) {
 
     const watchHistory = await prisma.watchHistory.findMany({
       where: whereClause,
-      include: {
+      select: {
+        id: true,
+        userId: true,
+        mediaId: true,
+        seasonNumber: true,
+        episodeNumber: true,
+        episodeName: true,
+        watchedAt: true,
+        createdAt: true,
+        updatedAt: true,
         media: true,
       },
       orderBy: {
@@ -646,7 +672,20 @@ export async function GET(request: NextRequest) {
       take: limitParam ? parseInt(limitParam) : undefined,
     });
 
-    return NextResponse.json(watchHistory);
+    const formattedHistory = watchHistory.map(entry => ({
+      id: entry.id,
+      userId: entry.userId,
+      mediaId: entry.mediaId,
+      seasonNumber: entry.seasonNumber,
+      episodeNumber: entry.episodeNumber,
+      episodeName: entry.episodeName,
+      watchedAt: entry.watchedAt,
+      createdAt: entry.createdAt,
+      updatedAt: entry.updatedAt,
+      media: entry.media,
+    }));
+
+    return NextResponse.json(formattedHistory);
   } catch (error) {
     console.error("Error fetching watch history:", error);
     return NextResponse.json(

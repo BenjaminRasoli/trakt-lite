@@ -223,13 +223,21 @@ export default function CalendarPage() {
 
                         <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
                           <div className="text-[10px] font-medium uppercase tracking-[0.15em] text-violet-300">
-                            S{item.seasonNumber} • E{item.episodeNumber}
+                            {item.airDate
+                              ? new Date(item.airDate).toLocaleDateString(
+                                  undefined,
+                                  {
+                                    month: "short",
+                                    day: "numeric",
+                                  },
+                                )
+                              : "Coming soon"}
                           </div>
                           <div className="line-clamp-2 text-xs font-semibold text-white">
-                            {item.episodeTitle}
+                            {item.title}
                           </div>
                           <div className="line-clamp-1 text-[10px] text-zinc-400">
-                            {item.title}
+                            {item.episodeTitle}
                           </div>
                         </div>
                       </Link>
