@@ -6,6 +6,7 @@ import {
 } from "@/lib/tmdb";
 import type { TMDBMedia } from "@/lib/tmdb";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface MediaCardProps {
   media: TMDBMedia;
@@ -34,6 +35,7 @@ const GENRE_MAP: Record<number, string> = {
 };
 
 export default function MediaCard({ media }: MediaCardProps) {
+  const router = useRouter();
   const title = getMediaTitle(media);
   const date = getMediaDate(media);
   const mediaType = getMediaType(media);
@@ -48,6 +50,11 @@ export default function MediaCard({ media }: MediaCardProps) {
     .filter(Boolean);
 
   const typeToUse = media.media_type || mediaType;
+
+  const handleTitleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    router.push(`/media/${media.id}?type=${typeToUse}`);
+  };
 
   return (
     <Link
@@ -70,7 +77,12 @@ export default function MediaCard({ media }: MediaCardProps) {
 
       <div className="p-3">
         <h3 className="text-sm font-bold text-white mb-1.5 line-clamp-1">
-          {title}
+          <span
+            onClick={handleTitleClick}
+            className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
+          >
+            {title}
+          </span>
         </h3>
 
         <div className="flex items-center gap-1.5 mb-1.5">

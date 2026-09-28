@@ -49,6 +49,12 @@ export default function HistoryPage() {
   const historyLengthRef = useRef(0);
   const isLoadingRef = useRef(false);
 
+  const handleTitleClick = (e: React.MouseEvent, tmdbId: number, mediaType: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    router.push(`/media/${tmdbId}?type=${mediaType}`);
+  };
+
   const fetchHistory = useCallback(
     async (append = false) => {
       if (!user || isLoadingRef.current) return;
@@ -261,10 +267,15 @@ export default function HistoryPage() {
                       ? "TV"
                       : "Movie";
 
+                const episodeLink =
+                  entry.seasonNumber !== null && entry.episodeNumber !== null
+                    ? `/media/${entry.media.tmdbId}/season/${entry.seasonNumber}/episode/${entry.episodeNumber}?type=${entry.media.mediaType}`
+                    : `/media/${entry.media.tmdbId}?type=${entry.media.mediaType}`;
+
                 return (
                   <Link
                     key={entry.id}
-                    href={`/media/${entry.media.tmdbId}?type=${entry.media.mediaType}`}
+                    href={episodeLink}
                     className="group overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:-translate-y-0.5 hover:border-violet-500/50"
                   >
                     <div className="relative aspect-[2/3] overflow-hidden">
@@ -286,7 +297,12 @@ export default function HistoryPage() {
                         })}
                       </div>
                       <div className="line-clamp-1 text-xs font-semibold text-white">
-                        {entry.media.title}
+                        <span
+                          onClick={(e) => handleTitleClick(e, entry.media.tmdbId, entry.media.mediaType)}
+                          className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
+                        >
+                          {entry.media.title}
+                        </span>
                       </div>
                       {entry.episodeName && (
                         <div className="line-clamp-1 text-[10px] text-zinc-300">

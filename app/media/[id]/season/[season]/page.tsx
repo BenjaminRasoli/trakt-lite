@@ -28,6 +28,11 @@ export default function SeasonPage() {
   const [watchToDelete, setWatchToDelete] = useState<string | null>(null);
   const supabase = useSupabase();
   const router = useRouter();
+
+  const handleTitleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    router.push(`/media/${mediaId}?type=tv`);
+  };
   const params = useParams();
   const searchParams = useSearchParams();
   const mediaId = Number(params.id);
@@ -299,7 +304,12 @@ export default function SeasonPage() {
             </Link>
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-300">
-                {title}
+                <span
+                  onClick={handleTitleClick}
+                  className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
+                >
+                  {title}
+                </span>
               </p>
               <h1 className="text-3xl font-bold text-white">
                 Season {seasonNumber}
@@ -425,19 +435,22 @@ export default function SeasonPage() {
                         </p>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => openWatchModal(episode)}
-                        className="inline-flex cursor-pointer items-center justify-center rounded-full border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:border-violet-500/50 hover:text-violet-200"
-                      >
-                        Mark as watched
-                      </button>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openWatchModal(episode)}
+                          className="inline-flex cursor-pointer items-center justify-center rounded-full border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:border-violet-500/50 hover:text-violet-200"
+                        >
+                          Mark as watched
+                        </button>
+                        <Link
+                          href={`/media/${mediaId}/season/${seasonNumber}/episode/${episode.episode_number}?type=tv`}
+                          className="inline-flex cursor-pointer items-center justify-center rounded-full border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:border-violet-500/50 hover:text-violet-200"
+                        >
+                          View details
+                        </Link>
+                      </div>
                     </div>
-
-                    <p className="mt-3 text-sm leading-relaxed text-zinc-300">
-                      {episode.overview ||
-                        "No episode summary is available for this one."}
-                    </p>
 
                     <div className="mt-4 rounded-xl border border-zinc-700/60 bg-zinc-800/40 p-3">
                       <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">

@@ -30,6 +30,12 @@ export default function CalendarPage() {
   const router = useRouter();
   const supabase = useSupabase();
 
+  const handleTitleClick = (e: React.MouseEvent, tmdbId: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    router.push(`/media/${tmdbId}?type=tv`);
+  };
+
   useEffect(() => {
     let isMounted = true;
 
@@ -207,7 +213,7 @@ export default function CalendarPage() {
                     {items.map((item) => (
                       <Link
                         key={`${item.tmdbId}-${item.seasonNumber}-${item.episodeNumber}-${item.airDate || "unknown"}`}
-                        href={`/media/${item.tmdbId}?type=tv`}
+                        href={`/media/${item.tmdbId}/season/${item.seasonNumber}/episode/${item.episodeNumber}?type=tv`}
                         className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:-translate-y-0.5 hover:border-violet-500/50"
                       >
                         <div className="relative aspect-[2/3] overflow-hidden">
@@ -234,7 +240,12 @@ export default function CalendarPage() {
                               : "Coming soon"}
                           </div>
                           <div className="line-clamp-2 text-xs font-semibold text-white">
-                            {item.title}
+                            <span
+                              onClick={(e) => handleTitleClick(e, item.tmdbId)}
+                              className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
+                            >
+                              {item.title}
+                            </span>
                           </div>
                           <div className="line-clamp-1 text-[10px] text-zinc-400">
                             {item.episodeTitle}

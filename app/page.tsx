@@ -89,6 +89,12 @@ function HomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  const handleTitleClick = (e: React.MouseEvent, tmdbId: number, mediaType: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    router.push(`/media/${tmdbId}?type=${mediaType}`);
+  };
+
   useEffect(() => {
     const updateUser = (nextUser: any) => {
       setUser((currentUser: any) => {
@@ -419,7 +425,9 @@ function HomeContent() {
                 <Link
                   href={
                     liveSession.tmdbId
-                      ? `/media/${liveSession.tmdbId}?type=${liveSession.mediaType}`
+                      ? liveSession.seasonNumber && liveSession.episodeNumber
+                        ? `/media/${liveSession.tmdbId}/season/${liveSession.seasonNumber}/episode/${liveSession.episodeNumber}?type=${liveSession.mediaType}`
+                        : `/media/${liveSession.tmdbId}?type=${liveSession.mediaType}`
                       : "#"
                   }
                   className="w-full max-w-2xl block overflow-hidden rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 transition hover:border-emerald-400 hover:bg-emerald-500/20"
@@ -489,7 +497,7 @@ function HomeContent() {
                   {visibleNextUp.map((item) => (
                     <Link
                       key={`${item.tmdbId}-${item.seasonNumber}-${item.episodeNumber}`}
-                      href={`/media/${item.tmdbId}?type=tv`}
+                      href={`/media/${item.tmdbId}/season/${item.seasonNumber}/episode/${item.episodeNumber}?type=tv`}
                       className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:-translate-y-0.5 hover:border-violet-500/50"
                     >
                       <div className="relative aspect-[2/3] overflow-hidden">
@@ -508,7 +516,12 @@ function HomeContent() {
                           S{item.seasonNumber} • E{item.episodeNumber}
                         </div>
                         <div className="line-clamp-2 text-xs font-semibold text-white">
-                          {item.title}
+                          <span
+                            onClick={(e) => handleTitleClick(e, item.tmdbId, "tv")}
+                            className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
+                          >
+                            {item.title}
+                          </span>
                         </div>
                         <div className="line-clamp-1 text-[10px] text-zinc-400">
                           {item.episodeTitle}
@@ -542,7 +555,7 @@ function HomeContent() {
                   {visibleUpcoming.map((item) => (
                     <Link
                       key={`${item.tmdbId}-${item.seasonNumber}-${item.episodeNumber}-${item.airDate || "unknown"}`}
-                      href={`/media/${item.tmdbId}?type=tv`}
+                      href={`/media/${item.tmdbId}/season/${item.seasonNumber}/episode/${item.episodeNumber}?type=tv`}
                       className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:-translate-y-0.5 hover:border-violet-500/50"
                     >
                       <div className="relative aspect-[2/3] overflow-hidden">
@@ -569,7 +582,12 @@ function HomeContent() {
                             : "Coming soon"}
                         </div>
                         <div className="line-clamp-2 text-xs font-semibold text-white">
-                          {item.title}
+                          <span
+                            onClick={(e) => handleTitleClick(e, item.tmdbId, "tv")}
+                            className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
+                          >
+                            {item.title}
+                          </span>
                         </div>
                         <div className="line-clamp-1 text-[10px] text-zinc-400">
                           {item.episodeTitle}
@@ -611,10 +629,16 @@ function HomeContent() {
                           ? "TV"
                           : "Movie";
 
+                    const historyLink =
+                      historyItem.seasonNumber !== null &&
+                      historyItem.episodeNumber !== null
+                        ? `/media/${media.tmdbId}/season/${historyItem.seasonNumber}/episode/${historyItem.episodeNumber}?type=${media.mediaType}`
+                        : `/media/${media.tmdbId}?type=${media.mediaType}`;
+
                     return (
                       <Link
                         key={historyItem.id}
-                        href={`/media/${media.tmdbId}?type=${media.mediaType}`}
+                        href={historyLink}
                         className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:-translate-y-0.5 hover:border-violet-500/50"
                       >
                         <div className="relative aspect-[2/3] overflow-hidden">
@@ -636,7 +660,12 @@ function HomeContent() {
                             })}{" "}
                           </div>
                           <div className="line-clamp-1 text-xs font-semibold text-white">
-                            {media.title}
+                            <span
+                              onClick={(e) => handleTitleClick(e, media.tmdbId, media.mediaType)}
+                              className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
+                            >
+                              {media.title}
+                            </span>
                           </div>
                           {historyItem.episodeName && (
                             <div className="line-clamp-1 text-[10px] text-zinc-300">
@@ -656,19 +685,6 @@ function HomeContent() {
               </section>
             )}
           </>
-        )}
-
-        {searchResults.length > 0 && (
-          <div>
-            <h2 className="text-2xl font-bold text-white mb-6">
-              Search Results
-            </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {searchResults.map((media) => (
-                <MediaCard key={media.id} media={media} />
-              ))}
-            </div>
-          </div>
         )}
 
         {searchResults.length > 0 && (
