@@ -103,7 +103,7 @@ export default function Navbar() {
       <nav className="sticky top-0 z-40 border-b border-zinc-700/50 bg-zinc-950/85 backdrop-blur-md">
         <div className="mx-auto max-w-[1650px] px-3 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:py-0 sm:h-16">
-            <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-8 w-full sm:w-auto">
+            <div className="flex items-center justify-between sm:justify-start gap-3 sm:gap-8 w-full sm:w-auto">
               <Link
                 href="/"
                 className="text-xl font-bold text-white transition-colors hover:text-violet-400 sm:text-2xl"
@@ -236,7 +236,7 @@ export default function Navbar() {
             </div>
           </div>
           {user && (
-            <div className="flex flex-wrap items-start gap-2 sm:hidden pb-2">
+            <div className="flex flex-wrap items-start gap-3 sm:hidden pb-2">
               {[
                 { href: "/new", label: "New" },
                 { href: "/next-up", label: "Next Up" },
@@ -252,7 +252,7 @@ export default function Navbar() {
                     key={href}
                     href={href}
                     className={[
-                      "text-xs font-medium transition-colors",
+                      "text-sm font-medium transition-colors",
                       isActive
                         ? "text-violet-400"
                         : "text-zinc-300 hover:text-violet-400",

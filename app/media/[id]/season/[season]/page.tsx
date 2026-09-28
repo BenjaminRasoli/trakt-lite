@@ -2,7 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter, useSearchParams, notFound } from "next/navigation";
+import {
+  useParams,
+  useRouter,
+  useSearchParams,
+  notFound,
+} from "next/navigation";
 import { useSupabase } from "@/components/supabase-provider";
 import {
   getMediaDetails,
@@ -462,7 +467,14 @@ export default function SeasonPage() {
                             >
                               <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-[10px] font-medium uppercase tracking-[0.15em] text-emerald-300">
                                 Watched{" "}
-                                {new Date(watch.watchedAt).toLocaleDateString()}
+                                {new Date(watch.watchedAt).toLocaleDateString(
+                                  "en-US",
+                                  {
+                                    month: "short",
+                                    day: "numeric",
+                                    year: "numeric",
+                                  },
+                                )}
                               </span>
                               <button
                                 onClick={() => handleDeleteWatch(watch.id)}

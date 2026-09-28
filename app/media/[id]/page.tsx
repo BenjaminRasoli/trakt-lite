@@ -3,7 +3,12 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useSupabase } from "@/components/supabase-provider";
-import { useRouter, useParams, useSearchParams, notFound } from "next/navigation";
+import {
+  useRouter,
+  useParams,
+  useSearchParams,
+  notFound,
+} from "next/navigation";
 import {
   getMediaDetails,
   getPosterUrl,
@@ -222,7 +227,7 @@ export default function MediaDetailsPage() {
       if (mediaType === "tv" && selectedSeason && selectedEpisode) {
         const season = tvShowDetails?.seasons?.[selectedSeason - 1];
         const episode = season?.episodes?.find(
-          (ep: any) => ep.episode_number === selectedEpisode
+          (ep: any) => ep.episode_number === selectedEpisode,
         );
         episodeName = episode?.name || null;
       }
@@ -465,7 +470,16 @@ export default function MediaDetailsPage() {
                                     watch.episodeNumber !== null
                                       ? `S${watch.seasonNumber} E${watch.episodeNumber}${watch.episodeName ? ` - ${watch.episodeName}` : ""} - `
                                       : ""}
-                                    {new Date(watch.watchedAt).toLocaleString()}
+                                    {new Date(
+                                      watch.watchedAt,
+                                    ).toLocaleDateString("en-US", {
+                                      month: "short",
+                                      day: "numeric",
+                                      year: "numeric",
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                      hour12: false,
+                                    })}
                                   </span>
                                 </div>
                                 <button
@@ -495,13 +509,23 @@ export default function MediaDetailsPage() {
                               key={watch.id}
                               className="flex sm:flex-row sm:items-center justify-between gap-2 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700/50"
                             >
-                              <div className="flex items-start gap-2 flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
                                 <span className="text-zinc-300 text-sm break-words">
                                   {watch.seasonNumber !== null &&
                                   watch.episodeNumber !== null
                                     ? `S${watch.seasonNumber} E${watch.episodeNumber}${watch.episodeName ? ` - ${watch.episodeName}` : ""} - `
                                     : ""}
-                                  {new Date(watch.watchedAt).toLocaleString()}
+                                  {new Date(watch.watchedAt).toLocaleDateString(
+                                    "en-US",
+                                    {
+                                      month: "short",
+                                      day: "numeric",
+                                      year: "numeric",
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                      hour12: false,
+                                    },
+                                  )}
                                 </span>
                               </div>
                               <button
