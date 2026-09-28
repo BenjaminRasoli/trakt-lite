@@ -18,6 +18,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Trakt Lite - Track Movies & TV Shows",
   description: "Track your favorite movies and TV shows with Trakt Lite",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
