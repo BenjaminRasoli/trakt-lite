@@ -224,14 +224,14 @@ export async function upsertJellyfinWatchEntry({
   watchedAt: Date;
   source?: string;
 }) {
+  const mediaType = getJellyfinMediaType(item);
+  const title = getJellyfinTitle(item);
+
   const tmdbId = await resolveJellyfinTmdbId(item);
 
   if (!tmdbId) {
     return { created: false, reason: "missing_tmdb_id" };
   }
-
-  const mediaType = getJellyfinMediaType(item);
-  const title = getJellyfinTitle(item);
   const parentIndexNumber = toNumber(
     item?.ParentIndexNumber ?? item?.SeasonNumber,
   );
@@ -239,12 +239,10 @@ export async function upsertJellyfinWatchEntry({
   const seasonNumber =
     parentIndexNumber ?? toNumber(item?.SeasonIndex ?? item?.SeasonNumber);
   
-  // Extract episode name for TV shows
-  const episodeName = mediaType === "tv" 
+  const episodeName = mediaType === "tv"
     ? (item?.Name || item?.OriginalTitle || item?.Title || null)
     : null;
 
-  // Fetch TMDB poster
   let tmdbPosterPath = null;
   try {
     const mediaDetails = await getMediaDetails(tmdbId, mediaType);
@@ -283,24 +281,6 @@ export async function upsertJellyfinWatchEntry({
     },
   });
 
-  const startOfWindow = new Date(watchedAt.getTime() - 1000 * 60 * 30);
-  const existing = await prisma.watchHistory.findFirst({
-    where: {
-      userId,
-      mediaId: media.id,
-      seasonNumber: seasonNumber ?? null,
-      episodeNumber: episodeNumber ?? null,
-      watchedAt: {
-        gte: startOfWindow,
-      },
-    },
-    orderBy: { watchedAt: "desc" },
-  });
-
-  // Only skip if the existing entry is very recent (within 5 minutes)
-  if (existing && (watchedAt.getTime() - existing.watchedAt.getTime()) < 1000 * 60 * 5) {
-    return { created: false, reason: "duplicate_recent_entry" };
-  }
 
   const createdEntry = await prisma.watchHistory.create({
     data: {

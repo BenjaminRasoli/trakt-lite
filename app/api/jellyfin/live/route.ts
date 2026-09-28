@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import {
   getJellyfinCurrentSession,
-  upsertJellyfinWatchEntry,
   getJellyfinTmdbId,
   getJellyfinMediaType,
 } from "@/lib/jellyfin";
@@ -155,18 +154,8 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    let completed = false;
-    if (normalizedPercent >= 80) {
-      const result = await upsertJellyfinWatchEntry({
-        userId: dbUser.id,
-        item,
-        watchedAt: new Date(),
-        source: "jellyfin-live",
-      });
-      completed = result.created;
-    }
+    const completed = normalizedPercent >= 80;
 
-    // Format title for TV shows: SeriesName • EpisodeName
     let title = item.Name || item.OriginalTitle || item.Title || "Unknown";
     if (mediaType === "tv" && item.SeriesName && item.Name) {
       title = `${item.SeriesName} • ${item.Name}`;

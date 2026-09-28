@@ -5,24 +5,50 @@ import { upsertJellyfinWatchEntry } from "@/lib/jellyfin";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
-    const item = body?.Item || body?.item || body?.NowPlayingItem || null;
+
     const eventName = String(
-      body?.EventName || body?.eventName || "",
+      body?.NotificationType || body?.EventName || body?.eventName || "",
     ).toLowerCase();
+
+    const item = body?.Item || body?.item || body?.NowPlayingItem || body;
+
+    if (eventName.includes("userdatasaved")) {
+      if (!item?.Id && item?.ItemId) {
+        item.Id = item.ItemId;
+      }
+
+      if (!item?.Type && item?.ItemType) {
+        item.Type = item.ItemType;
+      }
+
+      if (!item?.ProviderIds) {
+        item.ProviderIds = {};
+        Object.keys(item).forEach(key => {
+          if (key.startsWith('Provider_')) {
+            const providerName = key.replace('Provider_', '').toLowerCase();
+            item.ProviderIds[providerName] = item[key];
+          }
+        });
+      }
+    }
+
+    console.log("Jellyfin webhook:", {
+      event: body?.NotificationType,
+      item: item?.Name || item?.SeriesName,
+      type: item?.Type || item?.ItemType,
+    });
 
     if (!item || !eventName) {
       return NextResponse.json({ ok: false, skipped: true }, { status: 200 });
     }
 
-    const isCompletionEvent =
-      eventName.includes("playbackstop") ||
-      eventName.includes("playbackstopped") ||
-      eventName.includes("itemcompleted") ||
-      eventName.includes("playbackfinished") ||
-      eventName.includes("markwatched");
-
-    if (!isCompletionEvent) {
+    if (!eventName.includes("userdatasaved")) {
       return NextResponse.json({ ok: true, skipped: true }, { status: 200 });
+    }
+
+    const played = body?.Played || item?.Played || body?.UserData?.Played || item?.UserData?.Played;
+    if (!played) {
+      return NextResponse.json({ ok: true, skipped: true, reason: "not_marked_played" }, { status: 200 });
     }
 
     const jellyfinUserId = String(
@@ -56,10 +82,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const jellyfinTimestamp = body?.UtcTimestamp || body?.Timestamp;
+    const watchedAt = jellyfinTimestamp ? new Date(jellyfinTimestamp) : new Date();
+
     const result = await upsertJellyfinWatchEntry({
       userId: user.id,
       item,
-      watchedAt: new Date(),
+      watchedAt,
       source: "jellyfin-webhook",
     });
 
