@@ -74,15 +74,25 @@ export async function searchMedia(query: string): Promise<TMDBMedia[]> {
     return [];
   }
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+
   try {
     const response = await fetch(
       `${TMDB_BASE_URL}/search/multi?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&include_adult=false`,
+      { signal: controller.signal },
     );
+    if (!response.ok) {
+      console.error(`TMDB search request failed (${response.status})`);
+      return [];
+    }
     const data = await response.json();
     return data.results || [];
   } catch (error) {
     console.error("Error searching TMDB:", error);
     return [];
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -92,15 +102,25 @@ export async function getTrendingMedia(): Promise<TMDBMedia[]> {
     return [];
   }
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+
   try {
     const response = await fetch(
       `${TMDB_BASE_URL}/trending/all/week?api_key=${TMDB_API_KEY}`,
+      { signal: controller.signal },
     );
+    if (!response.ok) {
+      console.error(`TMDB trending request failed (${response.status})`);
+      return [];
+    }
     const data = await response.json();
     return data.results || [];
   } catch (error) {
     console.error("Error fetching trending media:", error);
     return [];
+  } finally {
+    clearTimeout(timeout);
   }
 }
 

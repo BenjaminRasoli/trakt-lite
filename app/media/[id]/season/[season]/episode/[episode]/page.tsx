@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import {
   useParams,
   useRouter,
   useSearchParams,
-  notFound,
 } from "next/navigation";
 import { useSupabase } from "@/components/supabase-provider";
 import {
@@ -34,17 +33,38 @@ export default function EpisodePage() {
   const [watchToDelete, setWatchToDelete] = useState<string | null>(null);
   const supabase = useSupabase();
   const router = useRouter();
+  const params = useParams();
+  const searchParams = useSearchParams();
+
+  const mediaId = Number(params.id);
+  const seasonNumber = Number(params.season);
+  const episodeNumber = Number(params.episode);
+  const mediaType = (searchParams.get("type") as "movie" | "tv") || "tv";
+
+  const title = useMemo(() => show ? getMediaTitle(show) : "Unknown", [show]);
+  const posterUrl = useMemo(() => getPosterUrl(show?.poster_path, "w500"), [show?.poster_path]);
+  const stillUrl = useMemo(() => getPosterUrl(episode?.still_path, "original"), [episode?.still_path]);
+  const backdropUrl = useMemo(() => getPosterUrl(show?.backdrop_path, "original"), [show?.backdrop_path]);
+
+  const episodeHistory = useMemo(
+    () =>
+      watchHistory
+        .filter(
+          (watch) =>
+            watch.seasonNumber === seasonNumber &&
+            watch.episodeNumber === episodeNumber,
+        )
+        .sort(
+          (a, b) =>
+            new Date(b.watchedAt).getTime() - new Date(a.watchedAt).getTime(),
+        ),
+    [watchHistory, seasonNumber, episodeNumber],
+  );
 
   const handleTitleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     router.push(`/media/${mediaId}?type=tv`);
   };
-  const params = useParams();
-  const searchParams = useSearchParams();
-  const mediaId = Number(params.id);
-  const seasonNumber = Number(params.season);
-  const episodeNumber = Number(params.episode);
-  const mediaType = (searchParams.get("type") as "movie" | "tv") || "tv";
 
   useEffect(() => {
     const updateUser = (nextUser: any) => {
@@ -260,24 +280,21 @@ export default function EpisodePage() {
   }
 
   if (!show || !season || !episode) {
-    notFound();
-  }
-
-  const title = getMediaTitle(show);
-  const posterUrl = getPosterUrl(show.poster_path, "w500");
-  const stillUrl = getPosterUrl(episode.still_path, "original");
-  const backdropUrl = getPosterUrl(show.backdrop_path, "original");
-
-  const episodeHistory = watchHistory
-    .filter(
-      (watch) =>
-        watch.seasonNumber === seasonNumber &&
-        watch.episodeNumber === episodeNumber,
-    )
-    .sort(
-      (a, b) =>
-        new Date(b.watchedAt).getTime() - new Date(a.watchedAt).getTime(),
+    return (
+      <div className="flex min-h-screen flex-1 items-center justify-center bg-black font-sans">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-white mb-4">Episode Not Found</h1>
+          <p className="text-zinc-400 mb-6">The episode you're looking for could not be loaded.</p>
+          <button
+            onClick={() => router.push("/")}
+            className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-100 shadow-lg shadow-violet-500/10 transition hover:border-violet-400 hover:bg-violet-500/20"
+          >
+            Go Home
+          </button>
+        </div>
+      </div>
     );
+  }
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -330,7 +347,7 @@ export default function EpisodePage() {
                 <img
                   src={stillUrl}
                   alt={episode.name}
-                  className="w-full rounded-lg shadow-2xl"
+                  className="w-full h-auto max-h-[400px] rounded-lg shadow-2xl object-cover"
                   onError={(e) => {
                     e.currentTarget.src = "/placeholder-poster.svg";
                   }}

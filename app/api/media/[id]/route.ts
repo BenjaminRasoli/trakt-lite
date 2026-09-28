@@ -24,10 +24,8 @@ export async function GET(
     }
 
     const tmdbMedia = await getMediaDetails(parseInt(id), type);
-    
     if (tmdbMedia) {
       const releaseDate = tmdbMedia.release_date || tmdbMedia.first_air_date;
-      
       if (media) {
         media = await prisma.media.update({
           where: { id: media.id },
@@ -56,13 +54,7 @@ export async function GET(
           },
         });
       }
-      
       return NextResponse.json(media);
-    } else {
-      if (media) {
-        return NextResponse.json(media);
-      }
-      return NextResponse.json({ error: "Media not found" }, { status: 404 });
     }
 
     if (media) {

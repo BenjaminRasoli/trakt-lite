@@ -1,14 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useSupabase } from "@/components/supabase-provider";
-import {
-  useRouter,
-  useParams,
-  useSearchParams,
-  notFound,
-} from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import {
   getMediaDetails,
   getPosterUrl,
@@ -59,6 +54,38 @@ export default function MediaDetailsPage() {
   const searchParams = useSearchParams();
   const mediaId = params.id as string;
   const mediaType = (searchParams.get("type") as "movie" | "tv") || "movie";
+
+  const title = useMemo(
+    () => (media ? getMediaTitle(media) : "Unknown"),
+    [media],
+  );
+  const date = useMemo(
+    () => (media ? getMediaDate(media) : "Unknown"),
+    [media],
+  );
+  const type = useMemo(
+    () => (media ? getMediaType(media) : "unknown"),
+    [media],
+  );
+  const posterUrl = useMemo(
+    () => getPosterUrl(media?.poster_path!, "w500"),
+    [media?.poster_path],
+  );
+  const backdropUrl = useMemo(
+    () => getPosterUrl(media?.backdrop_path!, "original"),
+    [media?.backdrop_path],
+  );
+  const rating = useMemo(
+    () =>
+      typeof media?.vote_average === "number"
+        ? media.vote_average.toFixed(1)
+        : "N/A",
+    [media?.vote_average],
+  );
+  const genres = useMemo(
+    () => media?.genres?.map((g) => g.name) || [],
+    [media?.genres],
+  );
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
@@ -305,19 +332,25 @@ export default function MediaDetailsPage() {
   }
 
   if (!media) {
-    notFound();
+    return (
+      <div className="flex min-h-screen flex-1 flex-col items-center justify-center bg-black font-sans">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-white mb-4">
+            Media Not Found
+          </h1>
+          <p className="text-zinc-400 mb-6">
+            The media you're looking for could not be loaded.
+          </p>
+          <button
+            onClick={() => router.push("/")}
+            className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-100 shadow-lg shadow-violet-500/10 transition hover:border-violet-400 hover:bg-violet-500/20"
+          >
+            Go Home
+          </button>
+        </div>
+      </div>
+    );
   }
-
-  const title = getMediaTitle(media);
-  const date = getMediaDate(media);
-  const type = getMediaType(media);
-  const posterUrl = getPosterUrl(media.poster_path, "w500");
-  const backdropUrl = getPosterUrl(media.backdrop_path, "original");
-  const rating =
-    typeof media.vote_average === "number"
-      ? media.vote_average.toFixed(1)
-      : "N/A";
-  const genres = media.genres?.map((g) => g.name) || [];
 
   const getAvatarColor = (name: string) => {
     const colors = [
@@ -469,16 +502,18 @@ export default function MediaDetailsPage() {
                                     {watch.seasonNumber !== null &&
                                     watch.episodeNumber !== null
                                       ? `S${watch.seasonNumber} E${watch.episodeNumber}${watch.episodeName ? ` - ${watch.episodeName}` : ""} - `
-                                      : ""}
+                                      : "Watched "}
                                     {new Date(
                                       watch.watchedAt,
                                     ).toLocaleDateString("en-US", {
                                       month: "short",
                                       day: "numeric",
                                       year: "numeric",
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                      hour12: false,
+                                      ...(mediaType === "movie" && {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                        hour12: false,
+                                      }),
                                     })}
                                   </span>
                                 </div>
@@ -514,16 +549,18 @@ export default function MediaDetailsPage() {
                                   {watch.seasonNumber !== null &&
                                   watch.episodeNumber !== null
                                     ? `S${watch.seasonNumber} E${watch.episodeNumber}${watch.episodeName ? ` - ${watch.episodeName}` : ""} - `
-                                    : ""}
+                                    : "Watched "}
                                   {new Date(watch.watchedAt).toLocaleDateString(
                                     "en-US",
                                     {
                                       month: "short",
                                       day: "numeric",
                                       year: "numeric",
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                      hour12: false,
+                                      ...(mediaType === "movie" && {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                        hour12: false,
+                                      }),
                                     },
                                   )}
                                 </span>

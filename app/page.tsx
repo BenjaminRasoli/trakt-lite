@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useMemo } from "react";
 import { useSupabase } from "@/components/supabase-provider";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -251,9 +251,15 @@ function HomeContent() {
     let isMounted = true;
 
     const loadBackdrop = async () => {
-      const trendingMedia = await getTrendingMedia();
-      if (!isMounted) return;
-      setHomeBackdrop(getRandomBackdropUrl(trendingMedia));
+      try {
+        const trendingMedia = await getTrendingMedia();
+        if (!isMounted) return;
+        setHomeBackdrop(getRandomBackdropUrl(trendingMedia));
+      } catch (error) {
+        console.error("Error loading backdrop:", error);
+        if (!isMounted) return;
+        setHomeBackdrop("");
+      }
     };
 
     void loadBackdrop();
@@ -265,11 +271,13 @@ function HomeContent() {
 
   const username =
     user?.user_metadata?.username || user?.email?.split("@")[0] || "User";
-  const capitalizedUsername =
-    username.charAt(0).toUpperCase() + username.slice(1);
-  const visibleNextUp = nextUp.slice(0, 6);
-  const visibleHistory = recentHistory.slice(0, 6);
-  const visibleUpcoming = upcoming.slice(0, 6);
+  const capitalizedUsername = useMemo(
+    () => username.charAt(0).toUpperCase() + username.slice(1),
+    [username],
+  );
+  const visibleNextUp = useMemo(() => nextUp.slice(0, 6), [nextUp]);
+  const visibleHistory = useMemo(() => recentHistory.slice(0, 6), [recentHistory]);
+  const visibleUpcoming = useMemo(() => upcoming.slice(0, 6), [upcoming]);
   const hasSearchResults = searchResults.length > 0 || searching;
 
   if (!initialCheckDone) {

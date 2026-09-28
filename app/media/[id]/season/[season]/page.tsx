@@ -1,13 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
-import {
-  useParams,
-  useRouter,
-  useSearchParams,
-  notFound,
-} from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSupabase } from "@/components/supabase-provider";
 import {
   getMediaDetails,
@@ -33,17 +28,24 @@ export default function SeasonPage() {
   const [watchToDelete, setWatchToDelete] = useState<string | null>(null);
   const supabase = useSupabase();
   const router = useRouter();
+  const params = useParams();
+  const searchParams = useSearchParams();
+
+  const mediaId = Number(params.id);
+  const seasonNumber = Number(params.season);
+  const mediaType = (searchParams.get("type") as "movie" | "tv") || "tv";
+  const modalOpen = Boolean(selectedEpisode);
+
+  const title = useMemo(() => (show ? getMediaTitle(show) : "Unknown"), [show]);
+  const posterUrl = useMemo(
+    () => getPosterUrl(show?.poster_path, "w500"),
+    [show?.poster_path],
+  );
 
   const handleTitleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     router.push(`/media/${mediaId}?type=tv`);
   };
-  const params = useParams();
-  const searchParams = useSearchParams();
-  const mediaId = Number(params.id);
-  const seasonNumber = Number(params.season);
-  const mediaType = (searchParams.get("type") as "movie" | "tv") || "tv";
-  const modalOpen = Boolean(selectedEpisode);
 
   useEffect(() => {
     const updateUser = (nextUser: any) => {
@@ -286,11 +288,25 @@ export default function SeasonPage() {
   }
 
   if (!show || !season) {
-    notFound();
+    return (
+      <div className="flex min-h-screen flex-1 items-center justify-center bg-black font-sans">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-white mb-4">
+            Season Not Found
+          </h1>
+          <p className="text-zinc-400 mb-6">
+            The season you're looking for could not be loaded.
+          </p>
+          <button
+            onClick={() => router.push("/")}
+            className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-100 shadow-lg shadow-violet-500/10 transition hover:border-violet-400 hover:bg-violet-500/20"
+          >
+            Go Home
+          </button>
+        </div>
+      </div>
+    );
   }
-
-  const title = getMediaTitle(show);
-  const posterUrl = getPosterUrl(show.poster_path, "w500");
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -400,15 +416,15 @@ export default function SeasonPage() {
                   <div className="w-full md:w-36">
                     {episode.still_path ? (
                       <img
-                        src={getPosterUrl(episode.still_path, "w500")}
+                        src={getPosterUrl(episode.still_path)}
                         alt={episode.name}
-                        className="h-24 w-full rounded-lg object-cover"
+                        className="h-auto md:h-24 w-full rounded-lg object-cover"
                         onError={(e) => {
                           e.currentTarget.src = "/placeholder-poster.svg";
                         }}
                       />
                     ) : (
-                      <div className="flex h-24 w-full items-center justify-center rounded-lg border border-zinc-700 bg-zinc-800 text-sm text-zinc-400">
+                      <div className="flex h-32 sm:h-36 md:h-24 w-full items-center justify-center rounded-lg border border-zinc-700 bg-zinc-800 text-sm text-zinc-400">
                         No image
                       </div>
                     )}
