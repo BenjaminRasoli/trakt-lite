@@ -24,6 +24,8 @@ export default function SeasonPage() {
     "justWatched" | "releaseDate" | "unknownDate" | "otherDate"
   >("justWatched");
   const [addingWatch, setAddingWatch] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [watchToDelete, setWatchToDelete] = useState<string | null>(null);
   const supabase = useSupabase();
   const router = useRouter();
   const params = useParams();
@@ -109,24 +111,33 @@ export default function SeasonPage() {
   }, [user, mediaId]);
 
   useEffect(() => {
-    document.body.style.overflow = modalOpen ? "hidden" : "";
+    const isAnyModalOpen = modalOpen || showDeleteConfirm;
+    document.body.style.overflow = isAnyModalOpen ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
-  }, [modalOpen]);
+  }, [modalOpen, showDeleteConfirm]);
 
   useEffect(() => {
-    if (!modalOpen) return;
+    if (!modalOpen && !showDeleteConfirm) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        closeWatchModal();
+        if (showDeleteConfirm) {
+          setShowDeleteConfirm(false);
+          setWatchToDelete(null);
+          return;
+        }
+
+        if (modalOpen) {
+          closeWatchModal();
+        }
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [modalOpen]);
+  }, [modalOpen, showDeleteConfirm]);
 
   const openWatchModal = (episode: any) => {
     const existingHistory = watchHistory
@@ -219,6 +230,30 @@ export default function SeasonPage() {
       console.error("Error saving episode watch state:", error);
     } finally {
       setAddingWatch(false);
+    }
+  };
+
+  const handleDeleteWatch = async (watchId: string) => {
+    setWatchToDelete(watchId);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteWatch = async () => {
+    if (!watchToDelete) return;
+
+    try {
+      const response = await fetch(`/api/watch-history/${watchToDelete}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        setWatchHistory(watchHistory.filter((w) => w.id !== watchToDelete));
+      }
+    } catch (error) {
+      console.error("Error deleting watch history:", error);
+    } finally {
+      setShowDeleteConfirm(false);
+      setWatchToDelete(null);
     }
   };
 
@@ -410,15 +445,23 @@ export default function SeasonPage() {
                       </p>
 
                       {episodeHistory.length > 0 ? (
-                        <div className="flex flex-wrap gap-2">
+                        <div className="space-y-2">
                           {episodeHistory.map((watch) => (
-                            <span
+                            <div
                               key={watch.id}
-                              className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-[10px] font-medium uppercase tracking-[0.15em] text-emerald-300"
+                              className="flex items-center justify-between gap-2 p-2 bg-zinc-700/30 rounded-lg"
                             >
-                              Watched{" "}
-                              {new Date(watch.watchedAt).toLocaleDateString()}
-                            </span>
+                              <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-[10px] font-medium uppercase tracking-[0.15em] text-emerald-300">
+                                Watched{" "}
+                                {new Date(watch.watchedAt).toLocaleDateString()}
+                              </span>
+                              <button
+                                onClick={() => handleDeleteWatch(watch.id)}
+                                className="px-2 py-1 cursor-pointer text-red-400 hover:text-red-300 text-xs whitespace-nowrap"
+                              >
+                                Remove
+                              </button>
+                            </div>
                           ))}
                         </div>
                       ) : (
@@ -536,6 +579,44 @@ export default function SeasonPage() {
                 className="flex-1 cursor-pointer rounded bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-2 text-white transition hover:from-violet-700 hover:to-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {addingWatch ? "Adding..." : "Add"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteConfirm && (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-4"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowDeleteConfirm(false);
+              setWatchToDelete(null);
+            }
+          }}
+        >
+          <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-6 w-full max-w-sm mx-4 shadow-2xl">
+            <h3 className="text-lg font-semibold text-white mb-2">
+              Are you sure?
+            </h3>
+            <p className="text-zinc-300 mb-6">
+              Do you really want to remove this watch history entry?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setWatchToDelete(null);
+                }}
+                className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-medium text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteWatch}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition cursor-pointer"
+              >
+                Remove
               </button>
             </div>
           </div>
