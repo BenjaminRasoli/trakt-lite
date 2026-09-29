@@ -153,54 +153,48 @@ function HomeContent() {
       setHistoryLoading(true);
 
       try {
-        const response = await fetch(
-          "/api/watch-history?limit=6&nextUpLimit=6&nextUp=true&upcoming=true",
-        );
-        if (!response.ok) {
+        const [historyResponse, liveResponse] = await Promise.all([
+          fetch(
+            "/api/watch-history?limit=6&nextUpLimit=6&nextUp=true&upcoming=true",
+          ),
+          fetch("/api/jellyfin/live").catch(() => ({ ok: false })),
+        ]);
+
+        if (historyResponse.ok) {
+          const responseData = await historyResponse.json();
+          const data = Array.isArray(responseData.items)
+            ? responseData.items
+            : [];
+          const nextUpItems = Array.isArray(responseData.nextUp)
+            ? responseData.nextUp.slice(0, 6)
+            : [];
+          const upcomingItems = Array.isArray(responseData.upcoming)
+            ? responseData.upcoming.slice(0, 6)
+            : [];
+
+          setNextUp(nextUpItems);
+          setUpcoming(upcomingItems);
+          setRecentHistory(data.slice(0, 6));
+        } else {
           setRecentHistory([]);
           setNextUp([]);
           setUpcoming([]);
-          return;
         }
 
-        const responseData = await response.json();
-        const data = Array.isArray(responseData.items)
-          ? responseData.items
-          : [];
-        const nextUpItems = Array.isArray(responseData.nextUp)
-          ? responseData.nextUp.slice(0, 6)
-          : [];
-        const upcomingItems = Array.isArray(responseData.upcoming)
-          ? responseData.upcoming.slice(0, 6)
-          : [];
+        if (liveResponse.ok) {
+          const data =
+            liveResponse instanceof Response ? await liveResponse.json() : null;
 
-        setNextUp(nextUpItems);
-        setUpcoming(upcomingItems);
-
-        const enrichedData = await Promise.all(
-          data.slice(0, 6).map(async (historyItem: any) => {
-            const media = historyItem.media;
-            if (!media.posterPath && media.tmdbId) {
-              try {
-                const mediaResponse = await fetch(
-                  `/api/media/${media.tmdbId}?type=${media.mediaType}`,
-                );
-                if (mediaResponse.ok) {
-                  const updatedMedia = await mediaResponse.json();
-                  return { ...historyItem, media: updatedMedia };
-                }
-              } catch (error) {
-                console.error("Error fetching media details:", error);
-              }
-            }
-            return historyItem;
-          }),
-        );
-
-        setRecentHistory(enrichedData);
+          const nextSession = data?.active ?? null;
+          setLiveSession(nextSession);
+        } else {
+          setLiveSession((current: any) => current ?? null);
+        }
       } catch (error) {
         console.error("Error fetching recent history:", error);
         setRecentHistory([]);
+        setNextUp([]);
+        setUpcoming([]);
       } finally {
         setHistoryLoading(false);
       }
@@ -215,20 +209,16 @@ function HomeContent() {
     const fetchLiveSession = async () => {
       try {
         const response = await fetch("/api/jellyfin/live");
-        if (!response.ok) {
-          setLiveSession((current: any) => current ?? null);
-          return;
+        if (response.ok) {
+          const data = await response.json();
+          const nextSession = data?.active ?? null;
+          setLiveSession(nextSession);
         }
-
-        const data = await response.json();
-        const nextSession = data?.active ?? null;
-        setLiveSession(nextSession);
       } catch {
-        setLiveSession((current: any) => current ?? null);
+        // Silently fail for live session updates
       }
     };
 
-    void fetchLiveSession();
     const interval = setInterval(() => {
       void fetchLiveSession();
     }, 15000);
@@ -527,7 +517,7 @@ function HomeContent() {
               </section>
             )}
 
-            {!searching && visibleNextUp.length > 0 && (
+            {!searching && (visibleNextUp.length > 0 || historyLoading) && (
               <section className="mb-8">
                 <div className="mb-4 flex items-center justify-between gap-4">
                   <div>
@@ -546,48 +536,62 @@ function HomeContent() {
                 </div>
 
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
-                  {visibleNextUp.map((item) => (
-                    <Link
-                      key={`${item.tmdbId}-${item.seasonNumber}-${item.episodeNumber}`}
-                      href={`/media/${item.tmdbId}/season/${item.seasonNumber}/episode/${item.episodeNumber}?type=tv`}
-                      className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:-translate-y-0.5 hover:border-violet-500/50"
-                    >
-                      <div className="relative aspect-[2/3] overflow-hidden">
-                        <img
-                          src={getPosterUrl(item.posterPath || null)}
-                          alt={item.episodeTitle}
-                          className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                          onError={(e) => {
-                            e.currentTarget.src = "/placeholder-poster.svg";
-                          }}
-                        />
-                      </div>
+                  {historyLoading
+                    ? Array.from({ length: 6 }).map((_, index) => (
+                        <div
+                          key={`nextup-skeleton-${index}`}
+                          className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 animate-pulse"
+                        >
+                          <div className="relative aspect-[2/3] bg-zinc-800" />
+                          <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
+                            <div className="h-2.5 w-10 rounded-full bg-zinc-700" />
+                            <div className="h-3 w-20 rounded-full bg-zinc-700" />
+                            <div className="h-2.5 w-14 rounded-full bg-zinc-700" />
+                          </div>
+                        </div>
+                      ))
+                    : visibleNextUp.map((item) => (
+                        <Link
+                          key={`${item.tmdbId}-${item.seasonNumber}-${item.episodeNumber}`}
+                          href={`/media/${item.tmdbId}/season/${item.seasonNumber}/episode/${item.episodeNumber}?type=tv`}
+                          className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:-translate-y-0.5 hover:border-violet-500/50"
+                        >
+                          <div className="relative aspect-[2/3] overflow-hidden">
+                            <img
+                              src={getPosterUrl(item.posterPath || null)}
+                              alt={item.episodeTitle}
+                              className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                              onError={(e) => {
+                                e.currentTarget.src = "/placeholder-poster.svg";
+                              }}
+                            />
+                          </div>
 
-                      <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
-                        <div className="text-[10px] font-medium uppercase tracking-[0.15em] text-violet-300">
-                          S{item.seasonNumber} • E{item.episodeNumber}
-                        </div>
-                        <div className="line-clamp-2 text-xs font-semibold text-white">
-                          <span
-                            onClick={(e) =>
-                              handleTitleClick(e, item.tmdbId, "tv")
-                            }
-                            className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
-                          >
-                            {item.title}
-                          </span>
-                        </div>
-                        <div className="line-clamp-1 text-[10px] text-zinc-400">
-                          {item.episodeTitle}
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
+                          <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
+                            <div className="text-[10px] font-medium uppercase tracking-[0.15em] text-violet-300">
+                              S{item.seasonNumber} • E{item.episodeNumber}
+                            </div>
+                            <div className="line-clamp-2 text-xs font-semibold text-white">
+                              <span
+                                onClick={(e) =>
+                                  handleTitleClick(e, item.tmdbId, "tv")
+                                }
+                                className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
+                              >
+                                {item.title}
+                              </span>
+                            </div>
+                            <div className="line-clamp-1 text-[10px] text-zinc-400">
+                              {item.episodeTitle}
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
                 </div>
               </section>
             )}
 
-            {!searching && visibleUpcoming.length > 0 && (
+            {!searching && (visibleUpcoming.length > 0 || historyLoading) && (
               <section className="mb-8">
                 <div className="mb-4 flex items-center justify-between gap-4">
                   <div>
@@ -606,56 +610,70 @@ function HomeContent() {
                 </div>
 
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
-                  {visibleUpcoming.map((item) => (
-                    <Link
-                      key={`${item.tmdbId}-${item.seasonNumber}-${item.episodeNumber}-${item.airDate || "unknown"}`}
-                      href={`/media/${item.tmdbId}/season/${item.seasonNumber}/episode/${item.episodeNumber}?type=tv`}
-                      className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:-translate-y-0.5 hover:border-violet-500/50"
-                    >
-                      <div className="relative aspect-[2/3] overflow-hidden">
-                        <img
-                          src={getPosterUrl(item.posterPath || null)}
-                          alt={item.episodeTitle}
-                          className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                          onError={(e) => {
-                            e.currentTarget.src = "/placeholder-poster.svg";
-                          }}
-                        />
-                      </div>
+                  {historyLoading
+                    ? Array.from({ length: 6 }).map((_, index) => (
+                        <div
+                          key={`upcoming-skeleton-${index}`}
+                          className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 animate-pulse"
+                        >
+                          <div className="relative aspect-[2/3] bg-zinc-800" />
+                          <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
+                            <div className="h-2.5 w-10 rounded-full bg-zinc-700" />
+                            <div className="h-3 w-20 rounded-full bg-zinc-700" />
+                            <div className="h-2.5 w-14 rounded-full bg-zinc-700" />
+                          </div>
+                        </div>
+                      ))
+                    : visibleUpcoming.map((item) => (
+                        <Link
+                          key={`${item.tmdbId}-${item.seasonNumber}-${item.episodeNumber}-${item.airDate || "unknown"}`}
+                          href={`/media/${item.tmdbId}/season/${item.seasonNumber}/episode/${item.episodeNumber}?type=tv`}
+                          className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:-translate-y-0.5 hover:border-violet-500/50"
+                        >
+                          <div className="relative aspect-[2/3] overflow-hidden">
+                            <img
+                              src={getPosterUrl(item.posterPath || null)}
+                              alt={item.episodeTitle}
+                              className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                              onError={(e) => {
+                                e.currentTarget.src = "/placeholder-poster.svg";
+                              }}
+                            />
+                          </div>
 
-                      <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
-                        <div className="text-[10px] font-medium uppercase tracking-[0.15em] text-violet-300">
-                          {item.airDate
-                            ? new Date(item.airDate).toLocaleDateString(
-                                undefined,
-                                {
-                                  month: "short",
-                                  day: "numeric",
-                                },
-                              )
-                            : "Coming soon"}
-                        </div>
-                        <div className="line-clamp-2 text-xs font-semibold text-white">
-                          <span
-                            onClick={(e) =>
-                              handleTitleClick(e, item.tmdbId, "tv")
-                            }
-                            className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
-                          >
-                            {item.title}
-                          </span>
-                        </div>
-                        <div className="line-clamp-1 text-[10px] text-zinc-400">
-                          {item.episodeTitle}
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
+                          <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
+                            <div className="text-[10px] font-medium uppercase tracking-[0.15em] text-violet-300">
+                              {item.airDate
+                                ? new Date(item.airDate).toLocaleDateString(
+                                    undefined,
+                                    {
+                                      month: "short",
+                                      day: "numeric",
+                                    },
+                                  )
+                                : "Coming soon"}
+                            </div>
+                            <div className="line-clamp-2 text-xs font-semibold text-white">
+                              <span
+                                onClick={(e) =>
+                                  handleTitleClick(e, item.tmdbId, "tv")
+                                }
+                                className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
+                              >
+                                {item.title}
+                              </span>
+                            </div>
+                            <div className="line-clamp-1 text-[10px] text-zinc-400">
+                              {item.episodeTitle}
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
                 </div>
               </section>
             )}
 
-            {!searching && visibleHistory.length > 0 && (
+            {!searching && (visibleHistory.length > 0 || historyLoading) && (
               <section className="mb-8">
                 <div className="mb-4 flex items-center justify-between gap-4">
                   <div>
@@ -674,73 +692,88 @@ function HomeContent() {
                 </div>
 
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
-                  {visibleHistory.map((historyItem) => {
-                    const media = historyItem.media;
-                    const watchedDate = new Date(historyItem.watchedAt);
-                    const episodeLabel =
-                      historyItem.seasonNumber !== null &&
-                      historyItem.episodeNumber !== null
-                        ? `S${historyItem.seasonNumber} E${historyItem.episodeNumber}`
-                        : null;
-
-                    const historyLink =
-                      historyItem.seasonNumber !== null &&
-                      historyItem.episodeNumber !== null
-                        ? `/media/${media.tmdbId}/season/${historyItem.seasonNumber}/episode/${historyItem.episodeNumber}?type=${media.mediaType}`
-                        : `/media/${media.tmdbId}?type=${media.mediaType}`;
-
-                    return (
-                      <Link
-                        key={historyItem.id}
-                        href={historyLink}
-                        className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:-translate-y-0.5 hover:border-violet-500/50"
-                      >
-                        <div className="relative aspect-[2/3] overflow-hidden">
-                          <img
-                            src={getPosterUrl(media.posterPath || null)}
-                            alt={media.title}
-                            className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                            onError={(e) => {
-                              e.currentTarget.src = "/placeholder-poster.svg";
-                            }}
-                          />
-                        </div>
-
-                        <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
-                          <div className="text-[10px] font-medium uppercase tracking-[0.15em] text-violet-300">
-                            {watchedDate.toLocaleDateString(undefined, {
-                              month: "short",
-                              day: "numeric",
-                            })}{" "}
+                  {historyLoading
+                    ? Array.from({ length: 6 }).map((_, index) => (
+                        <div
+                          key={`history-skeleton-${index}`}
+                          className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 animate-pulse"
+                        >
+                          <div className="relative aspect-[2/3] bg-zinc-800" />
+                          <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
+                            <div className="h-2.5 w-10 rounded-full bg-zinc-700" />
+                            <div className="h-3 w-20 rounded-full bg-zinc-700" />
+                            <div className="h-2.5 w-14 rounded-full bg-zinc-700" />
                           </div>
-                          <div className="line-clamp-1 text-xs font-semibold text-white">
-                            <span
-                              onClick={(e) =>
-                                handleTitleClick(
-                                  e,
-                                  media.tmdbId,
-                                  media.mediaType,
-                                )
-                              }
-                              className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
-                            >
-                              {media.title}
-                            </span>
-                          </div>
-                          {historyItem.episodeName && (
-                            <div className="line-clamp-1 text-[10px] text-zinc-300">
-                              {historyItem.episodeName}
-                            </div>
-                          )}
-                          {episodeLabel && (
-                            <div className="text-[10px] text-zinc-400">
-                              {episodeLabel}
-                            </div>
-                          )}
                         </div>
-                      </Link>
-                    );
-                  })}
+                      ))
+                    : visibleHistory.map((historyItem) => {
+                        const media = historyItem.media;
+                        const watchedDate = new Date(historyItem.watchedAt);
+                        const episodeLabel =
+                          historyItem.seasonNumber !== null &&
+                          historyItem.episodeNumber !== null
+                            ? `S${historyItem.seasonNumber} E${historyItem.episodeNumber}`
+                            : null;
+
+                        const historyLink =
+                          historyItem.seasonNumber !== null &&
+                          historyItem.episodeNumber !== null
+                            ? `/media/${media.tmdbId}/season/${historyItem.seasonNumber}/episode/${historyItem.episodeNumber}?type=${media.mediaType}`
+                            : `/media/${media.tmdbId}?type=${media.mediaType}`;
+
+                        return (
+                          <Link
+                            key={historyItem.id}
+                            href={historyLink}
+                            className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:-translate-y-0.5 hover:border-violet-500/50"
+                          >
+                            <div className="relative aspect-[2/3] overflow-hidden">
+                              <img
+                                src={getPosterUrl(media.posterPath || null)}
+                                alt={media.title}
+                                className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                                onError={(e) => {
+                                  e.currentTarget.src =
+                                    "/placeholder-poster.svg";
+                                }}
+                              />
+                            </div>
+
+                            <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
+                              <div className="text-[10px] font-medium uppercase tracking-[0.15em] text-violet-300">
+                                {watchedDate.toLocaleDateString(undefined, {
+                                  month: "short",
+                                  day: "numeric",
+                                })}{" "}
+                              </div>
+                              <div className="line-clamp-1 text-xs font-semibold text-white">
+                                <span
+                                  onClick={(e) =>
+                                    handleTitleClick(
+                                      e,
+                                      media.tmdbId,
+                                      media.mediaType,
+                                    )
+                                  }
+                                  className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
+                                >
+                                  {media.title}
+                                </span>
+                              </div>
+                              {historyItem.episodeName && (
+                                <div className="line-clamp-1 text-[10px] text-zinc-300">
+                                  {historyItem.episodeName}
+                                </div>
+                              )}
+                              {episodeLabel && (
+                                <div className="text-[10px] text-zinc-400">
+                                  {episodeLabel}
+                                </div>
+                              )}
+                            </div>
+                          </Link>
+                        );
+                      })}
                 </div>
               </section>
             )}

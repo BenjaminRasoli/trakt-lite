@@ -5,6 +5,8 @@ import { getMediaDetails } from "@/lib/tmdb";
 
 // Cache for TMDB API calls to reduce redundant requests
 const mediaCache = new Map<string, any>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const cacheTimestamps = new Map<string, number>();
 
 async function hydrateMissingMediaMetadata(media: {
   tmdbId: number;
@@ -19,15 +21,20 @@ async function hydrateMissingMediaMetadata(media: {
   }
 
   const cacheKey = `${media.tmdbId}:${media.mediaType}`;
+  const now = Date.now();
+  
   if (mediaCache.has(cacheKey)) {
-    const cached = mediaCache.get(cacheKey);
-    return {
-      ...media,
-      title: cached.title || media.title,
-      posterPath: cached.posterPath || media.posterPath,
-      backdropPath: cached.backdropPath || media.backdropPath,
-      overview: cached.overview || media.overview,
-    };
+    const cacheTime = cacheTimestamps.get(cacheKey) || 0;
+    if (now - cacheTime < CACHE_TTL) {
+      const cached = mediaCache.get(cacheKey);
+      return {
+        ...media,
+        title: cached.title || media.title,
+        posterPath: cached.posterPath || media.posterPath,
+        backdropPath: cached.backdropPath || media.backdropPath,
+        overview: cached.overview || media.overview,
+      };
+    }
   }
 
   const mediaType = media.mediaType === "tv" ? "tv" : "movie";
@@ -45,13 +52,14 @@ async function hydrateMissingMediaMetadata(media: {
     overview: tmdbMedia.overview || media.overview || "",
   };
 
-  // Cache the result
+  // Cache the result with timestamp
   mediaCache.set(cacheKey, {
     title: hydratedMedia.title,
     posterPath: hydratedMedia.posterPath,
     backdropPath: hydratedMedia.backdropPath,
     overview: hydratedMedia.overview,
   });
+  cacheTimestamps.set(cacheKey, now);
 
   prisma.media
     .upsert({
