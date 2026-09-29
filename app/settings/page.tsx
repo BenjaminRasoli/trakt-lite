@@ -26,6 +26,7 @@ export default function SettingsPage() {
   const [savingJellyfin, setSavingJellyfin] = useState(false);
   const [liveSession, setLiveSession] = useState<any>(null);
   const [loadingLiveSession, setLoadingLiveSession] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
   const lastActiveSessionRef = useRef<any>(null);
   const lastActiveAtRef = useRef<number>(0);
   const initialLiveCheckRef = useRef(false);
@@ -169,6 +170,14 @@ export default function SettingsPage() {
 
     return () => clearInterval(interval);
   }, [user]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   const handleImport = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -392,11 +401,6 @@ export default function SettingsPage() {
               <h2 className="text-xl font-bold text-white">
                 Jellyfin scrobble sync
               </h2>
-              {liveSession && (
-                <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-200">
-                  Live
-                </span>
-              )}
             </div>
 
             {loadingLiveSession ? (
@@ -405,7 +409,13 @@ export default function SettingsPage() {
               </p>
             ) : liveSession ? (
               <Link
-                href={liveSession.tmdbId ? `/media/${liveSession.tmdbId}?type=${liveSession.mediaType}` : "#"}
+                href={
+                  liveSession.tmdbId
+                    ? liveSession.seasonNumber && liveSession.episodeNumber
+                      ? `/media/${liveSession.tmdbId}/season/${liveSession.seasonNumber}/episode/${liveSession.episodeNumber}?type=${liveSession.mediaType}`
+                      : `/media/${liveSession.tmdbId}?type=${liveSession.mediaType}`
+                    : "#"
+                }
                 className="mb-5 block overflow-hidden rounded-2xl border border-emerald-500/30 bg-emerald-500/10 transition hover:border-emerald-400 hover:bg-emerald-500/20"
               >
                 <div className="flex gap-4 p-4">
@@ -426,27 +436,50 @@ export default function SettingsPage() {
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="mb-2 flex items-center gap-2">
-                      <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.85)]" />
+                    <div className="flex items-center gap-2">
+                      <span className="relative flex h-2.5 w-2.5">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60 [animation-duration:1.8s]" />
+                        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.85)]" />
+                      </span>
                       <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-emerald-200">
                         Now playing
                       </p>
                     </div>
                     <p className="truncate text-lg font-bold text-white">
-                      {liveSession.title}
+                      {liveSession.mediaType === "tv"
+                        ? liveSession.seriesName || liveSession.title
+                        : liveSession.title}
                     </p>
-                    <p className="mt-1 text-sm text-zinc-300">
-                      {liveSession.episodeLabel
-                        ? `${liveSession.type} • ${liveSession.episodeLabel}`
-                        : liveSession.type}
+                    <p className="mt-1 text-sm text-emerald-200">
+                      {liveSession.mediaType === "tv" &&
+                      liveSession.episodeLabel
+                        ? `${liveSession.episodeLabel} • ${liveSession.episodeName || ""}`
+                        : ""}
+                    </p>
+                    <p className="mt-1 text-sm">
+                      <span className="text-emerald-200">
+                        {liveSession.remainingMinutes > 0
+                          ? `${liveSession.remainingMinutes} min left`
+                          : "Finishing up"}
+                      </span>
                       {" • "}
-                      {Math.round(liveSession.percent)}% watched
+                      <span className="text-zinc-300">
+                        Ends at{" "}
+                        {(() => {
+                          const endTime = new Date(
+                            currentTime.getTime() +
+                              liveSession.remainingMinutes * 60000,
+                          );
+
+                          return endTime.toLocaleTimeString("en-US", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: false,
+                          });
+                        })()}
+                      </span>
                     </p>
-                    <p className="mt-1 text-xs text-emerald-200">
-                      {liveSession.remainingMinutes > 0
-                        ? `${liveSession.remainingMinutes} min left`
-                        : "Finishing up"}
-                    </p>
+
                     <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-zinc-800">
                       <div
                         className="h-full rounded-full bg-gradient-to-r from-violet-500 to-emerald-400"

@@ -83,13 +83,18 @@ function HomeContent() {
   const [nextUp, setNextUp] = useState<any[]>([]);
   const [upcoming, setUpcoming] = useState<any[]>([]);
   const [liveSession, setLiveSession] = useState<any>(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
   const [historyLoading, setHistoryLoading] = useState(false);
   const [mediaCache, setMediaCache] = useState<Record<number, any>>({});
   const supabase = useSupabase();
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const handleTitleClick = (e: React.MouseEvent, tmdbId: number, mediaType: string) => {
+  const handleTitleClick = (
+    e: React.MouseEvent,
+    tmdbId: number,
+    mediaType: string,
+  ) => {
     e.preventDefault();
     e.stopPropagation();
     router.push(`/media/${tmdbId}?type=${mediaType}`);
@@ -231,6 +236,14 @@ function HomeContent() {
     return () => clearInterval(interval);
   }, [user]);
 
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
@@ -276,7 +289,10 @@ function HomeContent() {
     [username],
   );
   const visibleNextUp = useMemo(() => nextUp.slice(0, 6), [nextUp]);
-  const visibleHistory = useMemo(() => recentHistory.slice(0, 6), [recentHistory]);
+  const visibleHistory = useMemo(
+    () => recentHistory.slice(0, 6),
+    [recentHistory],
+  );
   const visibleUpcoming = useMemo(() => upcoming.slice(0, 6), [upcoming]);
   const hasSearchResults = searchResults.length > 0 || searching;
 
@@ -421,15 +437,6 @@ function HomeContent() {
           <>
             {!searching && liveSession && (
               <section className="mb-8">
-                <div className="mb-4 flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <span className="h-3 w-3 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_18px_rgba(52,211,153,0.9)] [animation-duration:1.2s]" />
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-emerald-300">
-                      Live now
-                    </p>
-                  </div>
-                </div>
-
                 <Link
                   href={
                     liveSession.tmdbId
@@ -453,20 +460,57 @@ function HomeContent() {
                     </div>
 
                     <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="relative flex h-2.5 w-2.5">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60 [animation-duration:1.8s]" />
+                          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.85)]" />
+                        </span>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-emerald-200">
+                          Now playing
+                        </p>
+                      </div>
                       <p className="text-lg font-bold text-white">
-                        {liveSession.title}
+                        {liveSession.mediaType === "tv"
+                          ? liveSession.seriesName || liveSession.title
+                          : liveSession.title}
                       </p>
-                      <p className="mt-1 text-sm text-zinc-300">
-                        {liveSession.episodeLabel
-                          ? `${liveSession.type} • ${liveSession.episodeLabel}`
-                          : liveSession.type}
+                      <p className="mt-1 text-sm">
+                        {liveSession.mediaType === "tv" &&
+                        liveSession.episodeLabel ? (
+                          <>
+                            <span className="text-emerald-200">
+                              {liveSession.episodeLabel}
+                            </span>
+                            {" • "}
+                            <span className="text-zinc-300">
+                              {liveSession.episodeName || ""}
+                            </span>
+                          </>
+                        ) : null}
+                      </p>
+
+                      <p className="mt-1 text-sm">
+                        <span className="text-emerald-200">
+                          {liveSession.remainingMinutes > 0
+                            ? `${liveSession.remainingMinutes} min left`
+                            : "Finishing up"}
+                        </span>
                         {" • "}
-                        {Math.round(liveSession.percent)}% watched
-                      </p>
-                      <p className="mt-1 text-xs text-emerald-200">
-                        {liveSession.remainingMinutes > 0
-                          ? `${liveSession.remainingMinutes} min left`
-                          : "Finishing up"}
+                        <span className="text-zinc-300">
+                          Ends at{" "}
+                          {(() => {
+                            const endTime = new Date(
+                              currentTime.getTime() +
+                                liveSession.remainingMinutes * 60000,
+                            );
+
+                            return endTime.toLocaleTimeString("en-US", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              hour12: false,
+                            });
+                          })()}
+                        </span>
                       </p>
 
                       <div className="mt-3 h-2 w-[85%] min-w-[140px] max-w-[450px] overflow-hidden rounded-full bg-zinc-800">
@@ -525,7 +569,9 @@ function HomeContent() {
                         </div>
                         <div className="line-clamp-2 text-xs font-semibold text-white">
                           <span
-                            onClick={(e) => handleTitleClick(e, item.tmdbId, "tv")}
+                            onClick={(e) =>
+                              handleTitleClick(e, item.tmdbId, "tv")
+                            }
                             className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
                           >
                             {item.title}
@@ -591,7 +637,9 @@ function HomeContent() {
                         </div>
                         <div className="line-clamp-2 text-xs font-semibold text-white">
                           <span
-                            onClick={(e) => handleTitleClick(e, item.tmdbId, "tv")}
+                            onClick={(e) =>
+                              handleTitleClick(e, item.tmdbId, "tv")
+                            }
                             className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
                           >
                             {item.title}
@@ -669,7 +717,13 @@ function HomeContent() {
                           </div>
                           <div className="line-clamp-1 text-xs font-semibold text-white">
                             <span
-                              onClick={(e) => handleTitleClick(e, media.tmdbId, media.mediaType)}
+                              onClick={(e) =>
+                                handleTitleClick(
+                                  e,
+                                  media.tmdbId,
+                                  media.mediaType,
+                                )
+                              }
                               className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
                             >
                               {media.title}

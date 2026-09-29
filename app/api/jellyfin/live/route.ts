@@ -157,6 +157,8 @@ export async function GET(request: NextRequest) {
     const completed = normalizedPercent >= 80;
 
     let title = item.Name || item.OriginalTitle || item.Title || "Unknown";
+    let seriesName = item.SeriesName || null;
+    let episodeName = item.Name || null;
     if (mediaType === "tv" && item.SeriesName && item.Name) {
       title = `${item.SeriesName} • ${item.Name}`;
     }
@@ -164,6 +166,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       active: {
         title,
+        seriesName,
+        episodeName,
         type: item.Type || "media",
         mediaType,
         tmdbId,

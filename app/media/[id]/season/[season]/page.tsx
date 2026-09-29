@@ -14,6 +14,7 @@ import {
 export default function SeasonPage() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [dataLoaded, setDataLoaded] = useState(false);
   const [show, setShow] = useState<any>(null);
   const [season, setSeason] = useState<any>(null);
   const [watchHistory, setWatchHistory] = useState<any[]>([]);
@@ -89,6 +90,10 @@ export default function SeasonPage() {
         setSeason(seasonDetails);
       } catch (error) {
         console.error("Error loading season data:", error);
+        setShow(null);
+        setSeason(null);
+      } finally {
+        setDataLoaded(true);
       }
     };
 
@@ -269,7 +274,7 @@ export default function SeasonPage() {
     }
   };
 
-  if (loading) {
+  if (loading || !dataLoaded) {
     return (
       <div className="flex min-h-screen flex-1 items-center justify-center bg-black">
         <div className="flex items-center gap-3 text-violet-300">
@@ -414,20 +419,22 @@ export default function SeasonPage() {
               >
                 <div className="flex flex-col gap-4 md:flex-row md:items-start">
                   <div className="w-full md:w-36">
-                    {episode.still_path ? (
-                      <img
-                        src={getPosterUrl(episode.still_path)}
-                        alt={episode.name}
-                        className="h-auto md:h-24 w-full rounded-lg object-cover"
-                        onError={(e) => {
-                          e.currentTarget.src = "/placeholder-poster.svg";
-                        }}
-                      />
-                    ) : (
-                      <div className="flex h-32 sm:h-36 md:h-24 w-full items-center justify-center rounded-lg border border-zinc-700 bg-zinc-800 text-sm text-zinc-400">
-                        No image
-                      </div>
-                    )}
+                    <div className="aspect-video w-full rounded-lg overflow-hidden bg-zinc-800">
+                      {episode.still_path ? (
+                        <img
+                          src={getPosterUrl(episode.still_path)}
+                          alt={episode.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.src = "/placeholder-poster.svg";
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-sm text-zinc-400">
+                          No image
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex-1">
