@@ -51,6 +51,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true, skipped: true, reason: "not_marked_played" }, { status: 200 });
     }
 
+    const saveReason = String(body?.SaveReason || "").toLowerCase();
+    if (saveReason === "playbackprogress") {
+      return NextResponse.json({ ok: true, skipped: true, reason: "playback_progress_only" }, { status: 200 });
+    }
+
     const jellyfinUserId = String(
       body?.UserId ||
         body?.userId ||
