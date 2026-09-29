@@ -44,12 +44,17 @@ export default function HistoryPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [pageBackdrop, setPageBackdrop] = useState("");
+  const [filter, setFilter] = useState<"all" | "movie" | "tv">("all");
   const router = useRouter();
   const supabase = useSupabase();
   const historyLengthRef = useRef(0);
   const isLoadingRef = useRef(false);
 
-  const handleTitleClick = (e: React.MouseEvent, tmdbId: number, mediaType: string) => {
+  const handleTitleClick = (
+    e: React.MouseEvent,
+    tmdbId: number,
+    mediaType: string,
+  ) => {
     e.preventDefault();
     e.stopPropagation();
     router.push(`/media/${tmdbId}?type=${mediaType}`);
@@ -65,8 +70,9 @@ export default function HistoryPage() {
 
       try {
         const offset = append ? historyLengthRef.current : 0;
+        const mediaTypeParam = filter !== "all" ? `&mediaType=${filter}` : "";
         const response = await fetch(
-          `/api/watch-history?limit=${PAGE_SIZE}&offset=${offset}`,
+          `/api/watch-history?limit=${PAGE_SIZE}&offset=${offset}${mediaTypeParam}`,
         );
 
         if (!response.ok) {
@@ -105,7 +111,7 @@ export default function HistoryPage() {
         isLoadingRef.current = false;
       }
     },
-    [user],
+    [user, filter],
   );
 
   useEffect(() => {
@@ -158,7 +164,7 @@ export default function HistoryPage() {
       setHistory([]);
       setHasMore(false);
     }
-  }, [user, fetchHistory]);
+  }, [user, fetchHistory, filter]);
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout | null = null;
@@ -238,12 +244,103 @@ export default function HistoryPage() {
             </h1>
           </div>
 
-          <Link
-            href="/"
-            className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
-          >
-            Back home
-          </Link>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900/80 p-1">
+              <button
+                onClick={() => setFilter("all")}
+                className={`flex items-center cursor-pointer gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                  filter === "all"
+                    ? "bg-violet-500/20 text-violet-200"
+                    : "text-zinc-400 hover:text-zinc-200"
+                }`}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect x="3" y="3" width="7" height="7" />
+                  <rect x="14" y="3" width="7" height="7" />
+                  <rect x="14" y="14" width="7" height="7" />
+                  <rect x="3" y="14" width="7" height="7" />
+                </svg>
+                All
+              </button>
+              <button
+                onClick={() => setFilter("tv")}
+                className={`flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                  filter === "tv"
+                    ? "bg-violet-500/20 text-violet-200"
+                    : "text-zinc-400 hover:text-zinc-200"
+                }`}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect x="2" y="7" width="20" height="15" rx="2" ry="2" />
+                  <polyline points="17 2 12 7 7 2" />
+                </svg>
+                TV
+              </button>
+              <button
+                onClick={() => setFilter("movie")}
+                className={`flex items-center cursor-pointer gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                  filter === "movie"
+                    ? "bg-violet-500/20 text-violet-200"
+                    : "text-zinc-400 hover:text-zinc-200"
+                }`}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect
+                    x="2"
+                    y="2"
+                    width="20"
+                    height="20"
+                    rx="2.18"
+                    ry="2.18"
+                  />
+                  <line x1="7" y1="2" x2="7" y2="22" />
+                  <line x1="17" y1="2" x2="17" y2="22" />
+                  <line x1="2" y1="12" x2="22" y2="12" />
+                  <line x1="2" y1="7" x2="7" y2="7" />
+                  <line x1="2" y1="17" x2="7" y2="17" />
+                  <line x1="17" y1="17" x2="22" y2="17" />
+                  <line x1="17" y1="7" x2="22" y2="7" />
+                </svg>
+                Movies
+              </button>
+            </div>
+            <Link
+              href="/"
+              className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
+            >
+              Back home
+            </Link>
+          </div>
         </div>
 
         {sortedHistory.length === 0 ? (
@@ -265,7 +362,7 @@ export default function HistoryPage() {
                     ? `S${entry.seasonNumber} • E${entry.episodeNumber}`
                     : entry.media.mediaType === "tv"
                       ? "TV"
-                      : "Movie";
+                      : null;
 
                 const episodeLink =
                   entry.seasonNumber !== null && entry.episodeNumber !== null
@@ -298,7 +395,13 @@ export default function HistoryPage() {
                       </div>
                       <div className="line-clamp-1 text-xs font-semibold text-white">
                         <span
-                          onClick={(e) => handleTitleClick(e, entry.media.tmdbId, entry.media.mediaType)}
+                          onClick={(e) =>
+                            handleTitleClick(
+                              e,
+                              entry.media.tmdbId,
+                              entry.media.mediaType,
+                            )
+                          }
                           className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
                         >
                           {entry.media.title}
@@ -309,7 +412,9 @@ export default function HistoryPage() {
                           {entry.episodeName}
                         </div>
                       )}
-                      <div className="text-[10px] text-zinc-400">{label}</div>
+                      {label && (
+                        <div className="text-[10px] text-zinc-400">{label}</div>
+                      )}
                     </div>
                   </Link>
                 );

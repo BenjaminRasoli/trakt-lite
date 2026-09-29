@@ -681,9 +681,7 @@ function HomeContent() {
                       historyItem.seasonNumber !== null &&
                       historyItem.episodeNumber !== null
                         ? `S${historyItem.seasonNumber} E${historyItem.episodeNumber}`
-                        : media?.mediaType === "tv"
-                          ? "TV"
-                          : "Movie";
+                        : null;
 
                     const historyLink =
                       historyItem.seasonNumber !== null &&

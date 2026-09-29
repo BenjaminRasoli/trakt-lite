@@ -53,31 +53,32 @@ async function hydrateMissingMediaMetadata(media: {
     overview: hydratedMedia.overview,
   });
 
-  // Update database asynchronously without blocking
-  prisma.media.upsert({
-    where: { tmdbId: media.tmdbId },
-    update: {
-      title: hydratedMedia.title,
-      posterPath: hydratedMedia.posterPath || null,
-      backdropPath: hydratedMedia.backdropPath || null,
-      overview: hydratedMedia.overview || null,
-      mediaType,
-    },
-    create: {
-      tmdbId: media.tmdbId,
-      title: hydratedMedia.title,
-      mediaType,
-      posterPath: hydratedMedia.posterPath || null,
-      backdropPath: hydratedMedia.backdropPath || null,
-      overview: hydratedMedia.overview || null,
-      voteAverage: tmdbMedia.vote_average || 0,
-      genreIds: tmdbMedia.genre_ids || [],
-      releaseDate:
-        tmdbMedia.release_date || tmdbMedia.first_air_date
-          ? new Date(tmdbMedia.release_date || tmdbMedia.first_air_date || "")
-          : null,
-    },
-  }).catch(err => console.error("Error updating media metadata:", err));
+  prisma.media
+    .upsert({
+      where: { tmdbId: media.tmdbId },
+      update: {
+        title: hydratedMedia.title,
+        posterPath: hydratedMedia.posterPath || null,
+        backdropPath: hydratedMedia.backdropPath || null,
+        overview: hydratedMedia.overview || null,
+        mediaType,
+      },
+      create: {
+        tmdbId: media.tmdbId,
+        title: hydratedMedia.title,
+        mediaType,
+        posterPath: hydratedMedia.posterPath || null,
+        backdropPath: hydratedMedia.backdropPath || null,
+        overview: hydratedMedia.overview || null,
+        voteAverage: tmdbMedia.vote_average || 0,
+        genreIds: tmdbMedia.genre_ids || [],
+        releaseDate:
+          tmdbMedia.release_date || tmdbMedia.first_air_date
+            ? new Date(tmdbMedia.release_date || tmdbMedia.first_air_date || "")
+            : null,
+      },
+    })
+    .catch((err) => console.error("Error updating media metadata:", err));
 
   return hydratedMedia;
 }
@@ -137,7 +138,7 @@ async function mapWithConcurrency<T, R>(
 async function getNextUpQueue(userId: string, limit = 6) {
   // Only fetch TV shows with season/episode info, ordered by watchedAt
   const watchHistory = await prisma.watchHistory.findMany({
-    where: { 
+    where: {
       userId,
       media: { mediaType: "tv" },
       seasonNumber: { not: null },
@@ -291,7 +292,7 @@ async function getNextUpQueue(userId: string, limit = 6) {
 async function getUpcomingEpisodesQueue(userId: string, limit = 6) {
   // Only fetch TV shows with season/episode info, ordered by watchedAt
   const watchHistory = await prisma.watchHistory.findMany({
-    where: { 
+    where: {
       userId,
       media: { mediaType: "tv" },
       seasonNumber: { not: null },
@@ -449,6 +450,7 @@ export async function GET(request: NextRequest) {
     const nextUpParam = searchParams.get("nextUp");
     const upcomingParam = searchParams.get("upcoming");
     const nextUpLimitParam = searchParams.get("nextUpLimit");
+    const mediaTypeParam = searchParams.get("mediaType");
 
     const supabase = await createClient();
     const {
@@ -459,12 +461,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    let dbUser = await prisma.user.findUnique({
-      where: { email: user.email! },
-    }).catch(err => {
-      console.error("Database error finding user:", err);
-      throw new Error("Database connection failed. Please try again.");
-    });
+    let dbUser = await prisma.user
+      .findUnique({
+        where: { email: user.email! },
+      })
+      .catch((err) => {
+        console.error("Database error finding user:", err);
+        throw new Error("Database connection failed. Please try again.");
+      });
 
     if (!dbUser) {
       dbUser = await prisma.user.create({
@@ -490,10 +494,21 @@ export async function GET(request: NextRequest) {
       const safeOffset =
         Number.isFinite(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0;
 
+      const whereClause: any = {
+        userId: dbUser.id,
+      };
+
+      if (
+        mediaTypeParam &&
+        (mediaTypeParam === "movie" || mediaTypeParam === "tv")
+      ) {
+        whereClause.media = {
+          mediaType: mediaTypeParam,
+        };
+      }
+
       const watchHistory = await prisma.watchHistory.findMany({
-        where: {
-          userId: dbUser.id,
-        },
+        where: whereClause,
         select: {
           id: true,
           userId: true,
@@ -672,7 +687,7 @@ export async function GET(request: NextRequest) {
       take: limitParam ? parseInt(limitParam) : undefined,
     });
 
-    const formattedHistory = watchHistory.map(entry => ({
+    const formattedHistory = watchHistory.map((entry) => ({
       id: entry.id,
       userId: entry.userId,
       mediaId: entry.mediaId,
@@ -698,7 +713,14 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { mediaId, mediaType, watchedAt, seasonNumber, episodeNumber, episodeName } = body;
+    const {
+      mediaId,
+      mediaType,
+      watchedAt,
+      seasonNumber,
+      episodeNumber,
+      episodeName,
+    } = body;
 
     if (!mediaId || !mediaType || !watchedAt) {
       return NextResponse.json(
@@ -726,12 +748,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    let dbUser = await prisma.user.findUnique({
-      where: { email: user.email! },
-    }).catch(err => {
-      console.error("Database error finding user:", err);
-      throw new Error("Database connection failed. Please try again.");
-    });
+    let dbUser = await prisma.user
+      .findUnique({
+        where: { email: user.email! },
+      })
+      .catch((err) => {
+        console.error("Database error finding user:", err);
+        throw new Error("Database connection failed. Please try again.");
+      });
 
     if (!dbUser) {
       dbUser = await prisma.user.create({
@@ -800,7 +824,7 @@ export async function POST(request: NextRequest) {
           mediaId: media.id,
           seasonNumber: mediaType === "tv" ? seasonNumber : null,
           episodeNumber: mediaType === "tv" ? episodeNumber : null,
-          episodeName: mediaType === "tv" ? (episodeName || null) : null,
+          episodeName: mediaType === "tv" ? episodeName || null : null,
           watchedAt: new Date(watchedAt),
         },
       });
