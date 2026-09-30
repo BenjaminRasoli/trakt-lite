@@ -281,6 +281,27 @@ export async function upsertJellyfinWatchEntry({
     },
   });
 
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+
+  const existingEntry = await prisma.watchHistory.findFirst({
+    where: {
+      userId,
+      mediaId: media.id,
+      seasonNumber: seasonNumber ?? null,
+      episodeNumber: episodeNumber ?? null,
+      watchedAt: {
+        gte: oneHourAgo,
+      },
+    },
+  });
+
+  if (existingEntry) {
+    return {
+      created: false,
+      reason: "duplicate_within_1_hour",
+      existingEntryId: existingEntry.id,
+    };
+  }
 
   const createdEntry = await prisma.watchHistory.create({
     data: {

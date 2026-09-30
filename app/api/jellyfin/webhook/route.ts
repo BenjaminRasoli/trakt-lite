@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(
-      { ok: true, created: result.created, reason: result.reason || null },
+      { ok: true, created: result.created, reason: result.reason || null, existingEntryId: result.existingEntryId || null },
       { status: 200 },
     );
   } catch (error) {
