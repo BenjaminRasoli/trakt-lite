@@ -143,6 +143,16 @@ async function mapWithConcurrency<T, R>(
   return results;
 }
 
+function normalizeDate(dateInput: string | Date | null | undefined): string | null {
+  if (!dateInput) return null;
+  const date = dateInput instanceof Date ? dateInput : new Date(dateInput);
+  if (isNaN(date.getTime())) return null;
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 async function getNextUpQueue(userId: string, limit = 6) {
   // Only fetch TV shows with season/episode info, ordered by watchedAt
   const watchHistory = await prisma.watchHistory.findMany({
@@ -401,7 +411,7 @@ async function getUpcomingEpisodesQueue(userId: string, limit = 6) {
             nextFutureEpisodeInCurrentSeason.name ||
             `Episode ${Number(nextFutureEpisodeInCurrentSeason.episode_number)}`,
           overview: nextFutureEpisodeInCurrentSeason.overview || null,
-          airDate: nextFutureEpisodeInCurrentSeason.air_date || null,
+          airDate: normalizeDate(nextFutureEpisodeInCurrentSeason.air_date),
         };
       }
 
@@ -433,7 +443,7 @@ async function getUpcomingEpisodesQueue(userId: string, limit = 6) {
           firstFutureEpisodeNextSeason.name ||
           `Episode ${Number(firstFutureEpisodeNextSeason.episode_number)}`,
         overview: firstFutureEpisodeNextSeason.overview || null,
-        airDate: firstFutureEpisodeNextSeason.air_date || null,
+        airDate: normalizeDate(firstFutureEpisodeNextSeason.air_date),
       };
     },
   );
@@ -442,6 +452,81 @@ async function getUpcomingEpisodesQueue(userId: string, limit = 6) {
     .filter(Boolean)
     .sort(
       (a: any, b: any) =>
+        new Date(a.airDate || 0).getTime() - new Date(b.airDate || 0).getTime(),
+    )
+    .slice(0, limit);
+}
+
+async function getUpcomingWatchlistReleases(userId: string, limit = 40) {
+  const watchlist = await prisma.watchlist.findMany({
+    where: {
+      userId,
+    },
+    include: {
+      media: true,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+    take: 500,
+  });
+
+  const upcomingReleases: any[] = [];
+
+  for (const item of watchlist) {
+    const media = item.media;
+    const releaseDate = media.releaseDate;
+
+    if (!releaseDate) continue;
+
+    const releaseDateObj = new Date(releaseDate);
+    const now = new Date();
+
+    if (releaseDateObj >= now) {
+      if (media.mediaType === "tv") {
+        const { getTVSeasonDetails } = await import("@/lib/tmdb");
+        try {
+          const season1Details = await getTVSeasonDetails(media.tmdbId, 1);
+          const firstEpisode = season1Details?.episodes?.[0];
+
+          if (firstEpisode?.air_date) {
+            const episodeAirDate = new Date(firstEpisode.air_date);
+            if (episodeAirDate >= now) {
+              upcomingReleases.push({
+                tmdbId: media.tmdbId,
+                title: media.title,
+                posterPath: media.posterPath,
+                backdropPath: media.backdropPath,
+                seasonNumber: 1,
+                episodeNumber: Number(firstEpisode.episode_number),
+                episodeTitle: firstEpisode.name || `Episode ${Number(firstEpisode.episode_number)}`,
+                overview: firstEpisode.overview || media.overview,
+                airDate: normalizeDate(firstEpisode.air_date),
+              });
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching TV season details:", error);
+        }
+      } else {
+        upcomingReleases.push({
+          tmdbId: media.tmdbId,
+          title: media.title,
+          posterPath: media.posterPath,
+          backdropPath: media.backdropPath,
+          seasonNumber: null,
+          episodeNumber: null,
+          episodeTitle: null,
+          overview: media.overview,
+          airDate: normalizeDate(releaseDate.toISOString()),
+        });
+      }
+    }
+  }
+
+  return upcomingReleases
+    .sort(
+      (a, b) =>
         new Date(a.airDate || 0).getTime() - new Date(b.airDate || 0).getTime(),
     )
     .slice(0, limit);
@@ -596,6 +681,11 @@ export async function GET(request: NextRequest) {
           ? await getUpcomingEpisodesQueue(dbUser.id, safeNextUpLimit)
           : [];
 
+      const watchlistUpcoming =
+        upcomingParam === "true"
+          ? await getUpcomingWatchlistReleases(dbUser.id, limitParam ? parseInt(limitParam) : 40)
+          : [];
+
       const hydratedNextUp = await Promise.all(
         nextUp
           .filter((item): item is NonNullable<typeof item> => Boolean(item))
@@ -642,11 +732,47 @@ export async function GET(request: NextRequest) {
           }),
       );
 
+      const hydratedWatchlistUpcoming = await Promise.all(
+        watchlistUpcoming
+          .filter((item): item is NonNullable<typeof item> => Boolean(item))
+          .map(async (item) => {
+            const mediaType = item.seasonNumber !== null ? "tv" : "movie";
+            const hydrated = await hydrateMissingMediaMetadata({
+              tmdbId: item.tmdbId,
+              title: item.title,
+              mediaType,
+              posterPath: item.posterPath,
+              backdropPath: item.backdropPath,
+              overview: item.overview,
+            });
+
+            return {
+              ...item,
+              title: hydrated.title,
+              posterPath: hydrated.posterPath || null,
+              backdropPath: hydrated.backdropPath || null,
+              overview: hydrated.overview || null,
+            };
+          }),
+      );
+
+      const allUpcoming = [...hydratedUpcoming, ...hydratedWatchlistUpcoming]
+        .map((item) => ({
+          ...item,
+          // Normalize airDate to just the date part (YYYY-MM-DD) for consistent grouping
+          airDate: normalizeDate(item.airDate),
+        }))
+        .sort(
+          (a, b) =>
+            new Date(a.airDate || 0).getTime() - new Date(b.airDate || 0).getTime(),
+        )
+        .slice(0, limitParam ? parseInt(limitParam) : 40);
+
       return NextResponse.json({
         items: itemsWithPosters,
         hasMore,
         nextUp: hydratedNextUp,
-        upcoming: hydratedUpcoming,
+        upcoming: allUpcoming,
       });
     }
 
@@ -782,34 +908,31 @@ export async function POST(request: NextRequest) {
       const { getMediaDetails } = await import("@/lib/tmdb");
       const tmdbMedia = await getMediaDetails(parseInt(mediaId), mediaType);
 
-      if (tmdbMedia) {
-        const releaseDate = tmdbMedia.release_date || tmdbMedia.first_air_date;
-        media = await prisma.media.create({
-          data: {
-            tmdbId: parseInt(mediaId),
-            title: tmdbMedia.title || tmdbMedia.name || "Unknown",
-            mediaType,
-            posterPath: tmdbMedia.poster_path || "",
-            backdropPath: tmdbMedia.backdrop_path || "",
-            overview: tmdbMedia.overview || "",
-            releaseDate: releaseDate ? new Date(releaseDate) : null,
-            voteAverage: tmdbMedia.vote_average || 0,
-            genreIds: tmdbMedia.genre_ids || [],
-          },
+      if (!tmdbMedia) {
+        console.error("Failed to fetch media details from TMDB for:", {
+          mediaId,
+          mediaType
         });
-      } else {
-        media = await prisma.media.create({
-          data: {
-            tmdbId: parseInt(mediaId),
-            title: `Media ${mediaId}`,
-            mediaType,
-            posterPath: "",
-            backdropPath: "",
-            overview: "",
-            genreIds: [],
-          },
-        });
+        return NextResponse.json(
+          { error: "Failed to fetch media details" },
+          { status: 400 }
+        );
       }
+
+      const releaseDate = tmdbMedia.release_date || tmdbMedia.first_air_date;
+      media = await prisma.media.create({
+        data: {
+          tmdbId: parseInt(mediaId),
+          title: tmdbMedia.title || tmdbMedia.name || "Unknown",
+          mediaType,
+          posterPath: tmdbMedia.poster_path || "",
+          backdropPath: tmdbMedia.backdrop_path || "",
+          overview: tmdbMedia.overview || "",
+          releaseDate: releaseDate ? new Date(releaseDate) : null,
+          voteAverage: tmdbMedia.vote_average || 0,
+          genreIds: tmdbMedia.genre_ids || [],
+        },
+      });
     }
 
     const existingWatch = await prisma.watchHistory.findFirst({

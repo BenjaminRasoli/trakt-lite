@@ -14,6 +14,7 @@ export default function SettingsPage() {
   const [importError, setImportError] = useState<string | null>(null);
   const [importSuccess, setImportSuccess] = useState(false);
   const [importProgress, setImportProgress] = useState<string>("");
+  const [importPercent, setImportPercent] = useState<number>(0);
   const [exportProgress, setExportProgress] = useState<string>("");
   const [pageBackdrop, setPageBackdrop] = useState("");
   const [jellyfinConfig, setJellyfinConfig] = useState({
@@ -198,12 +199,12 @@ export default function SettingsPage() {
     setImportError(null);
     setImportSuccess(false);
     setImportProgress("Uploading file...");
+    setImportPercent(0);
 
     try {
       const uploadFormData = new FormData();
       uploadFormData.append("file", file);
 
-      setImportProgress("Processing file...");
       const response = await fetch("/api/settings/import", {
         method: "POST",
         body: uploadFormData,
@@ -214,17 +215,60 @@ export default function SettingsPage() {
         throw new Error(error.error || "Import failed");
       }
 
-      setImportProgress("Importing data...");
-      const result = await response.json();
-      setImportProgress(`Successfully imported ${result.imported} entries`);
-      setImportSuccess(true);
-      setTimeout(() => {
-        setImportSuccess(false);
-        setImportProgress("");
-      }, 3000);
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        throw new Error("Failed to read response");
+      }
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split("\n\n");
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              
+              if (data.error) {
+                throw new Error(data.error);
+              }
+              
+              if (data.status) {
+                setImportProgress(data.status);
+              }
+              
+              if (data.progress !== undefined) {
+                setImportPercent(data.progress);
+              }
+              
+              if (data.success) {
+                const watchlistMsg = data.watchlistImported > 0
+                  ? ` and ${data.watchlistImported} watchlist items`
+                  : "";
+                setImportProgress(`Successfully imported ${data.imported} entries${watchlistMsg}`);
+                setImportSuccess(true);
+                setImportPercent(100);
+                setTimeout(() => {
+                  setImportSuccess(false);
+                  setImportProgress("");
+                  setImportPercent(0);
+                }, 3000);
+              }
+            } catch (e) {
+              // Ignore parse errors for incomplete chunks
+            }
+          }
+        }
+      }
     } catch (error) {
       setImportError(error instanceof Error ? error.message : "Import failed");
       setImportProgress("");
+      setImportPercent(0);
     } finally {
       setImporting(false);
     }
@@ -356,10 +400,23 @@ export default function SettingsPage() {
               {importSuccess && (
                 <div className="text-green-400 text-sm">Import successful!</div>
               )}
+              {importProgress && !importSuccess && (
+                <div className="space-y-2">
+                  <div className="text-violet-300 text-sm">{importProgress}</div>
+                  {importPercent > 0 && importPercent < 100 && (
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-violet-500 to-emerald-400 transition-all duration-300"
+                        style={{ width: `${importPercent}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
               <button
                 type="submit"
                 disabled={importing}
-                className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-5 py-2.5 text-sm font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                className={`inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-5 py-2.5 text-sm font-semibold text-violet-100 transition ${importing ? '' : 'hover:border-violet-400 hover:bg-violet-500/20'} disabled:cursor-not-allowed disabled:opacity-60`}
               >
                 {importing ? (
                   <>

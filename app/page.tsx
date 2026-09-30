@@ -214,9 +214,7 @@ function HomeContent() {
           const nextSession = data?.active ?? null;
           setLiveSession(nextSession);
         }
-      } catch {
-        // Silently fail for live session updates
-      }
+      } catch {}
     };
 
     const interval = setInterval(() => {
@@ -624,51 +622,64 @@ function HomeContent() {
                           </div>
                         </div>
                       ))
-                    : visibleUpcoming.map((item) => (
-                        <Link
-                          key={`${item.tmdbId}-${item.seasonNumber}-${item.episodeNumber}-${item.airDate || "unknown"}`}
-                          href={`/media/${item.tmdbId}/season/${item.seasonNumber}/episode/${item.episodeNumber}?type=tv`}
-                          className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:-translate-y-0.5 hover:border-violet-500/50"
-                        >
-                          <div className="relative aspect-[2/3] overflow-hidden">
-                            <img
-                              src={getPosterUrl(item.posterPath || null)}
-                              alt={item.episodeTitle}
-                              className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                              onError={(e) => {
-                                e.currentTarget.src = "/placeholder-poster.svg";
-                              }}
-                            />
-                          </div>
+                    : visibleUpcoming.map((item) => {
+                        const isMovie =
+                          item.seasonNumber === null &&
+                          item.episodeNumber === null;
+                        const mediaType = isMovie ? "movie" : "tv";
+                        const linkHref = isMovie
+                          ? `/media/${item.tmdbId}?type=movie`
+                          : `/media/${item.tmdbId}/season/${item.seasonNumber}/episode/${item.episodeNumber}?type=tv`;
 
-                          <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
-                            <div className="text-[10px] font-medium uppercase tracking-[0.15em] text-violet-300">
-                              {item.airDate
-                                ? new Date(item.airDate).toLocaleDateString(
-                                    undefined,
-                                    {
-                                      month: "short",
-                                      day: "numeric",
-                                    },
-                                  )
-                                : "Coming soon"}
+                        return (
+                          <Link
+                            key={`${item.tmdbId}-${item.seasonNumber || "movie"}-${item.episodeNumber || "movie"}-${item.airDate || "unknown"}`}
+                            href={linkHref}
+                            className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:-translate-y-0.5 hover:border-violet-500/50"
+                          >
+                            <div className="relative aspect-[2/3] overflow-hidden">
+                              <img
+                                src={getPosterUrl(item.posterPath || null)}
+                                alt={isMovie ? item.title : item.episodeTitle}
+                                className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                                onError={(e) => {
+                                  e.currentTarget.src =
+                                    "/placeholder-poster.svg";
+                                }}
+                              />
                             </div>
-                            <div className="line-clamp-2 text-xs font-semibold text-white">
-                              <span
-                                onClick={(e) =>
-                                  handleTitleClick(e, item.tmdbId, "tv")
-                                }
-                                className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
-                              >
-                                {item.title}
-                              </span>
+
+                            <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
+                              <div className="text-[10px] font-medium uppercase tracking-[0.15em] text-violet-300">
+                                {item.airDate
+                                  ? new Date(item.airDate).toLocaleDateString(
+                                      undefined,
+                                      {
+                                        month: "short",
+                                        day: "numeric",
+                                      },
+                                    )
+                                  : "Coming soon"}
+                              </div>
+                              <div className="line-clamp-2 text-xs font-semibold text-white">
+                                <span
+                                  onClick={(e) =>
+                                    handleTitleClick(e, item.tmdbId, mediaType)
+                                  }
+                                  className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
+                                >
+                                  {item.title}
+                                </span>
+                              </div>
+                              {!isMovie && item.episodeTitle && (
+                                <div className="line-clamp-1 text-[10px] text-zinc-400">
+                                  {item.episodeTitle}
+                                </div>
+                              )}
                             </div>
-                            <div className="line-clamp-1 text-[10px] text-zinc-400">
-                              {item.episodeTitle}
-                            </div>
-                          </div>
-                        </Link>
-                      ))}
+                          </Link>
+                        );
+                      })}
                 </div>
               </section>
             )}

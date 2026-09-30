@@ -386,7 +386,11 @@ export default function EpisodePage() {
               <div className="flex flex-wrap items-center gap-3 sm:gap-4 mb-4">
                 <span className="text-zinc-400 text-sm sm:text-base">
                   {episode.air_date
-                    ? new Date(episode.air_date).toLocaleDateString()
+                    ? new Date(episode.air_date).toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })
                     : "Air date unknown"}
                 </span>
 

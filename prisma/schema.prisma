@@ -21,6 +21,7 @@ model User {
   updatedAt     DateTime             @updatedAt
   watchHistory  WatchHistory[]
   jellyfinConnection JellyfinConnection?
+  watchlist     Watchlist[]
 }
 
 model JellyfinConnection {
@@ -50,6 +51,7 @@ model Media {
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
   watchHistory WatchHistory[]
+  watchlist   Watchlist[]
 }
 
 model WatchHistory {
@@ -67,4 +69,17 @@ model WatchHistory {
   media  Media @relation(fields: [mediaId], references: [id], onDelete: Cascade)
 
 
+}
+
+model Watchlist {
+  id        String   @id @default(cuid())
+  userId    String
+  mediaId   Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  media  Media @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, mediaId])
 }

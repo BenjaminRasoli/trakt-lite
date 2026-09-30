@@ -14,8 +14,8 @@ interface UpcomingEpisodeItem {
   tmdbId: number;
   title: string;
   posterPath: string | null;
-  seasonNumber: number;
-  episodeNumber: number;
+  seasonNumber: number | null;
+  episodeNumber: number | null;
   episodeTitle: string;
   overview: string | null;
   airDate: string | null;
@@ -30,10 +30,10 @@ export default function CalendarPage() {
   const router = useRouter();
   const supabase = useSupabase();
 
-  const handleTitleClick = (e: React.MouseEvent, tmdbId: number) => {
+  const handleTitleClick = (e: React.MouseEvent, tmdbId: number, mediaType?: string) => {
     e.preventDefault();
     e.stopPropagation();
-    router.push(`/media/${tmdbId}?type=tv`);
+    router.push(`/media/${tmdbId}?type=${mediaType || "tv"}`);
   };
 
   useEffect(() => {
@@ -116,6 +116,7 @@ export default function CalendarPage() {
           new Date(b.airDate || 0).getTime(),
       )
       .reduce<Record<string, UpcomingEpisodeItem[]>>((groups, item) => {
+        // Use the airDate directly as the key since API already normalizes it
         const key = item.airDate || "Unknown date";
         groups[key] = groups[key] ? [...groups[key], item] : [item];
         return groups;
@@ -174,10 +175,10 @@ export default function CalendarPage() {
         {!calendarLoading && upcoming.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-zinc-700 bg-zinc-900/60 p-12 text-center">
             <h2 className="text-2xl font-semibold text-white">
-              No upcoming episodes
+              No upcoming releases
             </h2>
             <p className="mt-3 text-zinc-400">
-              Watch a few shows and future episodes will show up here.
+              Watch some shows or add movies and TV shows to your watchlist to see upcoming releases here.
             </p>
           </div>
         ) : (
@@ -201,7 +202,7 @@ export default function CalendarPage() {
                   <div className="mb-4 flex items-center justify-between gap-4">
                     <div>
                       <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-violet-400/80">
-                        Upcoming
+                        Releases
                       </p>
                       <h2 className="text-xl font-bold text-white">
                         {dateLabel}
@@ -209,50 +210,53 @@ export default function CalendarPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
-                    {items.map((item) => (
-                      <Link
-                        key={`${item.tmdbId}-${item.seasonNumber}-${item.episodeNumber}-${item.airDate || "unknown"}`}
-                        href={`/media/${item.tmdbId}/season/${item.seasonNumber}/episode/${item.episodeNumber}?type=tv`}
-                        className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:-translate-y-0.5 hover:border-violet-500/50"
-                      >
-                        <div className="relative aspect-[2/3] overflow-hidden">
-                          <img
-                            src={getPosterUrl(item.posterPath || null)}
-                            alt={item.episodeTitle}
-                            className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                            onError={(e) => {
-                              e.currentTarget.src = "/placeholder-poster.svg";
-                            }}
-                          />
-                        </div>
+                  <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-3">
+                    {items.map((item) => {
+                      const isMovie = item.seasonNumber === null && item.episodeNumber === null;
+                      const mediaType = isMovie ? "movie" : "tv";
+                      const linkHref = isMovie
+                        ? `/media/${item.tmdbId}?type=movie`
+                        : `/media/${item.tmdbId}/season/${item.seasonNumber}/episode/${item.episodeNumber}?type=tv`;
 
-                        <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
-                          <div className="text-[10px] font-medium uppercase tracking-[0.15em] text-violet-300">
-                            {item.airDate
-                              ? new Date(item.airDate).toLocaleDateString(
-                                  undefined,
-                                  {
-                                    month: "short",
-                                    day: "numeric",
-                                  },
-                                )
-                              : "Coming soon"}
+                      return (
+                        <Link
+                          key={`${item.tmdbId}-${item.seasonNumber || "movie"}-${item.episodeNumber || "movie"}-${item.airDate || "unknown"}`}
+                          href={linkHref}
+                          className="group flex flex-col gap-2"
+                        >
+                          <div className="relative aspect-[2/3] overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900 transition hover:border-violet-500/50 hover:shadow-lg hover:shadow-violet-500/10">
+                            <img
+                              src={getPosterUrl(item.posterPath || null)}
+                              alt={isMovie ? item.title : (item.episodeTitle || item.title)}
+                              className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                              onError={(e) => {
+                                e.currentTarget.src = "/placeholder-poster.svg";
+                              }}
+                            />
                           </div>
-                          <div className="line-clamp-2 text-xs font-semibold text-white">
-                            <span
-                              onClick={(e) => handleTitleClick(e, item.tmdbId)}
-                              className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
-                            >
-                              {item.title}
-                            </span>
+
+                          <div className="space-y-1">
+                            <div className="line-clamp-2 text-xs font-semibold text-white leading-tight">
+                              {!isMovie ? (
+                                <span
+                                  onClick={(e) => handleTitleClick(e, item.tmdbId, mediaType)}
+                                  className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
+                                >
+                                  {item.title}
+                                </span>
+                              ) : (
+                                <span>{item.title}</span>
+                              )}
+                            </div>
+                            {!isMovie && (
+                              <div className="text-[10px] text-zinc-400">
+                                <span className="font-medium text-violet-300">S{item.seasonNumber} E{item.episodeNumber}</span>
+                              </div>
+                            )}
                           </div>
-                          <div className="line-clamp-1 text-[10px] text-zinc-400">
-                            {item.episodeTitle}
-                          </div>
-                        </div>
-                      </Link>
-                    ))}
+                        </Link>
+                      );
+                    })}
                   </div>
                 </section>
               );

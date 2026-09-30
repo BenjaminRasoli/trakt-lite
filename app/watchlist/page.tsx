@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -11,18 +11,10 @@ import {
   getTrendingMedia,
 } from "@/lib/tmdb";
 
-interface HistoryResponse {
-  items: HistoryItem[];
-  hasMore: boolean;
-}
-
-interface HistoryItem {
+interface WatchlistItem {
   id: string;
   mediaId: number;
-  watchedAt: string;
-  seasonNumber: number | null;
-  episodeNumber: number | null;
-  episodeName: string | null;
+  createdAt: string;
   media: {
     id: number;
     tmdbId: number;
@@ -31,25 +23,22 @@ interface HistoryItem {
     posterPath: string | null;
     backdropPath: string | null;
     overview: string | null;
+    releaseDate: string | null;
   };
 }
 
-const PAGE_SIZE = 42;
-
-export default function HistoryPage() {
+export default function WatchlistPage() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [history, setHistory] = useState<HistoryItem[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(false);
+  const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
+  const [watchlistLoading, setWatchlistLoading] = useState(true);
   const [pageBackdrop, setPageBackdrop] = useState("");
   const [filter, setFilter] = useState<"all" | "movie" | "tv">("all");
   const [isFilterChanging, setIsFilterChanging] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<number | null>(null);
   const router = useRouter();
   const supabase = useSupabase();
-  const historyLengthRef = useRef(0);
-  const isLoadingRef = useRef(false);
 
   const handleTitleClick = (
     e: React.MouseEvent,
@@ -61,64 +50,59 @@ export default function HistoryPage() {
     router.push(`/media/${tmdbId}?type=${mediaType}`);
   };
 
-  const fetchHistory = useCallback(
-    async (append = false) => {
-      if (!user || isLoadingRef.current) return;
+  const handleRemoveFromWatchlist = (
+    e: React.MouseEvent,
+    tmdbId: number,
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setItemToDelete(tmdbId);
+    setShowDeleteConfirm(true);
+  };
 
-      isLoadingRef.current = true;
-      // Don't show full loading screen when just changing filters
-      if (!append) {
-        setIsFilterChanging(true);
-      }
-      setHistoryLoading(!append);
-      setLoadingMore(append);
+  const confirmDeleteWatchlist = async () => {
+    if (!itemToDelete) return;
 
-      try {
-        const offset = append ? historyLengthRef.current : 0;
-        const mediaTypeParam = filter !== "all" ? `&mediaType=${filter}` : "";
-        const response = await fetch(
-          `/api/watch-history?limit=${PAGE_SIZE}&offset=${offset}${mediaTypeParam}`,
+    try {
+      const response = await fetch(`/api/watchlist?tmdbId=${itemToDelete}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        setWatchlist((current) =>
+          current.filter((item) => item.media.tmdbId !== itemToDelete),
         );
-
-        if (!response.ok) {
-          console.error(
-            "API response not OK:",
-            response.status,
-            response.statusText,
-          );
-          if (!append) setHistory([]);
-          setHasMore(false);
-          return;
-        }
-
-        const data: HistoryResponse = await response.json();
-
-        if (!data || !Array.isArray(data.items)) {
-          console.error("Invalid API response format:", data);
-          if (!append) setHistory([]);
-          setHasMore(false);
-          return;
-        }
-
-        setHistory((current) => {
-          const newHistory = append ? [...current, ...data.items] : data.items;
-          historyLengthRef.current = newHistory.length;
-          return newHistory;
-        });
-        setHasMore(data.hasMore);
-      } catch (error) {
-        console.error("Error fetching history:", error);
-        if (!append) setHistory([]);
-        setHasMore(false);
-      } finally {
-        setHistoryLoading(false);
-        setLoadingMore(false);
-        setIsFilterChanging(false);
-        isLoadingRef.current = false;
       }
-    },
-    [user, filter],
-  );
+    } catch (error) {
+      console.error("Error removing from watchlist:", error);
+    } finally {
+      setShowDeleteConfirm(false);
+      setItemToDelete(null);
+    }
+  };
+
+  const fetchWatchlist = async () => {
+    if (!user) return;
+
+    setWatchlistLoading(true);
+
+    try {
+      const response = await fetch("/api/watchlist");
+
+      if (!response.ok) {
+        setWatchlist([]);
+        return;
+      }
+
+      const data = await response.json();
+      setWatchlist(Array.isArray(data.watchlist) ? data.watchlist : []);
+    } catch (error) {
+      console.error("Error fetching watchlist:", error);
+      setWatchlist([]);
+    } finally {
+      setWatchlistLoading(false);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -165,51 +149,41 @@ export default function HistoryPage() {
 
   useEffect(() => {
     if (user) {
-      void fetchHistory(false);
+      void fetchWatchlist();
     } else {
-      setHistory([]);
-      setHasMore(false);
+      setWatchlist([]);
     }
-  }, [user, fetchHistory, filter]);
+  }, [user]);
 
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout | null = null;
+    if (!showDeleteConfirm) return;
 
-    const handleScroll = () => {
-      if (loadingMore || !hasMore || !user) return;
-
-      if (timeoutId) clearTimeout(timeoutId);
-
-      timeoutId = setTimeout(() => {
-        const scrollHeight = document.documentElement.scrollHeight;
-        const scrollTop = document.documentElement.scrollTop;
-        const clientHeight = document.documentElement.clientHeight;
-
-        const nearBottom = scrollTop + clientHeight >= scrollHeight - 500;
-
-        if (nearBottom) {
-          void fetchHistory(true);
-        }
-      }, 200);
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setShowDeleteConfirm(false);
+        setItemToDelete(null);
+      }
     };
 
-    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showDeleteConfirm]);
+
+  useEffect(() => {
+    const isAnyModalOpen = showDeleteConfirm;
+    document.body.style.overflow = isAnyModalOpen ? "hidden" : "";
+
     return () => {
-      window.removeEventListener("scroll", handleScroll);
-      if (timeoutId) clearTimeout(timeoutId);
+      document.body.style.overflow = "";
     };
-  }, [fetchHistory, loadingMore, hasMore, user]);
+  }, [showDeleteConfirm]);
 
-  const sortedHistory = [...history].sort(
-    (a, b) => new Date(b.watchedAt).getTime() - new Date(a.watchedAt).getTime(),
-  );
+  const filteredWatchlist = watchlist.filter((item) => {
+    if (filter === "all") return true;
+    return item.media.mediaType === filter;
+  });
 
-  const handleLoadMore = () => {
-    if (loadingMore || !hasMore || !user) return;
-    void fetchHistory(true);
-  };
-
-  if (loading || (historyLoading && !isFilterChanging)) {
+  if (loading || watchlistLoading) {
     return (
       <div className="flex min-h-screen flex-1 items-center justify-center bg-black">
         <div className="flex items-center gap-3 text-violet-300">
@@ -243,17 +217,21 @@ export default function HistoryPage() {
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-violet-400/80">
-              your activity
+              saved for later
             </p>
             <h1 className="text-3xl font-bold text-white md:text-4xl">
-              Watch history
+              Watchlist
             </h1>
           </div>
 
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900/80 p-1">
               <button
-                onClick={() => setFilter("all")}
+                onClick={() => {
+                  setIsFilterChanging(true);
+                  setFilter("all");
+                  setTimeout(() => setIsFilterChanging(false), 200);
+                }}
                 className={`flex items-center cursor-pointer gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                   filter === "all"
                     ? "bg-violet-500/20 text-violet-200"
@@ -279,7 +257,11 @@ export default function HistoryPage() {
                 All
               </button>
               <button
-                onClick={() => setFilter("tv")}
+                onClick={() => {
+                  setIsFilterChanging(true);
+                  setFilter("tv");
+                  setTimeout(() => setIsFilterChanging(false), 200);
+                }}
                 className={`flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                   filter === "tv"
                     ? "bg-violet-500/20 text-violet-200"
@@ -303,7 +285,11 @@ export default function HistoryPage() {
                 TV
               </button>
               <button
-                onClick={() => setFilter("movie")}
+                onClick={() => {
+                  setIsFilterChanging(true);
+                  setFilter("movie");
+                  setTimeout(() => setIsFilterChanging(false), 200);
+                }}
                 className={`flex items-center cursor-pointer gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                   filter === "movie"
                     ? "bg-violet-500/20 text-violet-200"
@@ -349,16 +335,7 @@ export default function HistoryPage() {
           </div>
         </div>
 
-        {sortedHistory.length === 0 && !isFilterChanging ? (
-          <div className="rounded-2xl border border-dashed border-zinc-700 bg-zinc-900/60 p-12 text-center">
-            <h2 className="text-2xl font-semibold text-white">
-              No watched items yet
-            </h2>
-            <p className="mt-3 text-zinc-400">
-              Start tracking shows and movies from the homepage or media pages.
-            </p>
-          </div>
-        ) : isFilterChanging ? (
+        {isFilterChanging ? (
           <div className="flex items-center justify-center py-12">
             <div className="flex items-center gap-3 text-violet-300">
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-violet-300" />
@@ -367,33 +344,37 @@ export default function HistoryPage() {
               </span>
             </div>
           </div>
+        ) : filteredWatchlist.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-zinc-700 bg-zinc-900/60 p-12 text-center">
+            <h2 className="text-2xl font-semibold text-white">
+              {filter === "all" ? "Your watchlist is empty" : `No ${filter}s in watchlist`}
+            </h2>
+            <p className="mt-3 text-zinc-400">
+              {filter === "all"
+                ? "Add movies and TV shows you want to watch later."
+                : `Add ${filter}s you want to watch later.`}
+            </p>
+          </div>
         ) : (
-          <>
-            <div className="grid gap-3 grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
-              {sortedHistory.map((entry) => {
-                const watchedDate = new Date(entry.watchedAt);
-                const label =
-                  entry.seasonNumber !== null && entry.episodeNumber !== null
-                    ? `S${entry.seasonNumber} • E${entry.episodeNumber}`
-                    : entry.media.mediaType === "tv"
-                      ? "TV"
-                      : null;
+          <div className="grid gap-3 grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
+            {filteredWatchlist.map((item) => {
+              const releaseDate = item.media.releaseDate
+                ? new Date(item.media.releaseDate)
+                : null;
 
-                const episodeLink =
-                  entry.seasonNumber !== null && entry.episodeNumber !== null
-                    ? `/media/${entry.media.tmdbId}/season/${entry.seasonNumber}/episode/${entry.episodeNumber}?type=${entry.media.mediaType}`
-                    : `/media/${entry.media.tmdbId}?type=${entry.media.mediaType}`;
-
-                return (
+              return (
+                <div
+                  key={item.id}
+                  className="group relative overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:-translate-y-0.5 hover:border-violet-500/50"
+                >
                   <Link
-                    key={entry.id}
-                    href={episodeLink}
-                    className="group overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:-translate-y-0.5 hover:border-violet-500/50"
+                    href={`/media/${item.media.tmdbId}?type=${item.media.mediaType}`}
+                    className="block"
                   >
                     <div className="relative aspect-[2/3] overflow-hidden">
                       <img
-                        src={getPosterUrl(entry.media.posterPath || null)}
-                        alt={entry.media.title}
+                        src={getPosterUrl(item.media.posterPath || null)}
+                        alt={item.media.title}
                         className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                         onError={(e) => {
                           e.currentTarget.src = "/placeholder-poster.svg";
@@ -402,54 +383,101 @@ export default function HistoryPage() {
                     </div>
 
                     <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
-                      <div className="text-[10px] font-medium uppercase tracking-[0.15em] text-violet-300">
-                        {watchedDate.toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </div>
+                      {releaseDate && (
+                        <div className="text-[10px] font-medium uppercase tracking-[0.15em] text-violet-300">
+                          {releaseDate.toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </div>
+                      )}
                       <div className="line-clamp-1 text-xs font-semibold text-white">
                         <span
                           onClick={(e) =>
                             handleTitleClick(
                               e,
-                              entry.media.tmdbId,
-                              entry.media.mediaType,
+                              item.media.tmdbId,
+                              item.media.mediaType,
                             )
                           }
                           className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
                         >
-                          {entry.media.title}
+                          {item.media.title}
                         </span>
                       </div>
-                      {entry.episodeName && (
-                        <div className="line-clamp-1 text-[10px] text-zinc-300">
-                          {entry.episodeName}
-                        </div>
-                      )}
-                      {label && (
-                        <div className="text-[10px] text-zinc-400">{label}</div>
-                      )}
+                      <div className="text-[10px] text-zinc-400 capitalize">
+                        {item.media.mediaType}
+                      </div>
                     </div>
                   </Link>
-                );
-              })}
-            </div>
 
-            {hasMore && (
-              <div className="mt-8 flex justify-center">
-                <button
-                  onClick={handleLoadMore}
-                  disabled={loadingMore}
-                  className="rounded-full border border-violet-500/40 bg-violet-500/10 px-5 py-2.5 text-sm font-semibold text-violet-200 transition hover:border-violet-400 hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {loadingMore ? "Loading..." : "Load more"}
-                </button>
-              </div>
-            )}
-          </>
+                  <button
+                    onClick={(e) =>
+                      handleRemoveFromWatchlist(e, item.media.tmdbId)
+                    }
+                    className="absolute top-2 right-2 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm opacity-60 transition-opacity hover:bg-red-500/80 hover:opacity-100 group-hover:opacity-100"
+                    title="Remove from watchlist"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         )}
       </main>
+
+      {showDeleteConfirm && (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-4"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowDeleteConfirm(false);
+              setItemToDelete(null);
+            }
+          }}
+        >
+          <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 max-w-md w-full shadow-2xl">
+            <h3 className="text-xl font-bold text-white mb-2">
+              Remove from Watchlist
+            </h3>
+            <p className="text-zinc-300 mb-6">
+              Are you sure you want to remove this item from your watchlist?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setItemToDelete(null);
+                }}
+                className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-medium text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteWatchlist}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition cursor-pointer"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

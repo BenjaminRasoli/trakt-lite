@@ -387,7 +387,13 @@ export default function SeasonPage() {
           />
           <div>
             <p className="text-sm text-zinc-400">
-              {season.air_date || "Air date unknown"}
+              {season.air_date
+                ? new Date(season.air_date).toLocaleDateString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })
+                : "Air date unknown"}
             </p>
             <h2 className="text-xl font-semibold text-white">
               {season.name || `Season ${seasonNumber}`}
@@ -453,9 +459,17 @@ export default function SeasonPage() {
                           {episode.name || `Episode ${episode.episode_number}`}
                         </h3>
                         <p className="mt-1 text-sm text-zinc-400">
+                          {episode.air_date
+                            ? new Date(episode.air_date).toLocaleDateString(undefined, {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              })
+                            : "Air date unknown"}
+                          {episode.runtime && " • "}
                           {episode.runtime
                             ? `${episode.runtime} min`
-                            : "Runtime unknown"}
+                            : ""}
                         </p>
                       </div>
 

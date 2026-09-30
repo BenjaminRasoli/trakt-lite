@@ -36,10 +36,13 @@ export default function MediaDetailsPage() {
     useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [watchToDelete, setWatchToDelete] = useState<string | null>(null);
+  const [showWatchlistDeleteConfirm, setShowWatchlistDeleteConfirm] = useState(false);
   const [selectedSeason, setSelectedSeason] = useState<number>(1);
   const [selectedEpisode, setSelectedEpisode] = useState<number>(1);
   const [expandedSeason, setExpandedSeason] = useState<number | null>(1);
   const [tvShowDetails, setTvShowDetails] = useState<any>(null);
+  const [isInWatchlist, setIsInWatchlist] = useState(false);
+  const [watchlistLoading, setWatchlistLoading] = useState(false);
   const [credits, setCredits] = useState<{
     cast: TMDBActor[];
     crew: any[];
@@ -191,22 +194,52 @@ export default function MediaDetailsPage() {
   }, [user, mediaId]);
 
   useEffect(() => {
-    const isAnyModalOpen = showWatchDialog || showDeleteConfirm;
+    const checkWatchlist = async () => {
+      if (!user) return;
+
+      setWatchlistLoading(true);
+      try {
+        const response = await fetch("/api/watchlist");
+        if (!response.ok) {
+          setIsInWatchlist(false);
+          return;
+        }
+        const data = await response.json();
+        const watchlistData = Array.isArray(data.watchlist) ? data.watchlist : [];
+        setIsInWatchlist(watchlistData.some((item: any) => item.media.tmdbId === parseInt(mediaId)));
+      } catch (error) {
+        console.error("Error checking watchlist:", error);
+        setIsInWatchlist(false);
+      } finally {
+        setWatchlistLoading(false);
+      }
+    };
+
+    checkWatchlist();
+  }, [user, mediaId]);
+
+  useEffect(() => {
+    const isAnyModalOpen = showWatchDialog || showDeleteConfirm || showWatchlistDeleteConfirm;
     document.body.style.overflow = isAnyModalOpen ? "hidden" : "";
 
     return () => {
       document.body.style.overflow = "";
     };
-  }, [showWatchDialog, showDeleteConfirm]);
+  }, [showWatchDialog, showDeleteConfirm, showWatchlistDeleteConfirm]);
 
   useEffect(() => {
-    if (!showWatchDialog && !showDeleteConfirm) return;
+    if (!showWatchDialog && !showDeleteConfirm && !showWatchlistDeleteConfirm) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         if (showDeleteConfirm) {
           setShowDeleteConfirm(false);
           setWatchToDelete(null);
+          return;
+        }
+
+        if (showWatchlistDeleteConfirm) {
+          setShowWatchlistDeleteConfirm(false);
           return;
         }
 
@@ -221,7 +254,7 @@ export default function MediaDetailsPage() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [showWatchDialog, showDeleteConfirm]);
+  }, [showWatchDialog, showDeleteConfirm, showWatchlistDeleteConfirm]);
 
   const handleAddWatch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -310,6 +343,57 @@ export default function MediaDetailsPage() {
     } finally {
       setShowDeleteConfirm(false);
       setWatchToDelete(null);
+    }
+  };
+
+  const handleAddToWatchlist = async () => {
+    if (!user) return;
+
+    setWatchlistLoading(true);
+    try {
+      const response = await fetch("/api/watchlist", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          tmdbId: parseInt(mediaId),
+          mediaType,
+        }),
+      });
+
+      if (response.ok) {
+        setIsInWatchlist(true);
+      }
+    } catch (error) {
+      console.error("Error adding to watchlist:", error);
+    } finally {
+      setWatchlistLoading(false);
+    }
+  };
+
+  const handleRemoveFromWatchlist = () => {
+    if (!user) return;
+    setShowWatchlistDeleteConfirm(true);
+  };
+
+  const confirmRemoveFromWatchlist = async () => {
+    if (!user) return;
+
+    setWatchlistLoading(true);
+    try {
+      const response = await fetch(`/api/watchlist?tmdbId=${mediaId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        setIsInWatchlist(false);
+      }
+    } catch (error) {
+      console.error("Error removing from watchlist:", error);
+    } finally {
+      setWatchlistLoading(false);
+      setShowWatchlistDeleteConfirm(false);
     }
   };
 
@@ -470,12 +554,59 @@ export default function MediaDetailsPage() {
                 </div>
               )}
 
-              <button
-                onClick={() => setShowWatchDialog(true)}
-                className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-4 py-2 sm:px-5 sm:py-2.5 text-xs sm:text-sm font-semibold text-violet-100 shadow-lg shadow-violet-500/10 transition hover:border-violet-400 hover:bg-violet-500/20"
-              >
-                {type === "tv" ? "Mark Episode as Watched" : "Mark as Watched"}
-              </button>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={() => setShowWatchDialog(true)}
+                  className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-4 py-2 sm:px-5 sm:py-2.5 text-xs sm:text-sm font-semibold text-violet-100 shadow-lg shadow-violet-500/10 transition hover:border-violet-400 hover:bg-violet-500/20"
+                >
+                  {type === "tv" ? "Mark Episode as Watched" : "Mark as Watched"}
+                </button>
+
+                {isInWatchlist ? (
+                  <button
+                    onClick={handleRemoveFromWatchlist}
+                    disabled={watchlistLoading}
+                    className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-red-500/40 bg-red-500/10 px-4 py-2 sm:px-5 sm:py-2.5 text-xs sm:text-sm font-semibold text-red-100 shadow-lg shadow-red-500/10 transition hover:border-red-400 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                    Remove from Watchlist
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleAddToWatchlist}
+                    disabled={watchlistLoading}
+                    className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-zinc-500/40 bg-zinc-500/10 px-4 py-2 sm:px-5 sm:py-2.5 text-xs sm:text-sm font-semibold text-zinc-100 shadow-lg shadow-zinc-500/10 transition hover:border-zinc-400 hover:bg-zinc-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                    </svg>
+                    Add to Watchlist
+                  </button>
+                )}
+              </div>
 
               {watchHistory.length > 0 && (
                 <div className="mt-6">
@@ -979,6 +1110,42 @@ export default function MediaDetailsPage() {
               </button>
               <button
                 onClick={confirmDeleteWatch}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition cursor-pointer"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showWatchlistDeleteConfirm && (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-4"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowWatchlistDeleteConfirm(false);
+            }
+          }}
+        >
+          <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-6 w-full max-w-sm mx-4 shadow-2xl">
+            <h3 className="text-lg font-semibold text-white mb-2">
+              Remove from Watchlist
+            </h3>
+            <p className="text-zinc-300 mb-6">
+              Are you sure you want to remove this item from your watchlist?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => {
+                  setShowWatchlistDeleteConfirm(false);
+                }}
+                className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-medium text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmRemoveFromWatchlist}
                 className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition cursor-pointer"
               >
                 Remove

@@ -396,7 +396,17 @@ export function getMediaTitle(media: TMDBMedia): string {
 }
 
 export function getMediaDate(media: TMDBMedia): string {
-  return media.release_date || media.first_air_date || "Unknown";
+  const dateStr = media.release_date || media.first_air_date;
+  if (!dateStr) return "Unknown";
+
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return "Unknown";
+
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 export function getMediaType(media: TMDBMedia): string {
