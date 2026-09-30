@@ -115,6 +115,7 @@ export async function GET(request: NextRequest) {
     if (!dbUser) {
       dbUser = await prisma.user.create({
         data: {
+          supabaseUserId: user.id,
           email: user.email!,
           username: user.user_metadata?.username || user.email?.split("@")[0],
         },
@@ -189,6 +190,7 @@ export async function POST(request: NextRequest) {
     if (!dbUser) {
       dbUser = await prisma.user.create({
         data: {
+          supabaseUserId: user.id,
           email: user.email!,
           username: user.user_metadata?.username || user.email?.split("@")[0],
         },
@@ -331,6 +333,7 @@ export async function DELETE(request: NextRequest) {
     if (!dbUser) {
       dbUser = await prisma.user.create({
         data: {
+          supabaseUserId: user.id,
           email: user.email!,
           username: user.user_metadata?.username || user.email?.split("@")[0],
         },
