@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
       ) || null;
     const episodeLabel =
       seasonNumber !== null && episodeNumber !== null
-        ? `S${String(seasonNumber).padStart(2, "0")}E${String(episodeNumber).padStart(2, "0")}`
+        ? `S${seasonNumber} E${episodeNumber}`
         : null;
     const itemId = item.Id ?? item.id;
     const seriesId = item.SeriesId ?? item.seriesId ?? item.Series?.Id ?? null;

@@ -222,9 +222,9 @@ export default function CalendarPage() {
                         <Link
                           key={`${item.tmdbId}-${item.seasonNumber || "movie"}-${item.episodeNumber || "movie"}-${item.airDate || "unknown"}`}
                           href={linkHref}
-                          className="group flex flex-col gap-2"
+                          className="group flex flex-col overflow-hidden rounded-lg border border-zinc-700/50 bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 backdrop-blur-sm transition-all hover:border-violet-500/50 hover:shadow-lg hover:shadow-violet-500/10"
                         >
-                          <div className="relative aspect-[2/3] overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900 transition hover:border-violet-500/50 hover:shadow-lg hover:shadow-violet-500/10">
+                          <div className="relative aspect-[2/3] overflow-hidden">
                             <img
                               src={getPosterUrl(item.posterPath || null)}
                               alt={isMovie ? item.title : (item.episodeTitle || item.title)}
@@ -235,7 +235,7 @@ export default function CalendarPage() {
                             />
                           </div>
 
-                          <div className="space-y-1">
+                          <div className="space-y-1 bg-zinc-900/40 p-2">
                             <div className="line-clamp-2 text-xs font-semibold text-white leading-tight">
                               {!isMovie ? (
                                 <span

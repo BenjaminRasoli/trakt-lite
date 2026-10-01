@@ -183,8 +183,8 @@ export default function NextUpPage() {
                 </div>
 
                 <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
-                  <div className="text-[10px] font-medium uppercase tracking-[0.15em] text-violet-300">
-                    S{item.seasonNumber} • E{item.episodeNumber}
+                  <div className="text-[10px] font-medium uppercase text-violet-300">
+                    S{item.seasonNumber} E{item.episodeNumber}
                   </div>
                   <div className="line-clamp-2 text-xs font-semibold text-white">
                     <span
