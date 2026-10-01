@@ -30,7 +30,11 @@ export default function CalendarPage() {
   const router = useRouter();
   const supabase = useSupabase();
 
-  const handleTitleClick = (e: React.MouseEvent, tmdbId: number, mediaType?: string) => {
+  const handleTitleClick = (
+    e: React.MouseEvent,
+    tmdbId: number,
+    mediaType?: string,
+  ) => {
     e.preventDefault();
     e.stopPropagation();
     router.push(`/media/${tmdbId}?type=${mediaType || "tv"}`);
@@ -156,7 +160,7 @@ export default function CalendarPage() {
       <main className="relative z-10 mx-auto w-full max-w-[1650px] px-4 py-12 sm:px-6 lg:px-8">
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-violet-400/80">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-violet-400/80">
               upcoming release list
             </p>
             <h1 className="text-3xl font-bold text-white md:text-4xl">
@@ -178,7 +182,8 @@ export default function CalendarPage() {
               No upcoming releases
             </h2>
             <p className="mt-3 text-zinc-400">
-              Watch some shows or add movies and TV shows to your watchlist to see upcoming releases here.
+              Watch some shows or add movies and TV shows to your watchlist to
+              see upcoming releases here.
             </p>
           </div>
         ) : (
@@ -187,12 +192,14 @@ export default function CalendarPage() {
               const dateLabel =
                 dateKey === "Unknown date"
                   ? "Unknown date"
-                  : new Date(dateKey).toLocaleDateString(undefined, {
-                      weekday: "short",
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    });
+                  : (() => {
+                      const date = new Date(dateKey);
+                      const weekday = date.toLocaleDateString("en-US", { weekday: "short" });
+                      const month = date.toLocaleDateString("en-US", { month: "short" });
+                      const day = date.getDate();
+                      const year = date.getFullYear();
+                      return `${weekday.charAt(0).toUpperCase() + weekday.slice(1).toLowerCase()}, ${month.charAt(0).toUpperCase() + month.slice(1).toLowerCase()} ${day}, ${year}`;
+                    })();
 
               return (
                 <section
@@ -212,7 +219,9 @@ export default function CalendarPage() {
 
                   <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-3">
                     {items.map((item) => {
-                      const isMovie = item.seasonNumber === null && item.episodeNumber === null;
+                      const isMovie =
+                        item.seasonNumber === null &&
+                        item.episodeNumber === null;
                       const mediaType = isMovie ? "movie" : "tv";
                       const linkHref = isMovie
                         ? `/media/${item.tmdbId}?type=movie`
@@ -222,12 +231,16 @@ export default function CalendarPage() {
                         <Link
                           key={`${item.tmdbId}-${item.seasonNumber || "movie"}-${item.episodeNumber || "movie"}-${item.airDate || "unknown"}`}
                           href={linkHref}
-                          className="group flex flex-col overflow-hidden rounded-lg border border-zinc-700/50 bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 backdrop-blur-sm transition-all hover:border-violet-500/50 hover:shadow-lg hover:shadow-violet-500/10"
+                          className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:border-violet-500/50"
                         >
                           <div className="relative aspect-[2/3] overflow-hidden">
                             <img
                               src={getPosterUrl(item.posterPath || null)}
-                              alt={isMovie ? item.title : (item.episodeTitle || item.title)}
+                              alt={
+                                isMovie
+                                  ? item.title
+                                  : item.episodeTitle || item.title
+                              }
                               className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                               onError={(e) => {
                                 e.currentTarget.src = "/placeholder-poster.svg";
@@ -235,11 +248,13 @@ export default function CalendarPage() {
                             />
                           </div>
 
-                          <div className="space-y-1 bg-zinc-900/40 p-2">
+                          <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
                             <div className="line-clamp-2 text-xs font-semibold text-white leading-tight">
                               {!isMovie ? (
                                 <span
-                                  onClick={(e) => handleTitleClick(e, item.tmdbId, mediaType)}
+                                  onClick={(e) =>
+                                    handleTitleClick(e, item.tmdbId, mediaType)
+                                  }
                                   className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
                                 >
                                   {item.title}
@@ -248,9 +263,14 @@ export default function CalendarPage() {
                                 <span>{item.title}</span>
                               )}
                             </div>
+                            {!isMovie && item.episodeTitle && (
+                              <div className="line-clamp-1 text-[10px] text-zinc-400">
+                                {item.episodeTitle}
+                              </div>
+                            )}
                             {!isMovie && (
                               <div className="text-[10px] text-zinc-400">
-                                <span className="font-medium text-violet-300">S{item.seasonNumber} E{item.episodeNumber}</span>
+                                S{item.seasonNumber} E{item.episodeNumber}
                               </div>
                             )}
                           </div>

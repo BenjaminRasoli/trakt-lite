@@ -552,7 +552,7 @@ function HomeContent() {
                         <Link
                           key={`${item.tmdbId}-${item.seasonNumber}-${item.episodeNumber}`}
                           href={`/media/${item.tmdbId}/season/${item.seasonNumber}/episode/${item.episodeNumber}?type=tv`}
-                          className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:-translate-y-0.5 hover:border-violet-500/50"
+                          className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:border-violet-500/50"
                         >
                           <div className="relative aspect-[2/3] overflow-hidden">
                             <img
@@ -635,7 +635,7 @@ function HomeContent() {
                           <Link
                             key={`${item.tmdbId}-${item.seasonNumber || "movie"}-${item.episodeNumber || "movie"}-${item.airDate || "unknown"}`}
                             href={linkHref}
-                            className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:-translate-y-0.5 hover:border-violet-500/50"
+                            className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:border-violet-500/50"
                           >
                             <div className="relative aspect-[2/3] overflow-hidden">
                               <img
@@ -650,15 +650,17 @@ function HomeContent() {
                             </div>
 
                             <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
-                              <div className="text-[10px] font-medium uppercase tracking-[0.15em] text-violet-300">
+                              <div className="text-[10px] font-medium tracking-[0.15em] text-violet-300">
                                 {item.airDate
-                                  ? new Date(item.airDate).toLocaleDateString(
-                                      undefined,
-                                      {
-                                        month: "short",
-                                        day: "numeric",
-                                      },
-                                    )
+                                  ? (() => {
+                                      const date = new Date(item.airDate);
+                                      const month = date.toLocaleDateString(
+                                        "en-US",
+                                        { month: "short" },
+                                      );
+                                      const day = date.getDate();
+                                      return `${month.charAt(0).toUpperCase() + month.slice(1).toLowerCase()} ${day}`;
+                                    })()
                                   : "Coming soon"}
                               </div>
                               <div className="line-clamp-2 text-xs font-semibold text-white">
@@ -676,6 +678,13 @@ function HomeContent() {
                                   {item.episodeTitle}
                                 </div>
                               )}
+                              {!isMovie &&
+                                item.seasonNumber !== null &&
+                                item.episodeNumber !== null && (
+                                  <div className="text-[10px] text-zinc-400">
+                                    S{item.seasonNumber} E{item.episodeNumber}
+                                  </div>
+                                )}
                             </div>
                           </Link>
                         );
@@ -736,7 +745,7 @@ function HomeContent() {
                           <Link
                             key={historyItem.id}
                             href={historyLink}
-                            className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:-translate-y-0.5 hover:border-violet-500/50"
+                            className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:border-violet-500/50"
                           >
                             <div className="relative aspect-[2/3] overflow-hidden">
                               <img
@@ -751,11 +760,15 @@ function HomeContent() {
                             </div>
 
                             <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
-                              <div className="text-[10px] font-medium uppercase tracking-[0.15em] text-violet-300">
-                                {watchedDate.toLocaleDateString(undefined, {
-                                  month: "short",
-                                  day: "numeric",
-                                })}{" "}
+                              <div className="text-[10px] font-medium tracking-[0.15em] text-violet-300">
+                                {(() => {
+                                  const month = watchedDate.toLocaleDateString(
+                                    "en-US",
+                                    { month: "short" },
+                                  );
+                                  const day = watchedDate.getDate();
+                                  return `${month.charAt(0).toUpperCase() + month.slice(1).toLowerCase()} ${day}`;
+                                })()}{" "}
                               </div>
                               <div className="line-clamp-1 text-xs font-semibold text-white">
                                 <span
