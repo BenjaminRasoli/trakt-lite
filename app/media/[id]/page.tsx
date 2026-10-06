@@ -36,7 +36,8 @@ export default function MediaDetailsPage() {
     useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [watchToDelete, setWatchToDelete] = useState<string | null>(null);
-  const [showWatchlistDeleteConfirm, setShowWatchlistDeleteConfirm] = useState(false);
+  const [showWatchlistDeleteConfirm, setShowWatchlistDeleteConfirm] =
+    useState(false);
   const [selectedSeason, setSelectedSeason] = useState<number>(1);
   const [selectedEpisode, setSelectedEpisode] = useState<number>(1);
   const [expandedSeason, setExpandedSeason] = useState<number | null>(1);
@@ -205,8 +206,14 @@ export default function MediaDetailsPage() {
           return;
         }
         const data = await response.json();
-        const watchlistData = Array.isArray(data.watchlist) ? data.watchlist : [];
-        setIsInWatchlist(watchlistData.some((item: any) => item.media.tmdbId === parseInt(mediaId)));
+        const watchlistData = Array.isArray(data.watchlist)
+          ? data.watchlist
+          : [];
+        setIsInWatchlist(
+          watchlistData.some(
+            (item: any) => item.media.tmdbId === parseInt(mediaId),
+          ),
+        );
       } catch (error) {
         console.error("Error checking watchlist:", error);
         setIsInWatchlist(false);
@@ -219,7 +226,8 @@ export default function MediaDetailsPage() {
   }, [user, mediaId]);
 
   useEffect(() => {
-    const isAnyModalOpen = showWatchDialog || showDeleteConfirm || showWatchlistDeleteConfirm;
+    const isAnyModalOpen =
+      showWatchDialog || showDeleteConfirm || showWatchlistDeleteConfirm;
     document.body.style.overflow = isAnyModalOpen ? "hidden" : "";
 
     return () => {
@@ -228,7 +236,8 @@ export default function MediaDetailsPage() {
   }, [showWatchDialog, showDeleteConfirm, showWatchlistDeleteConfirm]);
 
   useEffect(() => {
-    if (!showWatchDialog && !showDeleteConfirm && !showWatchlistDeleteConfirm) return;
+    if (!showWatchDialog && !showDeleteConfirm && !showWatchlistDeleteConfirm)
+      return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -559,7 +568,9 @@ export default function MediaDetailsPage() {
                   onClick={() => setShowWatchDialog(true)}
                   className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-4 py-2 sm:px-5 sm:py-2.5 text-xs sm:text-sm font-semibold text-violet-100 shadow-lg shadow-violet-500/10 transition hover:border-violet-400 hover:bg-violet-500/20"
                 >
-                  {type === "tv" ? "Mark Episode as Watched" : "Mark as Watched"}
+                  {type === "tv"
+                    ? "Mark Episode as Watched"
+                    : "Mark as Watched"}
                 </button>
 
                 {isInWatchlist ? (
@@ -899,7 +910,7 @@ export default function MediaDetailsPage() {
               <h2 className="text-xl font-bold text-white mb-4">
                 Recommendations
               </h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4">
+              <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4">
                 {recommendations.slice(0, 7).map((rec) => (
                   <MediaCard key={rec.id} media={rec} />
                 ))}

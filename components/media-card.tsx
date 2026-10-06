@@ -85,16 +85,16 @@ export default function MediaCard({ media }: MediaCardProps) {
           </span>
         </h3>
 
-        <div className="flex items-center gap-1.5 mb-1.5">
+        <div className="flex md:flex-row md:items-center flex-col items-start gap-1.5 mb-1.5">
           <div className="flex items-center gap-0.5">
             <span className="text-yellow-400 text-xs">★</span>
             <span className="text-zinc-300 text-xs">{rating}</span>
           </div>
-          <span className="text-zinc-500 text-xs">•</span>
+          <span className="text-zinc-500 text-xs hidden md:block">•</span>
           <span className="text-zinc-400 text-xs">{date}</span>
         </div>
 
-        <div className="flex flex-wrap gap-0.5">
+        <div className="flex flex-wrap gap-1.5">
           {genres.slice(0, 2).map((genre, index) => (
             <span
               key={`${genre}-${index}`}

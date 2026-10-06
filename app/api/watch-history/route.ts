@@ -3,9 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { getMediaDetails } from "@/lib/tmdb";
 
-// Cache for TMDB API calls to reduce redundant requests
 const mediaCache = new Map<string, any>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL = 5 * 60 * 1000;
 const cacheTimestamps = new Map<string, number>();
 
 async function hydrateMissingMediaMetadata(media: {
@@ -52,7 +51,6 @@ async function hydrateMissingMediaMetadata(media: {
     overview: tmdbMedia.overview || media.overview || "",
   };
 
-  // Cache the result with timestamp
   mediaCache.set(cacheKey, {
     title: hydratedMedia.title,
     posterPath: hydratedMedia.posterPath,
@@ -154,7 +152,7 @@ function normalizeDate(dateInput: string | Date | null | undefined): string | nu
 }
 
 async function getNextUpQueue(userId: string, limit = 6) {
-  // Only fetch TV shows with season/episode info, ordered by watchedAt
+
   const watchHistory = await prisma.watchHistory.findMany({
     where: {
       userId,
@@ -166,7 +164,7 @@ async function getNextUpQueue(userId: string, limit = 6) {
     orderBy: {
       watchedAt: "desc",
     },
-    take: 500, // Limit to recent history to improve performance
+    take: 500
   });
 
   const latestByShow = new Map<
@@ -308,7 +306,7 @@ async function getNextUpQueue(userId: string, limit = 6) {
 }
 
 async function getUpcomingEpisodesQueue(userId: string, limit = 6) {
-  // Only fetch TV shows with season/episode info, ordered by watchedAt
+
   const watchHistory = await prisma.watchHistory.findMany({
     where: {
       userId,
@@ -320,7 +318,7 @@ async function getUpcomingEpisodesQueue(userId: string, limit = 6) {
     orderBy: {
       watchedAt: "desc",
     },
-    take: 500, // Limit to recent history to improve performance
+    take: 500
   });
 
   const latestByShow = new Map<
@@ -373,7 +371,19 @@ async function getUpcomingEpisodesQueue(userId: string, limit = 6) {
     return seasonDetails ?? null;
   };
 
-  const upcoming = await mapWithConcurrency(
+  const upcoming: Array<{
+    tmdbId: number;
+    title: string;
+    posterPath: string | null;
+    backdropPath: string | null;
+    seasonNumber: number;
+    episodeNumber: number;
+    episodeTitle: string;
+    overview: string | null;
+    airDate: string | null;
+  }> = [];
+
+  const computedShows = await mapWithConcurrency(
     [...latestByShow.values()],
     3,
     async (show) => {
@@ -385,7 +395,8 @@ async function getUpcomingEpisodesQueue(userId: string, limit = 6) {
         show.tmdbId,
         currentSeason,
       );
-      const nextFutureEpisodeInCurrentSeason = currentSeasonDetails?.episodes
+
+      const futureEpisodesInCurrentSeason = currentSeasonDetails?.episodes
         ?.filter(
           (episode: { episode_number?: number; air_date?: string | null }) =>
             Number(episode.episode_number) > currentEpisode &&
@@ -395,31 +406,29 @@ async function getUpcomingEpisodesQueue(userId: string, limit = 6) {
           (a: { air_date?: string | null }, b: { air_date?: string | null }) =>
             new Date(a.air_date || now).getTime() -
             new Date(b.air_date || now).getTime(),
-        )[0];
+        );
 
-      if (nextFutureEpisodeInCurrentSeason) {
-        return {
+      for (const episode of futureEpisodesInCurrentSeason || []) {
+        upcoming.push({
           tmdbId: show.tmdbId,
           title: show.title,
           posterPath: show.posterPath,
           backdropPath: show.backdropPath,
           seasonNumber: currentSeason,
-          episodeNumber: Number(
-            nextFutureEpisodeInCurrentSeason.episode_number,
-          ),
+          episodeNumber: Number(episode.episode_number),
           episodeTitle:
-            nextFutureEpisodeInCurrentSeason.name ||
-            `Episode ${Number(nextFutureEpisodeInCurrentSeason.episode_number)}`,
-          overview: nextFutureEpisodeInCurrentSeason.overview || null,
-          airDate: normalizeDate(nextFutureEpisodeInCurrentSeason.air_date),
-        };
+            episode.name ||
+            `Episode ${Number(episode.episode_number)}`,
+          overview: episode.overview || null,
+          airDate: normalizeDate(episode.air_date),
+        });
       }
 
       const nextSeasonDetails = await getCachedSeasonDetails(
         show.tmdbId,
         currentSeason + 1,
       );
-      const firstFutureEpisodeNextSeason = nextSeasonDetails?.episodes
+      const futureEpisodesNextSeason = nextSeasonDetails?.episodes
         ?.filter(
           (episode: { episode_number?: number; air_date?: string | null }) =>
             Number(episode.episode_number) >= 1 && isFutureEpisode(episode),
@@ -428,30 +437,33 @@ async function getUpcomingEpisodesQueue(userId: string, limit = 6) {
           (a: { air_date?: string | null }, b: { air_date?: string | null }) =>
             new Date(a.air_date || now).getTime() -
             new Date(b.air_date || now).getTime(),
-        )[0];
+        );
 
-      if (!firstFutureEpisodeNextSeason) return null;
+      for (const episode of futureEpisodesNextSeason || []) {
+        upcoming.push({
+          tmdbId: show.tmdbId,
+          title: show.title,
+          posterPath: show.posterPath,
+          backdropPath: show.backdropPath,
+          seasonNumber: currentSeason + 1,
+          episodeNumber: Number(episode.episode_number),
+          episodeTitle:
+            episode.name ||
+            `Episode ${Number(episode.episode_number)}`,
+          overview: episode.overview || null,
+          airDate: normalizeDate(episode.air_date),
+        });
+      }
 
-      return {
-        tmdbId: show.tmdbId,
-        title: show.title,
-        posterPath: show.posterPath,
-        backdropPath: show.backdropPath,
-        seasonNumber: currentSeason + 1,
-        episodeNumber: Number(firstFutureEpisodeNextSeason.episode_number),
-        episodeTitle:
-          firstFutureEpisodeNextSeason.name ||
-          `Episode ${Number(firstFutureEpisodeNextSeason.episode_number)}`,
-        overview: firstFutureEpisodeNextSeason.overview || null,
-        airDate: normalizeDate(firstFutureEpisodeNextSeason.air_date),
-      };
+      return null;
     },
   );
 
+  await Promise.all(computedShows);
+
   return upcoming
-    .filter(Boolean)
     .sort(
-      (a: any, b: any) =>
+      (a, b) =>
         new Date(a.airDate || 0).getTime() - new Date(b.airDate || 0).getTime(),
     )
     .slice(0, limit);
@@ -487,22 +499,24 @@ async function getUpcomingWatchlistReleases(userId: string, limit = 40) {
         const { getTVSeasonDetails } = await import("@/lib/tmdb");
         try {
           const season1Details = await getTVSeasonDetails(media.tmdbId, 1);
-          const firstEpisode = season1Details?.episodes?.[0];
+          const episodes = season1Details?.episodes || [];
 
-          if (firstEpisode?.air_date) {
-            const episodeAirDate = new Date(firstEpisode.air_date);
-            if (episodeAirDate >= now) {
-              upcomingReleases.push({
-                tmdbId: media.tmdbId,
-                title: media.title,
-                posterPath: media.posterPath,
-                backdropPath: media.backdropPath,
-                seasonNumber: 1,
-                episodeNumber: Number(firstEpisode.episode_number),
-                episodeTitle: firstEpisode.name || `Episode ${Number(firstEpisode.episode_number)}`,
-                overview: firstEpisode.overview || media.overview,
-                airDate: normalizeDate(firstEpisode.air_date),
-              });
+          for (const episode of episodes) {
+            if (episode?.air_date) {
+              const episodeAirDate = new Date(episode.air_date);
+              if (episodeAirDate >= now) {
+                upcomingReleases.push({
+                  tmdbId: media.tmdbId,
+                  title: media.title,
+                  posterPath: media.posterPath,
+                  backdropPath: media.backdropPath,
+                  seasonNumber: 1,
+                  episodeNumber: Number(episode.episode_number),
+                  episodeTitle: episode.name || `Episode ${Number(episode.episode_number)}`,
+                  overview: episode.overview || media.overview,
+                  airDate: normalizeDate(episode.air_date),
+                });
+              }
             }
           }
         } catch (error) {
@@ -577,7 +591,7 @@ export async function GET(request: NextRequest) {
       const parsedLimit =
         limitParam && limitParam !== "all"
           ? Number.parseInt(limitParam, 10)
-          : 10000; // Fetch all items when limit is "all"
+          : 10000
       const parsedOffset =
         offsetParam && offsetParam !== "all"
           ? Number.parseInt(offsetParam, 10)
@@ -760,7 +774,6 @@ export async function GET(request: NextRequest) {
       const allUpcoming = [...hydratedUpcoming, ...hydratedWatchlistUpcoming]
         .map((item) => ({
           ...item,
-          // Normalize airDate to just the date part (YYYY-MM-DD) for consistent grouping
           airDate: normalizeDate(item.airDate),
         }))
         .sort(
@@ -937,31 +950,16 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const existingWatch = await prisma.watchHistory.findFirst({
-      where: {
+    const watchEntry = await prisma.watchHistory.create({
+      data: {
         userId: dbUser.id,
         mediaId: media.id,
         seasonNumber: mediaType === "tv" ? seasonNumber : null,
         episodeNumber: mediaType === "tv" ? episodeNumber : null,
+        episodeName: mediaType === "tv" ? episodeName || null : null,
         watchedAt: new Date(watchedAt),
       },
     });
-
-    let watchEntry;
-    if (existingWatch) {
-      watchEntry = existingWatch;
-    } else {
-      watchEntry = await prisma.watchHistory.create({
-        data: {
-          userId: dbUser.id,
-          mediaId: media.id,
-          seasonNumber: mediaType === "tv" ? seasonNumber : null,
-          episodeNumber: mediaType === "tv" ? episodeNumber : null,
-          episodeName: mediaType === "tv" ? episodeName || null : null,
-          watchedAt: new Date(watchedAt),
-        },
-      });
-    }
 
     return NextResponse.json(watchEntry);
   } catch (error) {

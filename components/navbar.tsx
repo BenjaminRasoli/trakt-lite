@@ -101,21 +101,22 @@ export default function Navbar() {
   return (
     <>
       <nav className="sticky top-0 z-40 border-b border-zinc-700/50 bg-zinc-950/85 backdrop-blur-md">
-        <div className="mx-auto max-w-[1650px] px-3 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:py-0 sm:h-16">
-            <div className="flex items-center justify-between sm:justify-start gap-3 sm:gap-8 w-full sm:w-auto">
+        <div className="mx-auto max-w-[1650px] px-3 min-[1050px]:px-6 lg:px-8">
+          <div className="flex flex-col gap-3 py-3 lg:flex-row lg:items-center lg:justify-between lg:py-0 lg:h-16 min-[1050px]:flex-row min-[1050px]:items-center min-[1050px]:justify-between min-[1050px]:py-0 min-[1050px]:h-16">
+            <div className="flex items-center justify-between lg:justify-start gap-3 lg:gap-8 w-full lg:w-auto min-[1050px]:justify-start min-[1050px]:gap-8 min-[1050px]:w-auto">
               <Link
                 href="/"
-                className="text-xl font-bold text-white transition-colors hover:text-violet-400 sm:text-2xl"
+                className="text-xl font-bold text-white transition-colors hover:text-violet-400 lg:text-2xl min-[1050px]:text-2xl"
               >
                 Trakt <span className="text-violet-400">Lite</span>
               </Link>
               {user && (
-                <div className="hidden sm:flex flex-wrap items-center gap-4">
+                <div className="hidden lg:flex flex-wrap items-center gap-4 min-[1050px]:flex">
                   {[
                     { href: "/new", label: "New" },
                     { href: "/next-up", label: "Next Up" },
                     { href: "/calendar", label: "Calendar" },
+                    { href: "/weekly", label: "Weekly" },
                     { href: "/watchlist", label: "Watchlist" },
                     { href: "/history", label: "History" },
                     { href: "/profile", label: "Profile" },
@@ -128,7 +129,7 @@ export default function Navbar() {
                         key={href}
                         href={href}
                         className={[
-                          "text-sm font-medium transition-colors sm:text-base",
+                          "text-sm font-medium transition-colors lg:text-base min-[1050px]:text-base",
                           isActive
                             ? "text-violet-400"
                             : "text-zinc-300 hover:text-violet-400",
@@ -140,11 +141,11 @@ export default function Navbar() {
                   })}
                 </div>
               )}
-              <div className="flex items-center gap-2 sm:hidden">
+              <div className="flex items-center gap-2 lg:hidden min-[1050px]:hidden">
                 {loading ? (
                   <div className="flex items-center gap-2 text-violet-300">
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-violet-300" />
-                    <span className="text-[10px] font-medium uppercase tracking-[0.2em]">
+                    <span className="text-[10px] font-medium uppercase tracking-[0.2em] lg:text-xs min-[1050px]:text-xs">
                       Loading
                     </span>
                   </div>
@@ -186,11 +187,11 @@ export default function Navbar() {
               </div>
             </div>
 
-            <div className="hidden sm:flex flex-wrap items-center justify-end gap-2 sm:gap-4">
+            <div className="hidden lg:flex flex-wrap items-center justify-end gap-2 lg:gap-4 min-[1050px]:flex min-[1050px]:justify-end min-[1050px]:gap-4">
               {loading ? (
                 <div className="flex items-center gap-2 text-violet-300">
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-violet-300" />
-                  <span className="text-[10px] font-medium uppercase tracking-[0.2em] sm:text-xs">
+                  <span className="text-[10px] font-medium uppercase tracking-[0.2em] lg:text-xs min-[1050px]:text-xs">
                     Loading
                   </span>
                 </div>
@@ -198,7 +199,7 @@ export default function Navbar() {
                 <>
                   <Link
                     href="/profile"
-                    className="flex items-center gap-2 sm:gap-3"
+                    className="flex items-center gap-2 lg:gap-3 min-[1050px]:gap-3"
                   >
                     {avatarUrl ? (
                       <NextImage
@@ -206,14 +207,14 @@ export default function Navbar() {
                         alt={capitalizedUsername}
                         width={32}
                         height={32}
-                        className="h-8 w-8 rounded-full border border-violet-500/50 object-cover shadow-lg shadow-violet-500/20 sm:h-9 sm:w-9"
+                        className="h-8 w-8 rounded-full border border-violet-500/50 object-cover shadow-lg shadow-violet-500/20 lg:h-9 lg:w-9 min-[1050px]:h-9 min-[1050px]:w-9"
                       />
                     ) : (
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full border border-violet-500/50 bg-gradient-to-br from-violet-500 to-indigo-600 text-xs font-bold text-white shadow-lg shadow-violet-500/20 sm:h-9 sm:w-9 sm:text-sm">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full border border-violet-500/50 bg-gradient-to-br from-violet-500 to-indigo-600 text-xs font-bold text-white shadow-lg shadow-violet-500/20 lg:h-9 lg:w-9 lg:text-sm min-[1050px]:h-9 min-[1050px]:w-9 min-[1050px]:text-sm">
                         {capitalizedUsername.slice(0, 2).toUpperCase()}
                       </div>
                     )}
-                    <div className="hidden sm:block max-w-[150px] truncate text-xs text-zinc-300 sm:max-w-none sm:text-sm">
+                    <div className="hidden lg:block max-w-[150px] truncate text-xs text-zinc-300 lg:max-w-none lg:text-sm min-[1050px]:block min-[1050px]:max-w-none min-[1050px]:text-sm">
                       <span className="font-semibold text-violet-400">
                         {capitalizedUsername}
                       </span>
@@ -221,7 +222,7 @@ export default function Navbar() {
                   </Link>
                   <button
                     onClick={handleSignOut}
-                    className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20 sm:px-4 sm:py-2 sm:text-sm"
+                    className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20 lg:px-4 lg:py-2 lg:text-sm min-[1050px]:px-4 min-[1050px]:py-2 min-[1050px]:text-sm"
                   >
                     Sign Out
                   </button>
@@ -237,11 +238,12 @@ export default function Navbar() {
             </div>
           </div>
           {user && (
-            <div className="flex flex-wrap items-start gap-3 sm:hidden pb-2">
+            <div className="flex flex-wrap items-start gap-3 lg:hidden pb-2 min-[1050px]:hidden">
               {[
                 { href: "/new", label: "New" },
                 { href: "/next-up", label: "Next Up" },
                 { href: "/calendar", label: "Calendar" },
+                { href: "/weekly", label: "Weekly" },
                 { href: "/watchlist", label: "Watchlist" },
                 { href: "/history", label: "History" },
                 { href: "/profile", label: "Profile" },

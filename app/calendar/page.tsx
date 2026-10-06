@@ -113,18 +113,75 @@ export default function CalendarPage() {
   }, [user]);
 
   const groupedByDate = useMemo(() => {
-    return [...upcoming]
+    const byDate = [...upcoming]
       .sort(
         (a, b) =>
           new Date(a.airDate || 0).getTime() -
           new Date(b.airDate || 0).getTime(),
       )
       .reduce<Record<string, UpcomingEpisodeItem[]>>((groups, item) => {
-        // Use the airDate directly as the key since API already normalizes it
         const key = item.airDate || "Unknown date";
         groups[key] = groups[key] ? [...groups[key], item] : [item];
         return groups;
       }, {});
+
+    const finalGroups: Record<string, UpcomingEpisodeItem[]> = {};
+
+    for (const [dateKey, items] of Object.entries(byDate)) {
+      const byShow = items.reduce<Record<number, UpcomingEpisodeItem[]>>(
+        (showGroups, item) => {
+          showGroups[item.tmdbId] = showGroups[item.tmdbId]
+            ? [...showGroups[item.tmdbId], item]
+            : [item];
+          return showGroups;
+        },
+        {},
+      );
+
+      const combinedItems: UpcomingEpisodeItem[] = [];
+
+      for (const showItems of Object.values(byShow)) {
+        if (showItems.length === 1) {
+          combinedItems.push(showItems[0]);
+        } else {
+          const seasons = new Set(showItems.map((item) => item.seasonNumber));
+          const allSameSeason = seasons.size === 1;
+
+          if (allSameSeason) {
+            const seasonNumber = showItems[0].seasonNumber;
+            const episodeNumbers = showItems
+              .map((item) => item.episodeNumber)
+              .filter((n): n is number => n !== null)
+              .sort((a, b) => a - b);
+
+            if (episodeNumbers.length > 0) {
+              const minEp = episodeNumbers[0];
+              const maxEp = episodeNumbers[episodeNumbers.length - 1];
+
+              const combined: UpcomingEpisodeItem = {
+                ...showItems[0],
+                episodeTitle:
+                  minEp === maxEp
+                    ? showItems[0].episodeTitle
+                    : `Season ${seasonNumber}`,
+              };
+
+              (combined as any).episodeRange =
+                minEp === maxEp ? `E${minEp}` : `E${minEp}-${maxEp}`;
+              (combined as any).isEntireSeason = episodeNumbers.length > 5;
+
+              combinedItems.push(combined);
+            }
+          } else {
+            combinedItems.push(...showItems);
+          }
+        }
+      }
+
+      finalGroups[dateKey] = combinedItems;
+    }
+
+    return finalGroups;
   }, [upcoming]);
 
   if (loading || calendarLoading) {
@@ -223,9 +280,15 @@ export default function CalendarPage() {
                         item.seasonNumber === null &&
                         item.episodeNumber === null;
                       const mediaType = isMovie ? "movie" : "tv";
+                      const itemWithMeta = item as any;
+                      const isEntireSeason = itemWithMeta.isEntireSeason;
+                      const episodeRange = itemWithMeta.episodeRange;
+
                       const linkHref = isMovie
                         ? `/media/${item.tmdbId}?type=movie`
-                        : `/media/${item.tmdbId}/season/${item.seasonNumber}/episode/${item.episodeNumber}?type=tv`;
+                        : isEntireSeason || episodeRange
+                          ? `/media/${item.tmdbId}?type=tv`
+                          : `/media/${item.tmdbId}/season/${item.seasonNumber}/episode/${item.episodeNumber}?type=tv`;
 
                       return (
                         <Link
@@ -263,14 +326,18 @@ export default function CalendarPage() {
                                 <span>{item.title}</span>
                               )}
                             </div>
-                            {!isMovie && item.episodeTitle && (
+                            {!isMovie && item.episodeTitle && !isEntireSeason && !episodeRange && (
                               <div className="line-clamp-1 text-[10px] text-zinc-400">
                                 {item.episodeTitle}
                               </div>
                             )}
                             {!isMovie && (
                               <div className="text-[10px] text-zinc-400">
-                                S{item.seasonNumber} E{item.episodeNumber}
+                                {isEntireSeason
+                                  ? `Season ${item.seasonNumber}`
+                                  : episodeRange
+                                    ? `S${item.seasonNumber} ${episodeRange}`
+                                    : `S${item.seasonNumber} E${item.episodeNumber}`}
                               </div>
                             )}
                           </div>
