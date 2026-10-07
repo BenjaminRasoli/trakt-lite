@@ -100,6 +100,15 @@ function HomeContent() {
     router.push(`/media/${tmdbId}?type=${mediaType}`);
   };
 
+  const handleSeriesClick = (
+    e: React.MouseEvent,
+    tmdbId: number,
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    router.push(`/media/${tmdbId}?type=tv`);
+  };
+
   useEffect(() => {
     const updateUser = (nextUser: any) => {
       setUser((currentUser: any) => {
@@ -458,9 +467,16 @@ function HomeContent() {
                         </p>
                       </div>
                       <p className="text-lg font-bold text-white">
-                        {liveSession.mediaType === "tv"
-                          ? liveSession.seriesName || liveSession.title
-                          : liveSession.title}
+                        {liveSession.mediaType === "tv" ? (
+                          <span
+                            onClick={(e) => handleSeriesClick(e, liveSession.tmdbId)}
+                            className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
+                          >
+                            {liveSession.seriesName || liveSession.title}
+                          </span>
+                        ) : (
+                          liveSession.title
+                        )}
                       </p>
                       <p className="mt-1 text-sm">
                         {liveSession.mediaType === "tv" &&
