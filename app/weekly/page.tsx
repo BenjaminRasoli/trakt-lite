@@ -396,9 +396,10 @@ export default function WeeklyPage() {
     thisWeekWatchTimeMinutes?: number | null;
     lastWeekWatchTimeMinutes?: number | null;
   }) => {
-    const isPositive = change >= 0;
-    const changeColor = isPositive ? "text-emerald-400" : "text-rose-400";
-    const changeIcon = isPositive ? "↑" : "↓";
+    const isPositive = change > 0;
+    const isSame = change === 0;
+    const changeColor = isSame ? "text-zinc-500" : (isPositive ? "text-emerald-400" : "text-rose-400");
+    const changeIcon = isSame ? "" : (isPositive ? "↑" : "↓");
 
     const formatWatchTime = (minutes: number | null | undefined) => {
       if (minutes === null || minutes === undefined) return "";
