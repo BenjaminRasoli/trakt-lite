@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import type { User } from "@supabase/supabase-js";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -27,7 +27,7 @@ interface WatchlistItem {
   };
 }
 
-export default function WatchlistPage() {
+function WatchlistPageContent() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
@@ -472,3 +472,13 @@ export default function WatchlistPage() {
     </div>
   );
 }
+
+function WatchlistPageWithSuspense() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-black text-white">Loading...</div>}>
+      <WatchlistPageContent />
+    </Suspense>
+  );
+}
+
+export default WatchlistPageWithSuspense;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, Suspense } from "react";
 import type { User } from "@supabase/supabase-js";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -31,7 +31,7 @@ interface HistoryItem {
 
 const PAGE_SIZE = 42;
 
-export default function HistoryPage() {
+function HistoryPageContent() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -454,3 +454,13 @@ export default function HistoryPage() {
     </div>
   );
 }
+
+function HistoryPageWithSuspense() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-black text-white">Loading...</div>}>
+      <HistoryPageContent />
+    </Suspense>
+  );
+}
+
+export default HistoryPageWithSuspense;
