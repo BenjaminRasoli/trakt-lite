@@ -87,7 +87,9 @@ export async function searchMedia(query: string): Promise<TMDBMedia[]> {
       return [];
     }
     const data = await response.json();
-    return data.results || [];
+    return (data.results || []).filter(
+      (item: any) => item.media_type !== "person",
+    );
   } catch (error) {
     console.error("Error searching TMDB:", error);
     return [];

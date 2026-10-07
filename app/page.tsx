@@ -146,17 +146,22 @@ function HomeContent() {
       setSearching(true);
       setRecentHistory([]);
       setNextUp([]);
+      setUpcoming([]);
       searchMedia(query).then((results) => {
         setSearchResults(results);
         setSearching(false);
       });
     } else {
       setSearchResults([]);
+      setSearchQuery("");
+      setSearching(false);
     }
   }, [searchParams]);
 
   useEffect(() => {
     if (!user) return;
+    // Don't fetch home data if search is active
+    if (searchParams.get("q")) return;
 
     const fetchRecentHistory = async () => {
       setHistoryLoading(true);
@@ -210,7 +215,7 @@ function HomeContent() {
     };
 
     fetchRecentHistory();
-  }, [user]);
+  }, [user, searchParams]);
 
   useEffect(() => {
     if (!user) return;
@@ -291,7 +296,6 @@ function HomeContent() {
     [recentHistory],
   );
   const visibleUpcoming = useMemo(() => upcoming.slice(0, 6), [upcoming]);
-  const hasSearchResults = searchResults.length > 0 || searching;
 
   if (!initialCheckDone) {
     return (
@@ -428,11 +432,28 @@ function HomeContent() {
           </form>
         </div>
 
-        {!searching && historyLoading ? (
-          <RecentHistorySkeleton />
+        {searching ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="h-12 w-12 animate-spin rounded-full border-2 border-white/30 border-t-violet-300" />
+          </div>
+        ) : searchResults.length > 0 ? (
+          <div>
+            <h2 className="text-2xl font-bold text-white mb-6">
+              Search Results
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {searchResults.map((media) => (
+                <MediaCard key={media.id} media={media} />
+              ))}
+            </div>
+          </div>
         ) : (
           <>
-            {!searching && liveSession && (
+            {historyLoading && (
+              <RecentHistorySkeleton />
+            )}
+
+            {!historyLoading && liveSession && (
               <section className="mb-8">
                 <Link
                   href={
@@ -531,7 +552,7 @@ function HomeContent() {
               </section>
             )}
 
-            {!searching && (visibleNextUp.length > 0 || historyLoading) && (
+            {!historyLoading && visibleNextUp.length > 0 && (
               <section className="mb-8">
                 <div className="mb-4 flex items-center justify-between gap-4">
                   <div>
@@ -550,62 +571,48 @@ function HomeContent() {
                 </div>
 
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
-                  {historyLoading
-                    ? Array.from({ length: 6 }).map((_, index) => (
-                        <div
-                          key={`nextup-skeleton-${index}`}
-                          className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 animate-pulse"
-                        >
-                          <div className="relative aspect-[2/3] bg-zinc-800" />
-                          <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
-                            <div className="h-2.5 w-10 rounded-full bg-zinc-700" />
-                            <div className="h-3 w-20 rounded-full bg-zinc-700" />
-                            <div className="h-2.5 w-14 rounded-full bg-zinc-700" />
-                          </div>
-                        </div>
-                      ))
-                    : visibleNextUp.map((item) => (
-                        <Link
-                          key={`${item.tmdbId}-${item.seasonNumber}-${item.episodeNumber}`}
-                          href={`/media/${item.tmdbId}/season/${item.seasonNumber}/episode/${item.episodeNumber}?type=tv`}
-                          className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:border-violet-500/50"
-                        >
-                          <div className="relative aspect-[2/3] overflow-hidden">
-                            <img
-                              src={getPosterUrl(item.posterPath || null)}
-                              alt={item.episodeTitle}
-                              className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                              onError={(e) => {
-                                e.currentTarget.src = "/placeholder-poster.svg";
-                              }}
-                            />
-                          </div>
+                  {visibleNextUp.map((item) => (
+                    <Link
+                      key={`${item.tmdbId}-${item.seasonNumber}-${item.episodeNumber}`}
+                      href={`/media/${item.tmdbId}/season/${item.seasonNumber}/episode/${item.episodeNumber}?type=tv`}
+                      className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:border-violet-500/50"
+                    >
+                      <div className="relative aspect-[2/3] overflow-hidden">
+                        <img
+                          src={getPosterUrl(item.posterPath || null)}
+                          alt={item.episodeTitle}
+                          className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                          onError={(e) => {
+                            e.currentTarget.src = "/placeholder-poster.svg";
+                          }}
+                        />
+                      </div>
 
-                          <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
-                            <div className="text-[10px] font-medium uppercase text-violet-300">
-                              S{item.seasonNumber} E{item.episodeNumber}
-                            </div>
-                            <div className="line-clamp-2 text-xs font-semibold text-white">
-                              <span
-                                onClick={(e) =>
-                                  handleTitleClick(e, item.tmdbId, "tv")
-                                }
-                                className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
-                              >
-                                {item.title}
-                              </span>
-                            </div>
-                            <div className="line-clamp-1 text-[10px] text-zinc-400">
-                              {item.episodeTitle}
-                            </div>
-                          </div>
-                        </Link>
-                      ))}
+                      <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
+                        <div className="text-[10px] font-medium uppercase text-violet-300">
+                          S{item.seasonNumber} E{item.episodeNumber}
+                        </div>
+                        <div className="line-clamp-2 text-xs font-semibold text-white">
+                          <span
+                            onClick={(e) =>
+                              handleTitleClick(e, item.tmdbId, "tv")
+                            }
+                            className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
+                          >
+                            {item.title}
+                          </span>
+                        </div>
+                        <div className="line-clamp-1 text-[10px] text-zinc-400">
+                          {item.episodeTitle}
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
                 </div>
               </section>
             )}
 
-            {!searching && (visibleUpcoming.length > 0 || historyLoading) && (
+            {!historyLoading && visibleUpcoming.length > 0 && (
               <section className="mb-8">
                 <div className="mb-4 flex items-center justify-between gap-4">
                   <div>
@@ -624,92 +631,78 @@ function HomeContent() {
                 </div>
 
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
-                  {historyLoading
-                    ? Array.from({ length: 6 }).map((_, index) => (
-                        <div
-                          key={`upcoming-skeleton-${index}`}
-                          className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 animate-pulse"
-                        >
-                          <div className="relative aspect-[2/3] bg-zinc-800" />
-                          <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
-                            <div className="h-2.5 w-10 rounded-full bg-zinc-700" />
-                            <div className="h-3 w-20 rounded-full bg-zinc-700" />
-                            <div className="h-2.5 w-14 rounded-full bg-zinc-700" />
-                          </div>
+                  {visibleUpcoming.map((item) => {
+                    const isMovie =
+                      item.seasonNumber === null &&
+                      item.episodeNumber === null;
+                    const mediaType = isMovie ? "movie" : "tv";
+                    const linkHref = isMovie
+                      ? `/media/${item.tmdbId}?type=movie`
+                      : `/media/${item.tmdbId}/season/${item.seasonNumber}/episode/${item.episodeNumber}?type=tv`;
+
+                    return (
+                      <Link
+                        key={`${item.tmdbId}-${item.seasonNumber || "movie"}-${item.episodeNumber || "movie"}-${item.airDate || "unknown"}`}
+                        href={linkHref}
+                        className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:border-violet-500/50"
+                      >
+                        <div className="relative aspect-[2/3] overflow-hidden">
+                          <img
+                            src={getPosterUrl(item.posterPath || null)}
+                            alt={isMovie ? item.title : item.episodeTitle}
+                            className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                            onError={(e) => {
+                              e.currentTarget.src =
+                                "/placeholder-poster.svg";
+                            }}
+                          />
                         </div>
-                      ))
-                    : visibleUpcoming.map((item) => {
-                        const isMovie =
-                          item.seasonNumber === null &&
-                          item.episodeNumber === null;
-                        const mediaType = isMovie ? "movie" : "tv";
-                        const linkHref = isMovie
-                          ? `/media/${item.tmdbId}?type=movie`
-                          : `/media/${item.tmdbId}/season/${item.seasonNumber}/episode/${item.episodeNumber}?type=tv`;
 
-                        return (
-                          <Link
-                            key={`${item.tmdbId}-${item.seasonNumber || "movie"}-${item.episodeNumber || "movie"}-${item.airDate || "unknown"}`}
-                            href={linkHref}
-                            className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:border-violet-500/50"
-                          >
-                            <div className="relative aspect-[2/3] overflow-hidden">
-                              <img
-                                src={getPosterUrl(item.posterPath || null)}
-                                alt={isMovie ? item.title : item.episodeTitle}
-                                className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                                onError={(e) => {
-                                  e.currentTarget.src =
-                                    "/placeholder-poster.svg";
-                                }}
-                              />
+                        <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
+                          <div className="text-[10px] font-medium tracking-[0.15em] text-violet-300">
+                            {item.airDate
+                              ? (() => {
+                                  const date = new Date(item.airDate);
+                                  const month = date.toLocaleDateString(
+                                    "en-US",
+                                    { month: "short" },
+                                  );
+                                  const day = date.getDate();
+                                  return `${month.charAt(0).toUpperCase() + month.slice(1).toLowerCase()} ${day}`;
+                                })()
+                              : "Coming soon"}
+                          </div>
+                          <div className="line-clamp-2 text-xs font-semibold text-white">
+                            <span
+                              onClick={(e) =>
+                                handleTitleClick(e, item.tmdbId, mediaType)
+                              }
+                              className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
+                            >
+                              {item.title}
+                            </span>
+                          </div>
+                          {!isMovie && item.episodeTitle && (
+                            <div className="line-clamp-1 text-[10px] text-zinc-400">
+                              {item.episodeTitle}
                             </div>
-
-                            <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
-                              <div className="text-[10px] font-medium tracking-[0.15em] text-violet-300">
-                                {item.airDate
-                                  ? (() => {
-                                      const date = new Date(item.airDate);
-                                      const month = date.toLocaleDateString(
-                                        "en-US",
-                                        { month: "short" },
-                                      );
-                                      const day = date.getDate();
-                                      return `${month.charAt(0).toUpperCase() + month.slice(1).toLowerCase()} ${day}`;
-                                    })()
-                                  : "Coming soon"}
+                          )}
+                          {!isMovie &&
+                            item.seasonNumber !== null &&
+                            item.episodeNumber !== null && (
+                              <div className="text-[10px] text-zinc-400">
+                                S{item.seasonNumber} E{item.episodeNumber}
                               </div>
-                              <div className="line-clamp-2 text-xs font-semibold text-white">
-                                <span
-                                  onClick={(e) =>
-                                    handleTitleClick(e, item.tmdbId, mediaType)
-                                  }
-                                  className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
-                                >
-                                  {item.title}
-                                </span>
-                              </div>
-                              {!isMovie && item.episodeTitle && (
-                                <div className="line-clamp-1 text-[10px] text-zinc-400">
-                                  {item.episodeTitle}
-                                </div>
-                              )}
-                              {!isMovie &&
-                                item.seasonNumber !== null &&
-                                item.episodeNumber !== null && (
-                                  <div className="text-[10px] text-zinc-400">
-                                    S{item.seasonNumber} E{item.episodeNumber}
-                                  </div>
-                                )}
-                            </div>
-                          </Link>
-                        );
-                      })}
+                            )}
+                        </div>
+                      </Link>
+                    );
+                  })}
                 </div>
               </section>
             )}
 
-            {!searching && (visibleHistory.length > 0 || historyLoading) && (
+            {!historyLoading && visibleHistory.length > 0 && (
               <section className="mb-8">
                 <div className="mb-4 flex items-center justify-between gap-4">
                   <div>
@@ -728,109 +721,82 @@ function HomeContent() {
                 </div>
 
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
-                  {historyLoading
-                    ? Array.from({ length: 6 }).map((_, index) => (
-                        <div
-                          key={`history-skeleton-${index}`}
-                          className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 animate-pulse"
-                        >
-                          <div className="relative aspect-[2/3] bg-zinc-800" />
-                          <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
-                            <div className="h-2.5 w-10 rounded-full bg-zinc-700" />
-                            <div className="h-3 w-20 rounded-full bg-zinc-700" />
-                            <div className="h-2.5 w-14 rounded-full bg-zinc-700" />
-                          </div>
+                  {visibleHistory.map((historyItem) => {
+                    const media = historyItem.media;
+                    const watchedDate = new Date(historyItem.watchedAt);
+                    const episodeLabel =
+                      historyItem.seasonNumber !== null &&
+                      historyItem.episodeNumber !== null
+                        ? `S${historyItem.seasonNumber} E${historyItem.episodeNumber}`
+                        : null;
+
+                    const historyLink =
+                      historyItem.seasonNumber !== null &&
+                      historyItem.episodeNumber !== null
+                        ? `/media/${media.tmdbId}/season/${historyItem.seasonNumber}/episode/${historyItem.episodeNumber}?type=${media.mediaType}`
+                        : `/media/${media.tmdbId}?type=${media.mediaType}`;
+
+                    return (
+                      <Link
+                        key={historyItem.id}
+                        href={historyLink}
+                        className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:border-violet-500/50"
+                      >
+                        <div className="relative aspect-[2/3] overflow-hidden">
+                          <img
+                            src={getPosterUrl(media.posterPath || null)}
+                            alt={media.title}
+                            className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                            onError={(e) => {
+                              e.currentTarget.src =
+                                "/placeholder-poster.svg";
+                            }}
+                          />
                         </div>
-                      ))
-                    : visibleHistory.map((historyItem) => {
-                        const media = historyItem.media;
-                        const watchedDate = new Date(historyItem.watchedAt);
-                        const episodeLabel =
-                          historyItem.seasonNumber !== null &&
-                          historyItem.episodeNumber !== null
-                            ? `S${historyItem.seasonNumber} E${historyItem.episodeNumber}`
-                            : null;
 
-                        const historyLink =
-                          historyItem.seasonNumber !== null &&
-                          historyItem.episodeNumber !== null
-                            ? `/media/${media.tmdbId}/season/${historyItem.seasonNumber}/episode/${historyItem.episodeNumber}?type=${media.mediaType}`
-                            : `/media/${media.tmdbId}?type=${media.mediaType}`;
-
-                        return (
-                          <Link
-                            key={historyItem.id}
-                            href={historyLink}
-                            className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:border-violet-500/50"
-                          >
-                            <div className="relative aspect-[2/3] overflow-hidden">
-                              <img
-                                src={getPosterUrl(media.posterPath || null)}
-                                alt={media.title}
-                                className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                                onError={(e) => {
-                                  e.currentTarget.src =
-                                    "/placeholder-poster.svg";
-                                }}
-                              />
+                        <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
+                          <div className="text-[10px] font-medium tracking-[0.15em] text-violet-300">
+                            {(() => {
+                              const month = watchedDate.toLocaleDateString(
+                                "en-US",
+                                { month: "short" },
+                              );
+                              const day = watchedDate.getDate();
+                              return `${month.charAt(0).toUpperCase() + month.slice(1).toLowerCase()} ${day}`;
+                            })()}{" "}
+                          </div>
+                          <div className="line-clamp-1 text-xs font-semibold text-white">
+                            <span
+                              onClick={(e) =>
+                                handleTitleClick(
+                                  e,
+                                  media.tmdbId,
+                                  media.mediaType,
+                                )
+                              }
+                              className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
+                            >
+                              {media.title}
+                            </span>
+                          </div>
+                          {historyItem.episodeName && (
+                            <div className="line-clamp-1 text-[10px] text-zinc-300">
+                              {historyItem.episodeName}
                             </div>
-
-                            <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
-                              <div className="text-[10px] font-medium tracking-[0.15em] text-violet-300">
-                                {(() => {
-                                  const month = watchedDate.toLocaleDateString(
-                                    "en-US",
-                                    { month: "short" },
-                                  );
-                                  const day = watchedDate.getDate();
-                                  return `${month.charAt(0).toUpperCase() + month.slice(1).toLowerCase()} ${day}`;
-                                })()}{" "}
-                              </div>
-                              <div className="line-clamp-1 text-xs font-semibold text-white">
-                                <span
-                                  onClick={(e) =>
-                                    handleTitleClick(
-                                      e,
-                                      media.tmdbId,
-                                      media.mediaType,
-                                    )
-                                  }
-                                  className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
-                                >
-                                  {media.title}
-                                </span>
-                              </div>
-                              {historyItem.episodeName && (
-                                <div className="line-clamp-1 text-[10px] text-zinc-300">
-                                  {historyItem.episodeName}
-                                </div>
-                              )}
-                              {episodeLabel && (
-                                <div className="text-[10px] text-zinc-400">
-                                  {episodeLabel}
-                                </div>
-                              )}
+                          )}
+                          {episodeLabel && (
+                            <div className="text-[10px] text-zinc-400">
+                              {episodeLabel}
                             </div>
-                          </Link>
-                        );
-                      })}
+                          )}
+                        </div>
+                      </Link>
+                    );
+                  })}
                 </div>
               </section>
             )}
           </>
-        )}
-
-        {searchResults.length > 0 && (
-          <div>
-            <h2 className="text-2xl font-bold text-white mb-6">
-              Search Results
-            </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {searchResults.map((media) => (
-                <MediaCard key={media.id} media={media} />
-              ))}
-            </div>
-          </div>
         )}
       </main>
     </div>
