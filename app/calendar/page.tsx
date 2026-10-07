@@ -1,13 +1,12 @@
-"use client";
-
-import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useSupabase } from "@/components/supabase-provider";
+import Image from "next/image";
+import { createClient } from "@/lib/supabase/server";
+import { prisma } from "@/lib/prisma";
 import {
   getPosterUrl,
   getRandomBackdropUrl,
   getTrendingMedia,
+  getTVSeasonDetails,
 } from "@/lib/tmdb";
 
 interface UpcomingEpisodeItem {
@@ -16,191 +15,422 @@ interface UpcomingEpisodeItem {
   posterPath: string | null;
   seasonNumber: number | null;
   episodeNumber: number | null;
-  episodeTitle: string;
+  episodeTitle: string | null;
   overview: string | null;
   airDate: string | null;
 }
 
-export default function CalendarPage() {
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [calendarLoading, setCalendarLoading] = useState(true);
-  const [upcoming, setUpcoming] = useState<UpcomingEpisodeItem[]>([]);
-  const [pageBackdrop, setPageBackdrop] = useState("");
-  const router = useRouter();
-  const supabase = useSupabase();
+function isFutureEpisode(
+  episode:
+    | {
+        air_date?: string | null;
+      }
+    | null
+    | undefined,
+) {
+  if (!episode?.air_date) return false;
 
-  const handleTitleClick = (
-    e: React.MouseEvent,
-    tmdbId: number,
-    mediaType?: string,
-  ) => {
-    e.preventDefault();
-    e.stopPropagation();
-    router.push(`/media/${tmdbId}?type=${mediaType || "tv"}`);
-  };
+  const airDate = new Date(episode.air_date);
+  return Number.isFinite(airDate.getTime()) && airDate > new Date();
+}
 
-  useEffect(() => {
-    let isMounted = true;
+function normalizeDate(dateInput: string | Date | null | undefined): string | null {
+  if (!dateInput) return null;
+  const date = dateInput instanceof Date ? dateInput : new Date(dateInput);
+  if (isNaN(date.getTime())) return null;
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
-    const updateUser = (nextUser: any) => {
-      setUser((currentUser: any) => {
-        if (!nextUser) return null;
-        if (currentUser?.id === nextUser.id) return currentUser;
-        return nextUser;
-      });
-    };
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  mapper: (item: T) => Promise<R>,
+): Promise<R[]> {
+  if (items.length === 0) return [];
 
-    const getUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!isMounted) return;
-      updateUser(user);
-      setLoading(false);
-    };
+  const results = new Array<R>(items.length);
+  let index = 0;
 
-    getUser();
+  const workers = Array.from(
+    { length: Math.min(concurrency, items.length) },
+    async () => {
+      while (index < items.length) {
+        const currentIndex = index++;
+        results[currentIndex] = await mapper(items[currentIndex]);
+      }
+    },
+  );
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!isMounted) return;
-      updateUser(session?.user ?? null);
+  await Promise.all(workers);
+  return results;
+}
+
+async function getCalendarData() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { user: null, upcoming: [] };
+  }
+
+  let dbUser = await prisma.user.findUnique({
+    where: { email: user.email! },
+  });
+
+  if (!dbUser) {
+    return { user, upcoming: [] };
+  }
+
+  try {
+    const cachedUpcoming = await (prisma as any).upcomingEpisodesCache.findMany({
+      where: {
+        userId: dbUser.id,
+        airDate: { gte: new Date() },
+      },
+      orderBy: { airDate: "asc" },
+      take: 100,
     });
 
-    const fetchBackdrop = async () => {
-      const trendingMedia = await getTrendingMedia();
-      if (!isMounted) return;
-      setPageBackdrop(getRandomBackdropUrl(trendingMedia));
-    };
+    if (cachedUpcoming.length > 0) {
+      return {
+        user,
+        upcoming: cachedUpcoming.map((item: any) => ({
+          tmdbId: item.tmdbId,
+          title: item.title,
+          posterPath: item.posterPath,
+          backdropPath: item.backdropPath,
+          seasonNumber: item.seasonNumber,
+          episodeNumber: item.episodeNumber,
+          episodeTitle: item.episodeTitle,
+          overview: item.overview,
+          airDate: item.airDate ? item.airDate.toISOString().split('T')[0] : null,
+        })).slice(0, 40),
+      };
+    }
+  } catch (error) {
+    console.error("Error reading from cache, computing from scratch:", error);
+  }
 
-    void fetchBackdrop();
+  const watchHistory = await prisma.watchHistory.findMany({
+    where: {
+      userId: dbUser.id,
+      media: { mediaType: "tv" },
+      seasonNumber: { not: null },
+      episodeNumber: { not: null },
+    },
+    include: { media: true },
+    orderBy: {
+      watchedAt: "desc",
+    },
+    take: 500,
+  });
 
-    return () => {
-      isMounted = false;
-      subscription.unsubscribe();
-    };
-  }, [supabase]);
+  const latestByShow = new Map<
+    number,
+    {
+      tmdbId: number;
+      title: string;
+      posterPath: string | null;
+      backdropPath: string | null;
+      seasonNumber: number;
+      episodeNumber: number;
+      watchedAt: Date;
+    }
+  >();
 
-  useEffect(() => {
-    if (!user) return;
+  for (const item of watchHistory) {
+    const current = latestByShow.get(item.media.tmdbId);
+    const isLater =
+      !current ||
+      item.seasonNumber! > current.seasonNumber ||
+      (item.seasonNumber === current.seasonNumber &&
+        item.episodeNumber! > current.episodeNumber);
 
-    const fetchUpcoming = async () => {
-      setCalendarLoading(true);
+    if (isLater) {
+      latestByShow.set(item.media.tmdbId, {
+        tmdbId: item.media.tmdbId,
+        title: item.media.title,
+        posterPath: item.media.posterPath,
+        backdropPath: item.media.backdropPath,
+        seasonNumber: item.seasonNumber!,
+        episodeNumber: item.episodeNumber!,
+        watchedAt: item.watchedAt,
+      });
+    }
+  }
 
-      try {
-        const response = await fetch(
-          "/api/watch-history?upcoming=true&limit=40",
-        );
-
-        if (!response.ok) {
-          setUpcoming([]);
-          return;
-        }
-
-        const data = await response.json();
-        setUpcoming(Array.isArray(data.upcoming) ? data.upcoming : []);
-      } catch (error) {
-        console.error("Error fetching calendar:", error);
-        setUpcoming([]);
-      } finally {
-        setCalendarLoading(false);
-      }
-    };
-
-    void fetchUpcoming();
-  }, [user]);
-
-  const groupedByDate = useMemo(() => {
-    const byDate = [...upcoming]
-      .sort(
-        (a, b) =>
-          new Date(a.airDate || 0).getTime() -
-          new Date(b.airDate || 0).getTime(),
-      )
-      .reduce<Record<string, UpcomingEpisodeItem[]>>((groups, item) => {
-        const key = item.airDate || "Unknown date";
-        groups[key] = groups[key] ? [...groups[key], item] : [item];
-        return groups;
-      }, {});
-
-    const finalGroups: Record<string, UpcomingEpisodeItem[]> = {};
-
-    for (const [dateKey, items] of Object.entries(byDate)) {
-      const byShow = items.reduce<Record<number, UpcomingEpisodeItem[]>>(
-        (showGroups, item) => {
-          showGroups[item.tmdbId] = showGroups[item.tmdbId]
-            ? [...showGroups[item.tmdbId], item]
-            : [item];
-          return showGroups;
-        },
-        {},
-      );
-
-      const combinedItems: UpcomingEpisodeItem[] = [];
-
-      for (const showItems of Object.values(byShow)) {
-        if (showItems.length === 1) {
-          combinedItems.push(showItems[0]);
-        } else {
-          const seasons = new Set(showItems.map((item) => item.seasonNumber));
-          const allSameSeason = seasons.size === 1;
-
-          if (allSameSeason) {
-            const seasonNumber = showItems[0].seasonNumber;
-            const episodeNumbers = showItems
-              .map((item) => item.episodeNumber)
-              .filter((n): n is number => n !== null)
-              .sort((a, b) => a - b);
-
-            if (episodeNumbers.length > 0) {
-              const minEp = episodeNumbers[0];
-              const maxEp = episodeNumbers[episodeNumbers.length - 1];
-
-              const combined: UpcomingEpisodeItem = {
-                ...showItems[0],
-                episodeTitle:
-                  minEp === maxEp
-                    ? showItems[0].episodeTitle
-                    : `Season ${seasonNumber}`,
-              };
-
-              (combined as any).episodeRange =
-                minEp === maxEp ? `E${minEp}` : `E${minEp}-${maxEp}`;
-              (combined as any).isEntireSeason = episodeNumbers.length > 5;
-
-              combinedItems.push(combined);
-            }
-          } else {
-            combinedItems.push(...showItems);
-          }
-        }
-      }
-
-      finalGroups[dateKey] = combinedItems;
+  const seasonDetailCache = new Map<string, any>();
+  const getCachedSeasonDetails = async (
+    tmdbId: number,
+    seasonNumber: number,
+  ) => {
+    const key = `${tmdbId}:${seasonNumber}`;
+    if (seasonDetailCache.has(key)) {
+      return seasonDetailCache.get(key);
     }
 
-    return finalGroups;
-  }, [upcoming]);
+    const seasonDetails = await getTVSeasonDetails(tmdbId, seasonNumber);
+    seasonDetailCache.set(key, seasonDetails ?? null);
+    return seasonDetails ?? null;
+  };
 
-  if (loading || calendarLoading) {
+  const upcoming: Array<{
+    tmdbId: number;
+    title: string;
+    posterPath: string | null;
+    backdropPath: string | null;
+    seasonNumber: number | null;
+    episodeNumber: number | null;
+    episodeTitle: string | null;
+    overview: string | null;
+    airDate: string | null;
+  }> = [];
+
+  const computedShows = await mapWithConcurrency(
+    [...latestByShow.values()],
+    3,
+    async (show) => {
+      const currentSeason = show.seasonNumber;
+      const currentEpisode = show.episodeNumber;
+      const now = new Date();
+
+      const currentSeasonDetails = await getCachedSeasonDetails(
+        show.tmdbId,
+        currentSeason,
+      );
+
+      const futureEpisodesInCurrentSeason = currentSeasonDetails?.episodes
+        ?.filter(
+          (episode: { episode_number?: number; air_date?: string | null }) =>
+            Number(episode.episode_number) > currentEpisode &&
+            isFutureEpisode(episode),
+        )
+        .sort(
+          (a: { air_date?: string | null }, b: { air_date?: string | null }) =>
+            new Date(a.air_date || now).getTime() -
+            new Date(b.air_date || now).getTime(),
+        );
+
+      for (const episode of futureEpisodesInCurrentSeason || []) {
+        upcoming.push({
+          tmdbId: show.tmdbId,
+          title: show.title,
+          posterPath: show.posterPath,
+          backdropPath: show.backdropPath,
+          seasonNumber: currentSeason,
+          episodeNumber: Number(episode.episode_number),
+          episodeTitle:
+            episode.name ||
+            `Episode ${Number(episode.episode_number)}`,
+          overview: episode.overview || null,
+          airDate: normalizeDate(episode.air_date),
+        });
+      }
+
+      const nextSeasonDetails = await getCachedSeasonDetails(
+        show.tmdbId,
+        currentSeason + 1,
+      );
+      const futureEpisodesNextSeason = nextSeasonDetails?.episodes
+        ?.filter(
+          (episode: { episode_number?: number; air_date?: string | null }) =>
+            Number(episode.episode_number) >= 1 && isFutureEpisode(episode),
+        )
+        .sort(
+          (a: { air_date?: string | null }, b: { air_date?: string | null }) =>
+            new Date(a.air_date || now).getTime() -
+            new Date(b.air_date || now).getTime(),
+        );
+
+      for (const episode of futureEpisodesNextSeason || []) {
+        upcoming.push({
+          tmdbId: show.tmdbId,
+          title: show.title,
+          posterPath: show.posterPath,
+          backdropPath: show.backdropPath,
+          seasonNumber: currentSeason + 1,
+          episodeNumber: Number(episode.episode_number),
+          episodeTitle:
+            episode.name ||
+            `Episode ${Number(episode.episode_number)}`,
+          overview: episode.overview || null,
+          airDate: normalizeDate(episode.air_date),
+        });
+      }
+
+      return null;
+    },
+  );
+
+  await Promise.all(computedShows);
+
+  const watchlist = await prisma.watchlist.findMany({
+    where: {
+      userId: dbUser.id,
+    },
+    include: {
+      media: true,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+    take: 500,
+  });
+
+  for (const item of watchlist) {
+    const media = item.media;
+    const releaseDate = media.releaseDate;
+
+    if (!releaseDate) continue;
+
+    const releaseDateObj = new Date(releaseDate);
+    const now = new Date();
+
+    if (releaseDateObj >= now) {
+      if (media.mediaType === "tv") {
+        try {
+          const season1Details = await getTVSeasonDetails(media.tmdbId, 1);
+          const episodes = season1Details?.episodes || [];
+
+          for (const episode of episodes) {
+            if (episode?.air_date) {
+              const episodeAirDate = new Date(episode.air_date);
+              if (episodeAirDate >= now) {
+                upcoming.push({
+                  tmdbId: media.tmdbId,
+                  title: media.title,
+                  posterPath: media.posterPath,
+                  backdropPath: media.backdropPath,
+                  seasonNumber: 1,
+                  episodeNumber: Number(episode.episode_number),
+                  episodeTitle: episode.name || `Episode ${Number(episode.episode_number)}`,
+                  overview: episode.overview || media.overview,
+                  airDate: normalizeDate(episode.air_date),
+                });
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching TV season details:", error);
+        }
+      } else {
+        upcoming.push({
+          tmdbId: media.tmdbId,
+          title: media.title,
+          posterPath: media.posterPath,
+          backdropPath: media.backdropPath,
+          seasonNumber: null,
+          episodeNumber: null,
+          episodeTitle: null,
+          overview: media.overview,
+          airDate: normalizeDate(releaseDate.toISOString()),
+        });
+      }
+    }
+  }
+
+  return {
+    user,
+    upcoming: upcoming
+      .sort(
+        (a, b) =>
+          new Date(a.airDate || 0).getTime() - new Date(b.airDate || 0).getTime(),
+      )
+      .slice(0, 40),
+  };
+}
+
+function groupByDate(upcoming: UpcomingEpisodeItem[]) {
+  const byDate = [...upcoming]
+    .sort(
+      (a, b) =>
+        new Date(a.airDate || 0).getTime() -
+        new Date(b.airDate || 0).getTime(),
+    )
+    .reduce<Record<string, UpcomingEpisodeItem[]>>((groups, item) => {
+      const key = item.airDate || "Unknown date";
+      groups[key] = groups[key] ? [...groups[key], item] : [item];
+      return groups;
+    }, {});
+
+  const finalGroups: Record<string, UpcomingEpisodeItem[]> = {};
+
+  for (const [dateKey, items] of Object.entries(byDate)) {
+    const byShow = items.reduce<Record<number, UpcomingEpisodeItem[]>>(
+      (showGroups, item) => {
+        showGroups[item.tmdbId] = showGroups[item.tmdbId]
+          ? [...showGroups[item.tmdbId], item]
+          : [item];
+        return showGroups;
+      },
+      {},
+    );
+
+    const combinedItems: UpcomingEpisodeItem[] = [];
+
+    for (const showItems of Object.values(byShow)) {
+      if (showItems.length === 1) {
+        combinedItems.push(showItems[0]);
+      } else {
+        const seasons = new Set(showItems.map((item) => item.seasonNumber));
+        const allSameSeason = seasons.size === 1;
+
+        if (allSameSeason) {
+          const seasonNumber = showItems[0].seasonNumber;
+          const episodeNumbers = showItems
+            .map((item) => item.episodeNumber)
+            .filter((n): n is number => n !== null)
+            .sort((a, b) => a - b);
+
+          if (episodeNumbers.length > 0) {
+            const minEp = episodeNumbers[0];
+            const maxEp = episodeNumbers[episodeNumbers.length - 1];
+
+            const combined: UpcomingEpisodeItem = {
+              ...showItems[0],
+              episodeTitle:
+                minEp === maxEp
+                  ? showItems[0].episodeTitle
+                  : `Season ${seasonNumber}`,
+            };
+
+            (combined as any).episodeRange =
+              minEp === maxEp ? `E${minEp}` : `E${minEp}-${maxEp}`;
+            (combined as any).isEntireSeason = episodeNumbers.length > 5;
+
+            combinedItems.push(combined);
+          }
+        } else {
+          combinedItems.push(...showItems);
+        }
+      }
+    }
+
+    finalGroups[dateKey] = combinedItems;
+  }
+
+  return finalGroups;
+}
+
+export default async function CalendarPage() {
+  const { user, upcoming } = await getCalendarData();
+  const trendingMedia = await getTrendingMedia();
+  const pageBackdrop = getRandomBackdropUrl(trendingMedia);
+
+  if (!user) {
     return (
       <div className="flex min-h-screen flex-1 items-center justify-center bg-black">
-        <div className="flex items-center gap-3 text-violet-300">
-          <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-violet-300" />
-          <span className="text-sm font-medium uppercase tracking-[0.2em]">
-            Loading
-          </span>
-        </div>
+        <div className="text-zinc-400">Redirecting to auth...</div>
       </div>
     );
   }
 
-  if (!user) {
-    router.push("/auth");
-    return null;
-  }
+  const groupedByDate = groupByDate(upcoming);
 
   return (
     <div className="relative min-h-screen bg-black text-white overflow-x-hidden">
@@ -233,7 +463,7 @@ export default function CalendarPage() {
           </Link>
         </div>
 
-        {!calendarLoading && upcoming.length === 0 ? (
+        {upcoming.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-zinc-700 bg-zinc-900/60 p-12 text-center">
             <h2 className="text-2xl font-semibold text-white">
               No upcoming releases
@@ -297,29 +527,23 @@ export default function CalendarPage() {
                           className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:border-violet-500/50"
                         >
                           <div className="relative aspect-[2/3] overflow-hidden">
-                            <img
+                            <Image
                               src={getPosterUrl(item.posterPath || null)}
                               alt={
                                 isMovie
                                   ? item.title
                                   : item.episodeTitle || item.title
                               }
-                              className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                              onError={(e) => {
-                                e.currentTarget.src = "/placeholder-poster.svg";
-                              }}
+                              fill
+                              sizes="(max-width: 640px) 25vw, (max-width: 768px) 20vw, (max-width: 1024px) 16vw, (max-width: 1280px) 12vw, 10vw"
+                              className="object-cover transition duration-300 group-hover:scale-105"
                             />
                           </div>
 
                           <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
                             <div className="line-clamp-2 text-xs font-semibold text-white leading-tight">
                               {!isMovie ? (
-                                <span
-                                  onClick={(e) =>
-                                    handleTitleClick(e, item.tmdbId, mediaType)
-                                  }
-                                  className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
-                                >
+                                <span className="hover:underline hover:text-violet-200 transition-colors cursor-pointer">
                                   {item.title}
                                 </span>
                               ) : (

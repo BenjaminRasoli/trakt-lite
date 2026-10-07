@@ -69,7 +69,8 @@ model WatchHistory {
   user   User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   media  Media @relation(fields: [mediaId], references: [id], onDelete: Cascade)
 
-
+  @@index([userId, watchedAt])
+  @@index([userId, mediaId])
 }
 
 model Watchlist {
@@ -83,4 +84,42 @@ model Watchlist {
   media  Media @relation(fields: [mediaId], references: [id], onDelete: Cascade)
 
   @@unique([userId, mediaId])
+}
+
+model NextUpCache {
+  id           String   @id @default(cuid())
+  userId       String
+  tmdbId       Int
+  title        String
+  posterPath   String?
+  backdropPath String?
+  seasonNumber Int
+  episodeNumber Int
+  episodeTitle String
+  overview     String?
+  lastWatchedAt DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, tmdbId])
+  @@index([userId, lastWatchedAt])
+}
+
+model UpcomingEpisodesCache {
+  id           String   @id @default(cuid())
+  userId       String
+  tmdbId       Int
+  title        String
+  posterPath   String?
+  backdropPath String?
+  seasonNumber Int
+  episodeNumber Int
+  episodeTitle String
+  overview     String?
+  airDate      DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, tmdbId, seasonNumber, episodeNumber])
+  @@index([userId, airDate])
 }

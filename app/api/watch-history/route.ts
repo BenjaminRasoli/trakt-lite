@@ -152,6 +152,28 @@ function normalizeDate(dateInput: string | Date | null | undefined): string | nu
 }
 
 async function getNextUpQueue(userId: string, limit = 6) {
+  try {
+    const cachedNextUp = await prisma.nextUpCache.findMany({
+      where: { userId },
+      orderBy: { lastWatchedAt: "desc" },
+      take: limit,
+    });
+
+    if (cachedNextUp.length > 0) {
+      return cachedNextUp.map((item: any) => ({
+        tmdbId: item.tmdbId,
+        title: item.title,
+        posterPath: item.posterPath,
+        backdropPath: item.backdropPath,
+        seasonNumber: item.seasonNumber,
+        episodeNumber: item.episodeNumber,
+        episodeTitle: item.episodeTitle,
+        overview: item.overview,
+      }));
+    }
+  } catch (error) {
+    console.error("Error reading from nextUpCache, falling back to computation:", error);
+  }
 
   const watchHistory = await prisma.watchHistory.findMany({
     where: {
@@ -306,6 +328,32 @@ async function getNextUpQueue(userId: string, limit = 6) {
 }
 
 async function getUpcomingEpisodesQueue(userId: string, limit = 6) {
+  try {
+    const cachedUpcoming = await (prisma as any).upcomingEpisodesCache.findMany({
+      where: {
+        userId,
+        airDate: { gte: new Date() },
+      },
+      orderBy: { airDate: "asc" },
+      take: limit,
+    });
+
+    if (cachedUpcoming.length > 0) {
+      return cachedUpcoming.map((item: any) => ({
+        tmdbId: item.tmdbId,
+        title: item.title,
+        posterPath: item.posterPath,
+        backdropPath: item.backdropPath,
+        seasonNumber: item.seasonNumber,
+        episodeNumber: item.episodeNumber,
+        episodeTitle: item.episodeTitle,
+        overview: item.overview,
+        airDate: item.airDate ? item.airDate.toISOString().split('T')[0] : null,
+      }));
+    }
+  } catch (error) {
+    console.error("Error reading from upcomingEpisodesCache, falling back to computation:", error);
+  }
 
   const watchHistory = await prisma.watchHistory.findMany({
     where: {
@@ -726,8 +774,8 @@ export async function GET(request: NextRequest) {
 
       const hydratedUpcoming = await Promise.all(
         upcoming
-          .filter((item): item is NonNullable<typeof item> => Boolean(item))
-          .map(async (item) => {
+          .filter((item: any): item is NonNullable<any> => Boolean(item))
+          .map(async (item: any) => {
             const hydrated = await hydrateMissingMediaMetadata({
               tmdbId: item.tmdbId,
               title: item.title,

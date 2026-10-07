@@ -3,18 +3,13 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import type { User } from "@supabase/supabase-js";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSupabase } from "@/components/supabase-provider";
 import {
   getPosterUrl,
   getRandomBackdropUrl,
   getTrendingMedia,
 } from "@/lib/tmdb";
-
-interface HistoryResponse {
-  items: HistoryItem[];
-  hasMore: boolean;
-}
 
 interface HistoryItem {
   id: string;
@@ -44,12 +39,15 @@ export default function HistoryPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [pageBackdrop, setPageBackdrop] = useState("");
-  const [filter, setFilter] = useState<"all" | "movie" | "tv">("all");
+  const [allHistory, setAllHistory] = useState<HistoryItem[]>([]);
   const [isFilterChanging, setIsFilterChanging] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = useSupabase();
   const historyLengthRef = useRef(0);
   const isLoadingRef = useRef(false);
+
+  const filter = (searchParams.get("filter") as "all" | "movie" | "tv") || "all";
 
   const handleTitleClick = (
     e: React.MouseEvent,
@@ -66,7 +64,6 @@ export default function HistoryPage() {
       if (!user || isLoadingRef.current) return;
 
       isLoadingRef.current = true;
-      // Don't show full loading screen when just changing filters
       if (!append) {
         setIsFilterChanging(true);
       }
@@ -74,24 +71,16 @@ export default function HistoryPage() {
       setLoadingMore(append);
 
       try {
-        const offset = append ? historyLengthRef.current : 0;
-        const mediaTypeParam = filter !== "all" ? `&mediaType=${filter}` : "";
-        const response = await fetch(
-          `/api/watch-history?limit=${PAGE_SIZE}&offset=${offset}${mediaTypeParam}`,
-        );
+        const response = await fetch("/api/watch-history");
 
         if (!response.ok) {
-          console.error(
-            "API response not OK:",
-            response.status,
-            response.statusText,
-          );
+          console.error("API response not OK:", response.status);
           if (!append) setHistory([]);
           setHasMore(false);
           return;
         }
 
-        const data: HistoryResponse = await response.json();
+        const data = await response.json();
 
         if (!data || !Array.isArray(data.items)) {
           console.error("Invalid API response format:", data);
@@ -100,12 +89,23 @@ export default function HistoryPage() {
           return;
         }
 
+        let filteredItems = data.items;
+        if (filter !== "all") {
+          filteredItems = data.items.filter((item: HistoryItem) => item.media.mediaType === filter);
+        }
+
+        setAllHistory(filteredItems);
+
+        const offset = append ? historyLengthRef.current : 0;
+        const paginatedItems = filteredItems.slice(offset, offset + PAGE_SIZE);
+
         setHistory((current) => {
-          const newHistory = append ? [...current, ...data.items] : data.items;
+          const newHistory = append ? [...current, ...paginatedItems] : paginatedItems;
           historyLengthRef.current = newHistory.length;
           return newHistory;
         });
-        setHasMore(data.hasMore);
+
+        setHasMore(offset + PAGE_SIZE < filteredItems.length);
       } catch (error) {
         console.error("Error fetching history:", error);
         if (!append) setHistory([]);
@@ -165,12 +165,13 @@ export default function HistoryPage() {
 
   useEffect(() => {
     if (user) {
+      historyLengthRef.current = 0;
       void fetchHistory(false);
     } else {
       setHistory([]);
       setHasMore(false);
     }
-  }, [user, fetchHistory, filter]);
+  }, [user, filter]);
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout | null = null;
@@ -209,7 +210,7 @@ export default function HistoryPage() {
     void fetchHistory(true);
   };
 
-  if (loading || (historyLoading && !isFilterChanging)) {
+  if (loading || (historyLoading && history.length === 0)) {
     return (
       <div className="flex min-h-screen flex-1 items-center justify-center bg-black">
         <div className="flex items-center gap-3 text-violet-300">
@@ -242,7 +243,7 @@ export default function HistoryPage() {
       <main className="relative z-10 mx-auto w-full max-w-[1650px] px-4 py-12 sm:px-6 lg:px-8">
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-violet-400/80">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-violet-400/80">
               your activity
             </p>
             <h1 className="text-3xl font-bold text-white md:text-4xl">
@@ -252,8 +253,8 @@ export default function HistoryPage() {
 
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900/80 p-1">
-              <button
-                onClick={() => setFilter("all")}
+              <Link
+                href="/history?filter=all"
                 className={`flex items-center cursor-pointer gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                   filter === "all"
                     ? "bg-violet-500/20 text-violet-200"
@@ -277,9 +278,9 @@ export default function HistoryPage() {
                   <rect x="3" y="14" width="7" height="7" />
                 </svg>
                 All
-              </button>
-              <button
-                onClick={() => setFilter("tv")}
+              </Link>
+              <Link
+                href="/history?filter=tv"
                 className={`flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                   filter === "tv"
                     ? "bg-violet-500/20 text-violet-200"
@@ -301,10 +302,10 @@ export default function HistoryPage() {
                   <polyline points="17 2 12 7 7 2" />
                 </svg>
                 TV
-              </button>
-              <button
-                onClick={() => setFilter("movie")}
-                className={`flex items-center cursor-pointer gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+              </Link>
+              <Link
+                href="/history?filter=movie"
+                className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                   filter === "movie"
                     ? "bg-violet-500/20 text-violet-200"
                     : "text-zinc-400 hover:text-zinc-200"
@@ -338,7 +339,7 @@ export default function HistoryPage() {
                   <line x1="17" y1="7" x2="22" y2="7" />
                 </svg>
                 Movies
-              </button>
+              </Link>
             </div>
             <Link
               href="/"
@@ -349,16 +350,7 @@ export default function HistoryPage() {
           </div>
         </div>
 
-        {sortedHistory.length === 0 && !isFilterChanging ? (
-          <div className="rounded-2xl border border-dashed border-zinc-700 bg-zinc-900/60 p-12 text-center">
-            <h2 className="text-2xl font-semibold text-white">
-              No watched items yet
-            </h2>
-            <p className="mt-3 text-zinc-400">
-              Start tracking shows and movies from the homepage or media pages.
-            </p>
-          </div>
-        ) : isFilterChanging ? (
+        {isFilterChanging && sortedHistory.length > 0 ? (
           <div className="flex items-center justify-center py-12">
             <div className="flex items-center gap-3 text-violet-300">
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-violet-300" />
@@ -366,6 +358,15 @@ export default function HistoryPage() {
                 Loading
               </span>
             </div>
+          </div>
+        ) : sortedHistory.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-zinc-700 bg-zinc-900/60 p-12 text-center">
+            <h2 className="text-2xl font-semibold text-white">
+              No watched items yet
+            </h2>
+            <p className="mt-3 text-zinc-400">
+              Start tracking shows and movies from the homepage or media pages.
+            </p>
           </div>
         ) : (
           <>

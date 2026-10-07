@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSupabase } from "@/components/supabase-provider";
 import {
   getPosterUrl,
@@ -33,12 +33,19 @@ export default function WatchlistPage() {
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
   const [watchlistLoading, setWatchlistLoading] = useState(true);
   const [pageBackdrop, setPageBackdrop] = useState("");
-  const [filter, setFilter] = useState<"all" | "movie" | "tv">("all");
   const [isFilterChanging, setIsFilterChanging] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<number | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = useSupabase();
+
+  const filter = (searchParams.get("filter") as "all" | "movie" | "tv") || "all";
+
+  const filteredWatchlist = watchlist.filter((item) => {
+    if (filter === "all") return true;
+    return item.media.mediaType === filter;
+  });
 
   const handleTitleClick = (
     e: React.MouseEvent,
@@ -84,7 +91,7 @@ export default function WatchlistPage() {
   const fetchWatchlist = async () => {
     if (!user) return;
 
-    setWatchlistLoading(true);
+    setIsFilterChanging(true);
 
     try {
       const response = await fetch("/api/watchlist");
@@ -101,6 +108,7 @@ export default function WatchlistPage() {
       setWatchlist([]);
     } finally {
       setWatchlistLoading(false);
+      setIsFilterChanging(false);
     }
   };
 
@@ -153,7 +161,7 @@ export default function WatchlistPage() {
     } else {
       setWatchlist([]);
     }
-  }, [user]);
+  }, [user, filter]);
 
   useEffect(() => {
     if (!showDeleteConfirm) return;
@@ -178,12 +186,7 @@ export default function WatchlistPage() {
     };
   }, [showDeleteConfirm]);
 
-  const filteredWatchlist = watchlist.filter((item) => {
-    if (filter === "all") return true;
-    return item.media.mediaType === filter;
-  });
-
-  if (loading || watchlistLoading) {
+  if (loading || (watchlistLoading && watchlist.length === 0)) {
     return (
       <div className="flex min-h-screen flex-1 items-center justify-center bg-black">
         <div className="flex items-center gap-3 text-violet-300">
@@ -216,7 +219,7 @@ export default function WatchlistPage() {
       <main className="relative z-10 mx-auto w-full max-w-[1650px] px-4 py-12 sm:px-6 lg:px-8">
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-violet-400/80">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-violet-400/80">
               saved for later
             </p>
             <h1 className="text-3xl font-bold text-white md:text-4xl">
@@ -226,12 +229,8 @@ export default function WatchlistPage() {
 
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900/80 p-1">
-              <button
-                onClick={() => {
-                  setIsFilterChanging(true);
-                  setFilter("all");
-                  setTimeout(() => setIsFilterChanging(false), 200);
-                }}
+              <Link
+                href="/watchlist?filter=all"
                 className={`flex items-center cursor-pointer gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                   filter === "all"
                     ? "bg-violet-500/20 text-violet-200"
@@ -255,13 +254,9 @@ export default function WatchlistPage() {
                   <rect x="3" y="14" width="7" height="7" />
                 </svg>
                 All
-              </button>
-              <button
-                onClick={() => {
-                  setIsFilterChanging(true);
-                  setFilter("tv");
-                  setTimeout(() => setIsFilterChanging(false), 200);
-                }}
+              </Link>
+              <Link
+                href="/watchlist?filter=tv"
                 className={`flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                   filter === "tv"
                     ? "bg-violet-500/20 text-violet-200"
@@ -283,14 +278,10 @@ export default function WatchlistPage() {
                   <polyline points="17 2 12 7 7 2" />
                 </svg>
                 TV
-              </button>
-              <button
-                onClick={() => {
-                  setIsFilterChanging(true);
-                  setFilter("movie");
-                  setTimeout(() => setIsFilterChanging(false), 200);
-                }}
-                className={`flex items-center cursor-pointer gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+              </Link>
+              <Link
+                href="/watchlist?filter=movie"
+                className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                   filter === "movie"
                     ? "bg-violet-500/20 text-violet-200"
                     : "text-zinc-400 hover:text-zinc-200"
@@ -324,7 +315,7 @@ export default function WatchlistPage() {
                   <line x1="17" y1="7" x2="22" y2="7" />
                 </svg>
                 Movies
-              </button>
+              </Link>
             </div>
             <Link
               href="/"
