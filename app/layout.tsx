@@ -18,8 +18,17 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Trakt Lite - Track Movies & TV Shows",
   description: "Track your favorite movies and TV shows with Trakt Lite",
+  manifest: "/manifest.json",
   icons: {
     icon: "/favicon.svg",
+    apple: [
+      { url: "/favicon.svg", sizes: "any" },
+    ],
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Trakt Lite",
   },
 };
 
