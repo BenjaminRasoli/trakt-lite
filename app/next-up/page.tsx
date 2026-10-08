@@ -1,8 +1,11 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
-import { createClient } from "@/lib/supabase/server";
-import { prisma } from "@/lib/prisma";
-import { getPosterUrl, getRandomBackdropUrl, getTrendingMedia, getTVSeasonDetails } from "@/lib/tmdb";
+import { getPosterUrl, getRandomBackdropUrl, getTrendingMedia } from "@/lib/tmdb";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useSupabase } from "@/components/supabase-provider";
 
 interface NextUpItem {
   tmdbId: number;
@@ -14,239 +17,121 @@ interface NextUpItem {
   overview: string | null;
 }
 
-function isReleasedEpisode(
-  episode:
-    | {
-        air_date?: string | null;
-      }
-    | null
-    | undefined,
-) {
-  if (!episode?.air_date) return false;
+function NextUpPageContent() {
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [nextUpLoading, setNextUpLoading] = useState(true);
+  const [nextUp, setNextUp] = useState<NextUpItem[]>([]);
+  const [pageBackdrop, setPageBackdrop] = useState("");
+  const router = useRouter();
+  const supabase = useSupabase();
 
-  const airDate = new Date(episode.air_date);
-  return Number.isFinite(airDate.getTime()) && airDate <= new Date();
-}
-
-async function mapWithConcurrency<T, R>(
-  items: T[],
-  concurrency: number,
-  mapper: (item: T) => Promise<R>,
-): Promise<R[]> {
-  if (items.length === 0) return [];
-
-  const results = new Array<R>(items.length);
-  let index = 0;
-
-  const workers = Array.from(
-    { length: Math.min(concurrency, items.length) },
-    async () => {
-      while (index < items.length) {
-        const currentIndex = index++;
-        results[currentIndex] = await mapper(items[currentIndex]);
-      }
-    },
-  );
-
-  await Promise.all(workers);
-  return results;
-}
-
-async function getNextUpData() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { user: null, nextUp: [] };
-  }
-
-  let dbUser = await prisma.user.findUnique({
-    where: { email: user.email! },
-  });
-
-  if (!dbUser) {
-    return { user, nextUp: [] };
-  }
-
-  try {
-    const cachedNextUp = await prisma.nextUpCache.findMany({
-      where: { userId: dbUser.id },
-      orderBy: { lastWatchedAt: "desc" },
-      take: 20,
-    });
-
-    if (cachedNextUp.length > 0) {
-      return {
-        user,
-        nextUp: cachedNextUp.map((item: any) => ({
-          tmdbId: item.tmdbId,
-          title: item.title,
-          posterPath: item.posterPath,
-          seasonNumber: item.seasonNumber,
-          episodeNumber: item.episodeNumber,
-          episodeTitle: item.episodeTitle,
-          overview: item.overview,
-        })),
-      };
-    }
-  } catch (error) {
-    console.error("Error reading from cache, computing from scratch:", error);
-  }
-
-  const watchHistory = await prisma.watchHistory.findMany({
-    where: {
-      userId: dbUser.id,
-      media: { mediaType: "tv" },
-      seasonNumber: { not: null },
-      episodeNumber: { not: null },
-    },
-    include: { media: true },
-    orderBy: {
-      watchedAt: "desc",
-    },
-    take: 500,
-  });
-
-  const latestByShow = new Map<
-    number,
-    {
-      tmdbId: number;
-      title: string;
-      posterPath: string | null;
-      backdropPath: string | null;
-      seasonNumber: number;
-      episodeNumber: number;
-      watchedAt: Date;
-    }
-  >();
-
-  for (const item of watchHistory) {
-    const current = latestByShow.get(item.media.tmdbId);
-    const isLater =
-      !current ||
-      item.seasonNumber! > current.seasonNumber ||
-      (item.seasonNumber === current.seasonNumber &&
-        item.episodeNumber! > current.episodeNumber);
-
-    if (isLater) {
-      latestByShow.set(item.media.tmdbId, {
-        tmdbId: item.media.tmdbId,
-        title: item.media.title,
-        posterPath: item.media.posterPath,
-        backdropPath: item.media.backdropPath,
-        seasonNumber: item.seasonNumber!,
-        episodeNumber: item.episodeNumber!,
-        watchedAt: item.watchedAt,
-      });
-    }
-  }
-
-  const seasonDetailCache = new Map<string, any>();
-  const getCachedSeasonDetails = async (
+  const handleTitleClick = (
+    e: React.MouseEvent,
     tmdbId: number,
-    seasonNumber: number,
   ) => {
-    const key = `${tmdbId}:${seasonNumber}`;
-    if (seasonDetailCache.has(key)) {
-      return seasonDetailCache.get(key);
-    }
-
-    const seasonDetails = await getTVSeasonDetails(tmdbId, seasonNumber);
-    seasonDetailCache.set(key, seasonDetails ?? null);
-    return seasonDetails ?? null;
+    e.preventDefault();
+    e.stopPropagation();
+    router.push(`/media/${tmdbId}?type=tv`);
   };
 
-  const sortedShows = [...latestByShow.values()].sort(
-    (a, b) => b.watchedAt.getTime() - a.watchedAt.getTime(),
-  );
+  useEffect(() => {
+    let isMounted = true;
 
-  const computedShows = await mapWithConcurrency(
-    sortedShows,
-    3,
-    async (show) => {
-      const currentSeason = show.seasonNumber;
-      const currentEpisode = show.episodeNumber;
+    const updateUser = (nextUser: any) => {
+      setUser((currentUser: any) => {
+        if (!nextUser) return null;
+        if (currentUser?.id === nextUser.id) return currentUser;
+        return nextUser;
+      });
+    };
 
-      const currentSeasonDetails = await getCachedSeasonDetails(
-        show.tmdbId,
-        currentSeason,
-      );
+    const getUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!isMounted) return;
+      updateUser(user);
+      setLoading(false);
+    };
 
-      const nextEpisodeInCurrentSeason = currentSeasonDetails?.episodes
-        ?.filter(
-          (episode: { episode_number?: number; air_date?: string | null }) =>
-            Number(episode.episode_number) > currentEpisode &&
-            isReleasedEpisode(episode),
-        )
-        .sort(
-          (a: { episode_number?: number }, b: { episode_number?: number }) =>
-            Number(a.episode_number ?? 0) - Number(b.episode_number ?? 0),
-        )[0];
+    getUser();
 
-      if (nextEpisodeInCurrentSeason) {
-        return {
-          tmdbId: show.tmdbId,
-          title: show.title,
-          posterPath: show.posterPath,
-          backdropPath: show.backdropPath,
-          seasonNumber: currentSeason,
-          episodeNumber: Number(nextEpisodeInCurrentSeason.episode_number),
-          episodeTitle:
-            nextEpisodeInCurrentSeason.name ||
-            `Episode ${Number(nextEpisodeInCurrentSeason.episode_number)}`,
-          overview: nextEpisodeInCurrentSeason.overview || null,
-        };
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!isMounted) return;
+      updateUser(session?.user ?? null);
+    });
+
+    const fetchBackdrop = async () => {
+      const trendingMedia = await getTrendingMedia();
+      if (!isMounted) return;
+      setPageBackdrop(getRandomBackdropUrl(trendingMedia));
+    };
+
+    void fetchBackdrop();
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, [supabase]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchNextUp = async () => {
+      setNextUpLoading(true);
+      try {
+        const response = await fetch("/api/next-up");
+        if (!response.ok) {
+          setNextUp([]);
+          return;
+        }
+
+        const data = await response.json();
+        setNextUp(Array.isArray(data.nextUp) ? data.nextUp : []);
+      } catch (error) {
+        console.error("Error fetching next up:", error);
+        setNextUp([]);
+      } finally {
+        setNextUpLoading(false);
       }
+    };
 
-      const nextSeasonDetails = await getCachedSeasonDetails(
-        show.tmdbId,
-        currentSeason + 1,
-      );
-      const firstReleasedEpisodeNextSeason = nextSeasonDetails?.episodes
-        ?.filter(
-          (episode: { episode_number?: number; air_date?: string | null }) =>
-            Number(episode.episode_number) >= 1 && isReleasedEpisode(episode),
-        )
-        .sort(
-          (a: { episode_number?: number }, b: { episode_number?: number }) =>
-            Number(a.episode_number ?? 0) - Number(b.episode_number ?? 0),
-        )[0];
+    void fetchNextUp();
+  }, [user]);
 
-      if (!firstReleasedEpisodeNextSeason) return null;
-
-      return {
-        tmdbId: show.tmdbId,
-        title: show.title,
-        posterPath: show.posterPath,
-        backdropPath: show.backdropPath,
-        seasonNumber: currentSeason + 1,
-        episodeNumber: Number(firstReleasedEpisodeNextSeason.episode_number),
-        episodeTitle:
-          firstReleasedEpisodeNextSeason.name ||
-          `Episode ${Number(firstReleasedEpisodeNextSeason.episode_number)}`,
-        overview: firstReleasedEpisodeNextSeason.overview || null,
-      };
-    },
-  );
-
-  const nextUp = computedShows.filter(Boolean).slice(0, 20) as NextUpItem[];
-
-  return { user, nextUp };
-}
-
-export default async function NextUpPage() {
-  const { user, nextUp } = await getNextUpData();
-  const trendingMedia = await getTrendingMedia();
-  const pageBackdrop = getRandomBackdropUrl(trendingMedia);
-
-  if (!user) {
+  if (loading) {
     return (
       <div className="flex min-h-screen flex-1 items-center justify-center bg-black">
-        <div className="text-zinc-400">Redirecting to auth...</div>
+        <div className="flex items-center gap-3 text-violet-300">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-violet-300" />
+          <span className="text-sm font-medium uppercase tracking-[0.2em]">
+            Loading
+          </span>
+        </div>
       </div>
     );
+  }
+
+  if (nextUpLoading) {
+    return (
+      <div className="flex min-h-screen flex-1 items-center justify-center bg-black">
+        <div className="flex items-center gap-3 text-violet-300">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-violet-300" />
+          <span className="text-sm font-medium uppercase tracking-[0.2em]">
+            Loading
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    router.push("/auth");
+    return null;
   }
 
   return (
@@ -290,7 +175,7 @@ export default async function NextUpPage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
             {nextUp.map((item: NextUpItem) => (
               <Link
                 key={`${item.tmdbId}-${item.seasonNumber}-${item.episodeNumber}`}
@@ -312,7 +197,12 @@ export default async function NextUpPage() {
                     S{item.seasonNumber} E{item.episodeNumber}
                   </div>
                   <div className="line-clamp-2 text-xs font-semibold text-white">
-                    {item.title}
+                    <span
+                      onClick={(e) => handleTitleClick(e, item.tmdbId)}
+                      className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
+                    >
+                      {item.title}
+                    </span>
                   </div>
                   <div className="line-clamp-1 text-[10px] text-zinc-400">
                     {item.episodeTitle}
@@ -324,5 +214,11 @@ export default async function NextUpPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function NextUpPage() {
+  return (
+    <NextUpPageContent />
   );
 }

@@ -294,7 +294,8 @@ export default function WeeklyPage() {
           lastWeekRuntimeByItemId,
         );
 
-        const calculateChange = (current: number, previous: number) => {
+        const calculateChange = (current: number | null, previous: number | null) => {
+          if (current === null || previous === null) return 0;
           if (previous === 0) return current > 0 ? 100 : 0;
           return Math.round(((current - previous) / previous) * 100);
         };
@@ -314,9 +315,9 @@ export default function WeeklyPage() {
           lastWeekEpisodeRuntimeMinutes,
           thisWeekMovieRuntimeMinutes,
           lastWeekMovieRuntimeMinutes,
-          change: calculateChange(thisWeek.length, lastWeek.length),
-          episodeChange: calculateChange(thisWeekEpisodes, lastWeekEpisodes),
-          movieChange: calculateChange(thisWeekMovies, lastWeekMovies),
+          change: calculateChange(thisWeekRuntimeMinutes, lastWeekRuntimeMinutes),
+          episodeChange: calculateChange(thisWeekEpisodeRuntimeMinutes, lastWeekEpisodeRuntimeMinutes),
+          movieChange: calculateChange(thisWeekMovieRuntimeMinutes, lastWeekMovieRuntimeMinutes),
         });
       } catch (error) {
         console.error("Error fetching weekly data:", error);
@@ -420,7 +421,7 @@ export default function WeeklyPage() {
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-1 text-xs">
           {thisWeekWatchTimeMinutes !== undefined && (
-            <span className={changeColor}>
+            <span className="text-zinc-500">
               {thisWeekWatchTimeMinutes === null
                 ? "Runtime unavailable"
                 : formatWatchTime(thisWeekWatchTimeMinutes)}

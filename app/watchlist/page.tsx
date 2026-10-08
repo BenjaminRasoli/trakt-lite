@@ -326,7 +326,7 @@ function WatchlistPageContent() {
           </div>
         </div>
 
-        {isFilterChanging ? (
+        {watchlistLoading ? (
           <div className="flex items-center justify-center py-12">
             <div className="flex items-center gap-3 text-violet-300">
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-violet-300" />
@@ -347,7 +347,7 @@ function WatchlistPageContent() {
             </p>
           </div>
         ) : (
-          <div className="grid gap-3 grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
+          <div className="grid gap-3 grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
             {filteredWatchlist.map((item) => {
               const releaseDate = item.media.releaseDate
                 ? new Date(item.media.releaseDate)

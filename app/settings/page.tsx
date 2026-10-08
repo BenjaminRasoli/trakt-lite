@@ -503,14 +503,35 @@ export default function SettingsPage() {
                       </p>
                     </div>
                     <p className="truncate text-lg font-bold text-white">
-                      {liveSession.mediaType === "tv"
-                        ? liveSession.seriesName || liveSession.title
-                        : liveSession.title}
+                      {liveSession.mediaType === "tv" ? (
+                        <span
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            router.push(`/media/${liveSession.tmdbId}?type=tv`);
+                          }}
+                          className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
+                        >
+                          {liveSession.seriesName || liveSession.title}
+                        </span>
+                      ) : (
+                        liveSession.title
+                      )}
                     </p>
-                    <p className="mt-1 text-sm text-emerald-200">
+                    <p className="mt-1 text-sm">
                       {liveSession.mediaType === "tv" &&
                       liveSession.episodeLabel
-                        ? `${liveSession.episodeLabel} • ${liveSession.episodeName || ""}`
+                        ? (
+                          <>
+                            <span className="text-emerald-200">
+                              {liveSession.episodeLabel}
+                            </span>
+                            {" • "}
+                            <span className="text-zinc-300">
+                              {liveSession.episodeName || ""}
+                            </span>
+                          </>
+                        )
                         : ""}
                     </p>
                     <p className="mt-1 text-sm">
