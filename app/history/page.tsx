@@ -47,7 +47,8 @@ function HistoryPageContent() {
   const historyLengthRef = useRef(0);
   const isLoadingRef = useRef(false);
 
-  const filter = (searchParams.get("filter") as "all" | "movie" | "tv") || "all";
+  const filter =
+    (searchParams.get("filter") as "all" | "movie" | "tv") || "all";
 
   const handleTitleClick = (
     e: React.MouseEvent,
@@ -91,7 +92,9 @@ function HistoryPageContent() {
 
         let filteredItems = data.items;
         if (filter !== "all") {
-          filteredItems = data.items.filter((item: HistoryItem) => item.media.mediaType === filter);
+          filteredItems = data.items.filter(
+            (item: HistoryItem) => item.media.mediaType === filter,
+          );
         }
 
         setAllHistory(filteredItems);
@@ -100,7 +103,9 @@ function HistoryPageContent() {
         const paginatedItems = filteredItems.slice(offset, offset + PAGE_SIZE);
 
         setHistory((current) => {
-          const newHistory = append ? [...current, ...paginatedItems] : paginatedItems;
+          const newHistory = append
+            ? [...current, ...paginatedItems]
+            : paginatedItems;
           historyLengthRef.current = newHistory.length;
           return newHistory;
         });
@@ -418,7 +423,7 @@ function HistoryPageContent() {
                               entry.media.mediaType,
                             )
                           }
-                          className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
+                          className={`${entry.media.mediaType === "tv" ? "hover:underline hover:text-violet-200" : ""} transition-colors cursor-pointer`}
                         >
                           {entry.media.title}
                         </span>
@@ -457,7 +462,13 @@ function HistoryPageContent() {
 
 function HistoryPageWithSuspense() {
   return (
-    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-black text-white">Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-black text-white">
+          Loading...
+        </div>
+      }
+    >
       <HistoryPageContent />
     </Suspense>
   );

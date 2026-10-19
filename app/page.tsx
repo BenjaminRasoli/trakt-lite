@@ -100,10 +100,7 @@ function HomeContent() {
     router.push(`/media/${tmdbId}?type=${mediaType}`);
   };
 
-  const handleSeriesClick = (
-    e: React.MouseEvent,
-    tmdbId: number,
-  ) => {
+  const handleSeriesClick = (e: React.MouseEvent, tmdbId: number) => {
     e.preventDefault();
     e.stopPropagation();
     router.push(`/media/${tmdbId}?type=tv`);
@@ -449,9 +446,7 @@ function HomeContent() {
           </div>
         ) : (
           <>
-            {historyLoading && (
-              <RecentHistorySkeleton />
-            )}
+            {historyLoading && <RecentHistorySkeleton />}
 
             {!historyLoading && liveSession && (
               <section className="mb-8">
@@ -490,7 +485,9 @@ function HomeContent() {
                       <p className="text-lg font-bold text-white">
                         {liveSession.mediaType === "tv" ? (
                           <span
-                            onClick={(e) => handleSeriesClick(e, liveSession.tmdbId)}
+                            onClick={(e) =>
+                              handleSeriesClick(e, liveSession.tmdbId)
+                            }
                             className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
                           >
                             {liveSession.seriesName || liveSession.title}
@@ -633,8 +630,7 @@ function HomeContent() {
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
                   {visibleUpcoming.map((item) => {
                     const isMovie =
-                      item.seasonNumber === null &&
-                      item.episodeNumber === null;
+                      item.seasonNumber === null && item.episodeNumber === null;
                     const mediaType = isMovie ? "movie" : "tv";
                     const linkHref = isMovie
                       ? `/media/${item.tmdbId}?type=movie`
@@ -652,8 +648,7 @@ function HomeContent() {
                             alt={isMovie ? item.title : item.episodeTitle}
                             className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                             onError={(e) => {
-                              e.currentTarget.src =
-                                "/placeholder-poster.svg";
+                              e.currentTarget.src = "/placeholder-poster.svg";
                             }}
                           />
                         </div>
@@ -748,8 +743,7 @@ function HomeContent() {
                             alt={media.title}
                             className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                             onError={(e) => {
-                              e.currentTarget.src =
-                                "/placeholder-poster.svg";
+                              e.currentTarget.src = "/placeholder-poster.svg";
                             }}
                           />
                         </div>
@@ -774,7 +768,7 @@ function HomeContent() {
                                   media.mediaType,
                                 )
                               }
-                              className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
+                              className={`${media.mediaType === "tv" ? "hover:underline hover:text-violet-200" : ""} transition-colors cursor-pointer`}
                             >
                               {media.title}
                             </span>
