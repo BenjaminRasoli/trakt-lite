@@ -230,7 +230,11 @@ export async function upsertJellyfinWatchEntry({
   const tmdbId = await resolveJellyfinTmdbId(item);
 
   if (!tmdbId) {
-    return { created: false, reason: "missing_tmdb_id" };
+    return {
+      created: false,
+      reason: "missing_tmdb_id",
+      existingEntryId: undefined,
+    };
   }
   const parentIndexNumber = toNumber(
     item?.ParentIndexNumber ?? item?.SeasonNumber,
@@ -281,42 +285,57 @@ export async function upsertJellyfinWatchEntry({
     },
   });
 
-  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-
-  const existingEntry = await prisma.watchHistory.findFirst({
-    where: {
+  return prisma.$transaction(async (transaction) => {
+    const lockKey = [
       userId,
-      mediaId: media.id,
-      seasonNumber: seasonNumber ?? null,
-      episodeNumber: episodeNumber ?? null,
-      watchedAt: {
-        gte: oneHourAgo,
+      media.id,
+      seasonNumber ?? "",
+      episodeNumber ?? "",
+    ].join(":");
+    await transaction.$queryRaw`
+      SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))
+    `;
+
+    const existingEntry = await transaction.watchHistory.findFirst({
+      where: {
+        userId,
+        mediaId: media.id,
+        seasonNumber: seasonNumber ?? null,
+        episodeNumber: episodeNumber ?? null,
       },
-    },
-  });
+      orderBy: {
+        watchedAt: "desc",
+      },
+    });
 
-  if (existingEntry) {
+    if (existingEntry) {
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      if (existingEntry.watchedAt >= oneDayAgo) {
+        return {
+          created: false,
+          reason: "duplicate_within_24_hours",
+          existingEntryId: existingEntry.id,
+        };
+      }
+
+      console.log("Existing entry is older than 24 hours, allowing as re-watch");
+    }
+
+    const createdEntry = await transaction.watchHistory.create({
+      data: {
+        userId,
+        mediaId: media.id,
+        seasonNumber: seasonNumber ?? null,
+        episodeNumber: episodeNumber ?? null,
+        episodeName,
+        watchedAt,
+      },
+    });
+
     return {
-      created: false,
-      reason: "duplicate_within_1_hour",
-      existingEntryId: existingEntry.id,
+      created: true,
+      entryId: createdEntry.id,
+      source: source || "jellyfin",
     };
-  }
-
-  const createdEntry = await prisma.watchHistory.create({
-    data: {
-      userId,
-      mediaId: media.id,
-      seasonNumber: seasonNumber ?? null,
-      episodeNumber: episodeNumber ?? null,
-      episodeName,
-      watchedAt,
-    },
   });
-
-  return {
-    created: true,
-    entryId: createdEntry.id,
-    source: source || "jellyfin",
-  };
 }

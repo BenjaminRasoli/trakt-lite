@@ -123,3 +123,17 @@ model UpcomingEpisodesCache {
   @@unique([userId, tmdbId, seasonNumber, episodeNumber])
   @@index([userId, airDate])
 }
+
+model WebhookEventLog {
+  id           String   @id @default(cuid())
+  idempotencyKey String @unique
+  source       String   // "jellyfin", "plex", etc.
+  eventType    String   // "UserDataSaved", "PlaybackStop", etc.
+  itemId       String?  // Jellyfin Item ID or similar
+  userId       String
+  processedAt  DateTime @default(now())
+
+  @@index([idempotencyKey])
+  @@index([source, userId])
+  @@index([processedAt])
+}
