@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
-import { addEpisodeTypes, getMediaDetails } from "@/lib/tmdb";
+import {
+  addEpisodeTypes,
+  addNextUpEpisodeInfo,
+  getMediaDetails,
+} from "@/lib/tmdb";
 
 const mediaCache = new Map<string, any>();
 const CACHE_TTL = 5 * 60 * 1000;
@@ -829,7 +833,7 @@ export async function GET(request: NextRequest) {
         )
         .slice(0, limitParam ? parseInt(limitParam) : 40);
       const [typedNextUp, typedUpcoming] = await Promise.all([
-        addEpisodeTypes(hydratedNextUp),
+        addNextUpEpisodeInfo(hydratedNextUp),
         addEpisodeTypes(allUpcoming),
       ]);
 

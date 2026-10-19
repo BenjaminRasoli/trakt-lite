@@ -69,7 +69,179 @@ export interface TMDBEpisode {
   vote_count?: number;
 }
 
+export interface TMDBSeasonDetails {
+  episodes?: TMDBEpisode[];
+}
+
 const episodeTypesBySeason = new Map<string, Map<number, string>>();
+const tvSeasonDetailsCache = new Map<
+  string,
+  Promise<TMDBSeasonDetails | null>
+>();
+
+function getCachedTVSeasonDetails(
+  tvId: number,
+  seasonNumber: number,
+): Promise<TMDBSeasonDetails | null> {
+  const key = `${tvId}:${seasonNumber}`;
+  const cachedDetails = tvSeasonDetailsCache.get(key);
+  if (cachedDetails) return cachedDetails;
+
+  const detailsPromise = getTVSeasonDetails(tvId, seasonNumber);
+  tvSeasonDetailsCache.set(key, detailsPromise);
+  if (tvSeasonDetailsCache.size > 500) {
+    const oldestKey = tvSeasonDetailsCache.keys().next().value;
+    if (oldestKey) tvSeasonDetailsCache.delete(oldestKey);
+  }
+
+  return detailsPromise;
+}
+
+export interface NextUpEpisodeInfo {
+  episodeType: string | null;
+  episodeRuntimeMinutes: number | null;
+  remainingEpisodeCount: number | null;
+  remainingRuntimeMinutes: number | null;
+}
+
+export async function addNextUpEpisodeInfo<
+  T extends {
+    tmdbId: number;
+    seasonNumber: number;
+    episodeNumber: number;
+  },
+>(items: T[]): Promise<Array<T & NextUpEpisodeInfo>> {
+  let nextItemIndex = 0;
+  const infos: NextUpEpisodeInfo[] = new Array(items.length);
+
+  await Promise.all(
+    Array.from({ length: Math.min(3, items.length) }, async () => {
+      while (nextItemIndex < items.length) {
+        const index = nextItemIndex++;
+        const item = items[index];
+
+        try {
+          const [show, firstSeason] = await Promise.all([
+            getTVShowDetails(item.tmdbId),
+            getCachedTVSeasonDetails(item.tmdbId, item.seasonNumber),
+          ]);
+          const rawEpisodeType = firstSeason?.episodes?.find(
+            (episode) => episode.episode_number === item.episodeNumber,
+          )?.episode_type;
+          const normalizedEpisodeType = rawEpisodeType
+            ?.toLowerCase()
+            .replace(/[\s-]+/g, "_");
+          const episodeType =
+            normalizedEpisodeType && normalizedEpisodeType !== "standard"
+              ? normalizedEpisodeType
+              : item.episodeNumber === 1
+                ? "season_premiere"
+                : null;
+          const seasonCount = show?.number_of_seasons;
+
+          if (!seasonCount) {
+            infos[index] = {
+              episodeType: episodeType ?? null,
+              episodeRuntimeMinutes: null,
+              remainingEpisodeCount: null,
+              remainingRuntimeMinutes: null,
+            };
+            continue;
+          }
+
+          let episodeRuntimeMinutes: number | null = null;
+          let remainingEpisodeCount = 0;
+          let remainingRuntimeMinutes = 0;
+          let allSeasonDetailsKnown = true;
+          let allRemainingRuntimesKnown = true;
+          const seasonNumbers = Array.from(
+            { length: seasonCount },
+            (_, seasonIndex) => seasonIndex + 1,
+          );
+          let nextSeasonIndex = 0;
+          const seasonDetails = await Promise.all(
+            Array.from(
+              { length: Math.min(4, seasonNumbers.length) },
+              async () => {
+                const fetchedSeasons: Array<{
+                  seasonNumber: number;
+                  details: TMDBSeasonDetails | null;
+                }> = [];
+
+                while (nextSeasonIndex < seasonNumbers.length) {
+                  const seasonNumber = seasonNumbers[nextSeasonIndex++];
+                  fetchedSeasons.push({
+                    seasonNumber,
+                    details:
+                      seasonNumber === item.seasonNumber
+                        ? firstSeason
+                        : await getCachedTVSeasonDetails(
+                            item.tmdbId,
+                            seasonNumber,
+                          ),
+                  });
+                }
+
+                return fetchedSeasons;
+              },
+            ),
+          );
+
+          for (const season of seasonDetails.flat()) {
+            if (!season.details?.episodes) {
+              allSeasonDetailsKnown = false;
+              allRemainingRuntimesKnown = false;
+              continue;
+            }
+
+            for (const episode of season.details.episodes) {
+              const isRemaining =
+                season.seasonNumber > item.seasonNumber ||
+                (season.seasonNumber === item.seasonNumber &&
+                  episode.episode_number >= item.episodeNumber);
+              if (!isRemaining) continue;
+
+              remainingEpisodeCount++;
+              if (
+                season.seasonNumber === item.seasonNumber &&
+                episode.episode_number === item.episodeNumber
+              ) {
+                episodeRuntimeMinutes = episode.runtime ?? null;
+              }
+
+              if (typeof episode.runtime === "number" && episode.runtime > 0) {
+                remainingRuntimeMinutes += episode.runtime;
+              } else {
+                allRemainingRuntimesKnown = false;
+              }
+            }
+          }
+
+          infos[index] = {
+            episodeType: episodeType ?? null,
+            episodeRuntimeMinutes,
+            remainingEpisodeCount: allSeasonDetailsKnown
+              ? remainingEpisodeCount
+              : null,
+            remainingRuntimeMinutes: allRemainingRuntimesKnown
+              ? remainingRuntimeMinutes
+              : null,
+          };
+        } catch (error) {
+          console.error("Error fetching Next Up episode details:", error);
+          infos[index] = {
+            episodeType: null,
+            episodeRuntimeMinutes: null,
+            remainingEpisodeCount: null,
+            remainingRuntimeMinutes: null,
+          };
+        }
+      }
+    }),
+  );
+
+  return items.map((item, index) => ({ ...item, ...infos[index] }));
+}
 
 export async function addEpisodeTypes<
   T extends {
@@ -102,7 +274,7 @@ export async function addEpisodeTypes<
         while (nextSeasonIndex < seasonsToFetch.length) {
           const currentIndex = nextSeasonIndex++;
           const [key, season] = seasonsToFetch[currentIndex];
-          const details = await getTVSeasonDetails(
+          const details = await getCachedTVSeasonDetails(
             season.tmdbId,
             season.seasonNumber,
           );
@@ -526,8 +698,8 @@ async function fetchTmdbJson<T>(url: string): Promise<T | null> {
 export async function getTVSeasonDetails(
   tvId: number,
   seasonNumber: number,
-): Promise<any> {
-  return fetchTmdbJson(
+): Promise<TMDBSeasonDetails | null> {
+  return fetchTmdbJson<TMDBSeasonDetails>(
     `${TMDB_BASE_URL}/tv/${tvId}/season/${seasonNumber}?api_key=${TMDB_API_KEY}`,
   );
 }
