@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
-import { getTVSeasonDetails } from "@/lib/tmdb";
+import { addEpisodeTypes, getTVSeasonDetails } from "@/lib/tmdb";
 
 function isReleasedEpisode(
   episode:
@@ -234,7 +234,9 @@ export async function GET(request: NextRequest) {
       }));
     }
 
-    return NextResponse.json({ nextUp: nextUpItems });
+    return NextResponse.json({
+      nextUp: await addEpisodeTypes(nextUpItems),
+    });
   } catch (error) {
     console.error("Error fetching next up:", error);
     return NextResponse.json(

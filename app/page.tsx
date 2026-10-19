@@ -5,6 +5,7 @@ import { useSupabase } from "@/components/supabase-provider";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import MediaCard from "@/components/media-card";
+import EpisodeTypeBadge from "@/components/episode-type-badge";
 import {
   getPosterUrl,
   getRandomBackdropUrl,
@@ -575,6 +576,7 @@ function HomeContent() {
                       className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:border-violet-500/50"
                     >
                       <div className="relative aspect-[2/3] overflow-hidden">
+                        <EpisodeTypeBadge episodeType={item.episodeType} />
                         <img
                           src={getPosterUrl(item.posterPath || null)}
                           alt={item.episodeTitle}
@@ -643,6 +645,11 @@ function HomeContent() {
                         className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:border-violet-500/50"
                       >
                         <div className="relative aspect-[2/3] overflow-hidden">
+                          {!isMovie && (
+                            <EpisodeTypeBadge
+                              episodeType={item.episodeType}
+                            />
+                          )}
                           <img
                             src={getPosterUrl(item.posterPath || null)}
                             alt={isMovie ? item.title : item.episodeTitle}

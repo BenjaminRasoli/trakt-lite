@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import EpisodeTypeBadge from "@/components/episode-type-badge";
 import { getPosterUrl, getRandomBackdropUrl, getTrendingMedia } from "@/lib/tmdb";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -14,6 +15,7 @@ interface NextUpItem {
   seasonNumber: number;
   episodeNumber: number;
   episodeTitle: string;
+  episodeType?: string | null;
   overview: string | null;
 }
 
@@ -183,6 +185,7 @@ function NextUpPageContent() {
                 className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:-translate-y-0.5 hover:border-violet-500/50"
               >
                 <div className="relative aspect-[2/3] overflow-hidden">
+                  <EpisodeTypeBadge episodeType={item.episodeType} />
                   <Image
                     src={getPosterUrl(item.posterPath || null)}
                     alt={item.episodeTitle}

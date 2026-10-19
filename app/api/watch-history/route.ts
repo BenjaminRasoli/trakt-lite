@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
-import { getMediaDetails } from "@/lib/tmdb";
+import { addEpisodeTypes, getMediaDetails } from "@/lib/tmdb";
 
 const mediaCache = new Map<string, any>();
 const CACHE_TTL = 5 * 60 * 1000;
@@ -721,7 +721,6 @@ export async function GET(request: NextRequest) {
           };
         }),
       );
-
       const parsedNextUpLimit =
         nextUpLimitParam && nextUpLimitParam !== "all"
           ? Number.parseInt(nextUpLimitParam, 10)
@@ -829,12 +828,16 @@ export async function GET(request: NextRequest) {
             new Date(a.airDate || 0).getTime() - new Date(b.airDate || 0).getTime(),
         )
         .slice(0, limitParam ? parseInt(limitParam) : 40);
+      const [typedNextUp, typedUpcoming] = await Promise.all([
+        addEpisodeTypes(hydratedNextUp),
+        addEpisodeTypes(allUpcoming),
+      ]);
 
       return NextResponse.json({
         items: itemsWithPosters,
         hasMore,
-        nextUp: hydratedNextUp,
-        upcoming: allUpcoming,
+        nextUp: typedNextUp,
+        upcoming: typedUpcoming,
       });
     }
 
@@ -895,7 +898,6 @@ export async function GET(request: NextRequest) {
       updatedAt: entry.updatedAt,
       media: entry.media,
     }));
-
     return NextResponse.json(formattedHistory);
   } catch (error) {
     console.error("Error fetching watch history:", error);

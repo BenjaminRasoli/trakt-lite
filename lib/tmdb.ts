@@ -63,9 +63,86 @@ export interface TMDBEpisode {
   air_date?: string;
   episode_number: number;
   season_number: number;
+  episode_type?: string;
   vote_average: number | null;
   runtime?: number | null;
   vote_count?: number;
+}
+
+const episodeTypesBySeason = new Map<string, Map<number, string>>();
+
+export async function addEpisodeTypes<
+  T extends {
+    tmdbId: number;
+    seasonNumber: number | null;
+    episodeNumber: number | null;
+  },
+>(items: T[]): Promise<Array<T & { episodeType: string | null }>> {
+  const seasons = new Map<string, { tmdbId: number; seasonNumber: number }>();
+
+  for (const item of items) {
+    if (item.seasonNumber === null || item.episodeNumber === null) continue;
+
+    const key = `${item.tmdbId}:${item.seasonNumber}`;
+    seasons.set(key, {
+      tmdbId: item.tmdbId,
+      seasonNumber: item.seasonNumber,
+    });
+  }
+
+  const seasonsToFetch = [...seasons.entries()].filter(
+    ([key]) => !episodeTypesBySeason.has(key),
+  );
+  let nextSeasonIndex = 0;
+
+  await Promise.all(
+    Array.from(
+      { length: Math.min(4, seasonsToFetch.length) },
+      async () => {
+        while (nextSeasonIndex < seasonsToFetch.length) {
+          const currentIndex = nextSeasonIndex++;
+          const [key, season] = seasonsToFetch[currentIndex];
+          const details = await getTVSeasonDetails(
+            season.tmdbId,
+            season.seasonNumber,
+          );
+          if (!details?.episodes) continue;
+
+          const episodeTypes = new Map<number, string>();
+          for (const episode of details.episodes as TMDBEpisode[]) {
+            const episodeNumber = Number(episode.episode_number);
+            const type = episode.episode_type
+              ?.toLowerCase()
+              .replace(/[\s-]+/g, "_");
+            if (type && type !== "standard") {
+              episodeTypes.set(episodeNumber, type);
+            } else if (episodeNumber === 1) {
+              episodeTypes.set(episodeNumber, "season_premiere");
+            }
+          }
+
+          episodeTypesBySeason.set(key, episodeTypes);
+          if (episodeTypesBySeason.size > 500) {
+            const oldestKey = episodeTypesBySeason.keys().next().value;
+            if (oldestKey) episodeTypesBySeason.delete(oldestKey);
+          }
+        }
+      },
+    ),
+  );
+
+  return items.map((item) => {
+    if (item.seasonNumber === null || item.episodeNumber === null) {
+      return { ...item, episodeType: null };
+    }
+
+    const key = `${item.tmdbId}:${item.seasonNumber}`;
+    return {
+      ...item,
+      episodeType:
+        episodeTypesBySeason.get(key)?.get(item.episodeNumber) ?? null,
+    };
+  });
 }
 
 export async function searchMedia(query: string): Promise<TMDBMedia[]> {

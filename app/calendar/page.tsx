@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import EpisodeTypeBadge from "@/components/episode-type-badge";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import {
@@ -7,6 +8,7 @@ import {
   getRandomBackdropUrl,
   getTrendingMedia,
   getTVSeasonDetails,
+  addEpisodeTypes,
 } from "@/lib/tmdb";
 
 interface UpcomingEpisodeItem {
@@ -16,6 +18,7 @@ interface UpcomingEpisodeItem {
   seasonNumber: number | null;
   episodeNumber: number | null;
   episodeTitle: string | null;
+  episodeType?: string | null;
   overview: string | null;
   airDate: string | null;
 }
@@ -99,7 +102,7 @@ async function getCalendarData() {
     if (cachedUpcoming.length > 0) {
       return {
         user,
-        upcoming: cachedUpcoming.map((item: any) => ({
+        upcoming: await addEpisodeTypes<UpcomingEpisodeItem>(cachedUpcoming.map((item: any) => ({
           tmdbId: item.tmdbId,
           title: item.title,
           posterPath: item.posterPath,
@@ -109,7 +112,7 @@ async function getCalendarData() {
           episodeTitle: item.episodeTitle,
           overview: item.overview,
           airDate: item.airDate ? item.airDate.toISOString().split('T')[0] : null,
-        })).slice(0, 40),
+        })).slice(0, 40)),
       };
     }
   } catch (error) {
@@ -336,12 +339,12 @@ async function getCalendarData() {
 
   return {
     user,
-    upcoming: upcoming
+    upcoming: await addEpisodeTypes<UpcomingEpisodeItem>(upcoming
       .sort(
         (a, b) =>
           new Date(a.airDate || 0).getTime() - new Date(b.airDate || 0).getTime(),
       )
-      .slice(0, 40),
+      .slice(0, 40)),
   };
 }
 
@@ -390,9 +393,15 @@ function groupByDate(upcoming: UpcomingEpisodeItem[]) {
           if (episodeNumbers.length > 0) {
             const minEp = episodeNumbers[0];
             const maxEp = episodeNumbers[episodeNumbers.length - 1];
+            const premiere = showItems.find(
+              (item) =>
+                item.episodeNumber === 1 &&
+                item.episodeType === "season_premiere",
+            );
 
             const combined: UpcomingEpisodeItem = {
               ...showItems[0],
+              episodeType: premiere ? "season_premiere" : null,
               episodeTitle:
                 minEp === maxEp
                   ? showItems[0].episodeTitle
@@ -527,6 +536,11 @@ export default async function CalendarPage() {
                           className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:border-violet-500/50"
                         >
                           <div className="relative aspect-[2/3] overflow-hidden">
+                            {!isMovie && (
+                              <EpisodeTypeBadge
+                                episodeType={item.episodeType}
+                              />
+                            )}
                             <Image
                               src={getPosterUrl(item.posterPath || null)}
                               alt={
