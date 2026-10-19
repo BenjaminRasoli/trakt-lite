@@ -6,7 +6,9 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import MediaCard from "@/components/media-card";
 import EpisodeTypeBadge from "@/components/episode-type-badge";
-import NextUpEpisodeInfo from "@/components/next-up-episode-info";
+import NextUpEpisodeInfo, {
+  isSpecialEpisodeType,
+} from "@/components/next-up-episode-info";
 import {
   getPosterUrl,
   getRandomBackdropUrl,
@@ -71,6 +73,22 @@ function RecentHistorySkeleton() {
         </div>
       </section>
     </>
+  );
+}
+
+function getDaysUntil(dateInput: string | null | undefined) {
+  if (!dateInput) return null;
+
+  const [year, month, day] = dateInput.split("-").map(Number);
+  if (!year || !month || !day) return null;
+
+  const releaseDate = new Date(year, month - 1, day);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return Math.max(
+    0,
+    Math.round((releaseDate.getTime() - today.getTime()) / 86400000),
   );
 }
 
@@ -577,8 +595,12 @@ function HomeContent() {
                       className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:border-violet-500/50"
                     >
                       <div className="relative aspect-[2/3] overflow-hidden">
+                        {isSpecialEpisodeType(item.episodeType) && (
+                          <EpisodeTypeBadge
+                            episodeType={item.episodeType}
+                          />
+                        )}
                         <NextUpEpisodeInfo
-                          episodeType={item.episodeType}
                           episodeRuntimeMinutes={item.episodeRuntimeMinutes}
                           remainingEpisodeCount={item.remainingEpisodeCount}
                           remainingRuntimeMinutes={item.remainingRuntimeMinutes}
@@ -639,6 +661,7 @@ function HomeContent() {
                   {visibleUpcoming.map((item) => {
                     const isMovie =
                       item.seasonNumber === null && item.episodeNumber === null;
+                    const daysUntil = getDaysUntil(item.airDate);
                     const mediaType = isMovie ? "movie" : "tv";
                     const linkHref = isMovie
                       ? `/media/${item.tmdbId}?type=movie`
@@ -667,7 +690,7 @@ function HomeContent() {
                         </div>
 
                         <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
-                          <div className="text-[10px] font-medium tracking-[0.15em] text-violet-300">
+                          <div className="flex items-center gap-1 text-[10px] font-medium tracking-[0.15em] text-violet-300">
                             {item.airDate
                               ? (() => {
                                   const date = new Date(item.airDate);
@@ -679,6 +702,16 @@ function HomeContent() {
                                   return `${month.charAt(0).toUpperCase() + month.slice(1).toLowerCase()} ${day}`;
                                 })()
                               : "Coming soon"}
+                            {daysUntil !== null && (
+                              <>
+                                <span className="text-zinc-500">•</span>
+                                <span className="tracking-normal text-zinc-400">
+                                  {daysUntil === 0
+                                    ? "today"
+                                    : `in ${daysUntil} ${daysUntil === 1 ? "day" : "days"}`}
+                                </span>
+                              </>
+                            )}
                           </div>
                           <div className="line-clamp-2 text-xs font-semibold text-white">
                             <span
