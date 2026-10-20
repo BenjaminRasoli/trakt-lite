@@ -690,27 +690,27 @@ function HomeContent() {
                         </div>
 
                         <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
-                          <div className="flex items-center gap-1 text-[10px] font-medium tracking-[0.15em] text-violet-300">
-                            {item.airDate
-                              ? (() => {
-                                  const date = new Date(item.airDate);
-                                  const month = date.toLocaleDateString(
-                                    "en-US",
-                                    { month: "short" },
-                                  );
-                                  const day = date.getDate();
-                                  return `${month.charAt(0).toUpperCase() + month.slice(1).toLowerCase()} ${day}`;
-                                })()
-                              : "Coming soon"}
+                          <div className="flex flex-col items-start text-[10px] font-medium tracking-[0.15em] text-violet-300 sm:flex-row sm:items-center sm:gap-1">
+                            <span>
+                              {item.airDate
+                                ? (() => {
+                                    const date = new Date(item.airDate);
+                                    const month = date.toLocaleDateString(
+                                      "en-US",
+                                      { month: "short" },
+                                    );
+                                    const day = date.getDate();
+                                    return `${month.charAt(0).toUpperCase() + month.slice(1).toLowerCase()} ${day}`;
+                                  })()
+                                : "Coming soon"}
+                            </span>
                             {daysUntil !== null && (
-                              <>
-                                <span className="text-zinc-500">•</span>
-                                <span className="tracking-normal text-zinc-400">
-                                  {daysUntil === 0
-                                    ? "today"
-                                    : `in ${daysUntil} ${daysUntil === 1 ? "day" : "days"}`}
-                                </span>
-                              </>
+                              <span className="flex items-center gap-1 text-[9px] tracking-normal text-zinc-400/75">
+                                <span className="hidden text-zinc-500 sm:inline">•</span>
+                                {daysUntil === 0
+                                  ? "today"
+                                  : `in ${daysUntil} ${daysUntil === 1 ? "day" : "days"}`}
+                              </span>
                             )}
                           </div>
                           <div className="line-clamp-2 text-xs font-semibold text-white">

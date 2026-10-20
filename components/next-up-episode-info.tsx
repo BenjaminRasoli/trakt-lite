@@ -19,15 +19,15 @@ export default function NextUpEpisodeInfo({
 }) {
   return (
     <div className="absolute bottom-2 left-2 right-2 z-10 flex flex-col items-start gap-1">
-      <div className="flex w-full items-center justify-between gap-1 overflow-hidden whitespace-nowrap rounded-md border border-white/10 bg-black/50 px-1.5 py-1 text-[7px] font-medium text-white shadow-lg backdrop-blur-sm sm:gap-1.5 sm:text-[9px]">
+      <div className="flex w-full flex-col gap-0.5 whitespace-nowrap rounded-md border border-white/10 bg-black/50 px-1.5 py-1 text-[8px] font-medium text-white shadow-lg backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:gap-1.5 sm:text-[9px]">
         <span className="shrink-0">{formatRuntime(episodeRuntimeMinutes)}</span>
-        <span className="flex min-w-0 items-center justify-end gap-1 overflow-hidden whitespace-nowrap">
+        <span className="flex min-w-0 items-center justify-start gap-1 whitespace-nowrap sm:justify-end">
           <span className="shrink-0">
             {remainingEpisodeCount ?? "--"}{" "}
             {remainingEpisodeCount === 1 ? "episode" : "episodes"} left
           </span>
           <span className="shrink-0 text-zinc-400">•</span>
-          <span className="min-w-0 truncate">
+          <span className="shrink-0">
             {formatRuntime(remainingRuntimeMinutes)}
           </span>
         </span>
