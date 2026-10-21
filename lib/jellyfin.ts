@@ -293,7 +293,7 @@ export async function upsertJellyfinWatchEntry({
       episodeNumber ?? "",
     ].join(":");
     await transaction.$queryRaw`
-      SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))
+      SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))::text
     `;
 
     const existingEntry = await transaction.watchHistory.findFirst({
