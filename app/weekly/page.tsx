@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSupabase } from "@/components/supabase-provider";
 import {
   getMediaDetails,
@@ -135,6 +135,14 @@ async function getRuntimeMinutes(
 }
 
 export default function WeeklyPage() {
+  const searchParams = useSearchParams();
+  const weekFromUrl = searchParams.get("week");
+  const parsedWeekOffset = weekFromUrl ? parseInt(weekFromUrl, 10) : 0;
+  const selectedWeekOffset =
+    Number.isNaN(parsedWeekOffset) || parsedWeekOffset < 0
+      ? 0
+      : parsedWeekOffset;
+
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [weeklyLoading, setWeeklyLoading] = useState(true);
@@ -226,19 +234,23 @@ export default function WeeklyPage() {
         thisWeekStart.setDate(now.getDate() - diffToMonday);
         thisWeekStart.setHours(0, 0, 0, 0);
 
-        const lastWeekStart = new Date(thisWeekStart);
-        lastWeekStart.setDate(lastWeekStart.getDate() - 7);
-        const lastWeekEnd = new Date(thisWeekStart);
-        lastWeekEnd.setMilliseconds(lastWeekEnd.getMilliseconds() - 1);
+        const selectedWeekStart = new Date(thisWeekStart);
+        selectedWeekStart.setDate(selectedWeekStart.getDate() - (selectedWeekOffset * 7));
+
+        const previousWeekStart = new Date(selectedWeekStart);
+        previousWeekStart.setDate(previousWeekStart.getDate() - 7);
+        const selectedWeekEnd = new Date(selectedWeekStart);
+        selectedWeekEnd.setDate(selectedWeekEnd.getDate() + 7);
+        selectedWeekEnd.setMilliseconds(selectedWeekEnd.getMilliseconds() - 1);
 
         const thisWeek: WatchedItem[] = allItems.filter((item) => {
           const watchedDate = new Date(item.watchedAt);
-          return watchedDate >= thisWeekStart;
+          return watchedDate >= selectedWeekStart && watchedDate < selectedWeekEnd;
         });
 
         const lastWeek: WatchedItem[] = allItems.filter((item) => {
           const watchedDate = new Date(item.watchedAt);
-          return watchedDate >= lastWeekStart && watchedDate < thisWeekStart;
+          return watchedDate >= previousWeekStart && watchedDate < selectedWeekStart;
         });
 
         const thisWeekEpisodes = thisWeek.filter(
@@ -330,7 +342,7 @@ export default function WeeklyPage() {
     };
 
     void fetchWeeklyData();
-  }, [user]);
+  }, [user, selectedWeekOffset]);
 
   if (loading || weeklyLoading) {
     return (
@@ -356,11 +368,13 @@ export default function WeeklyPage() {
     const diffToMonday = currentDay === 0 ? 6 : currentDay - 1;
     const thisWeekStart = new Date(now);
     thisWeekStart.setDate(now.getDate() - diffToMonday);
-    const thisWeekEnd = new Date(thisWeekStart);
-    thisWeekEnd.setDate(thisWeekStart.getDate() + 6);
+    const selectedWeekStart = new Date(thisWeekStart);
+    selectedWeekStart.setDate(selectedWeekStart.getDate() - (selectedWeekOffset * 7));
+    const thisWeekEnd = new Date(selectedWeekStart);
+    thisWeekEnd.setDate(thisWeekEnd.getDate() + 6);
 
     const options = { month: "short", day: "numeric" } as const;
-    const start = thisWeekStart.toLocaleDateString("en-US", options);
+    const start = selectedWeekStart.toLocaleDateString("en-US", options);
     const end = thisWeekEnd.toLocaleDateString("en-US", options);
     return `${start} - ${end}`;
   };
@@ -371,7 +385,9 @@ export default function WeeklyPage() {
     const diffToMonday = currentDay === 0 ? 6 : currentDay - 1;
     const thisWeekStart = new Date(now);
     thisWeekStart.setDate(now.getDate() - diffToMonday);
-    const lastWeekStart = new Date(thisWeekStart);
+    const selectedWeekStart = new Date(thisWeekStart);
+    selectedWeekStart.setDate(selectedWeekStart.getDate() - (selectedWeekOffset * 7));
+    const lastWeekStart = new Date(selectedWeekStart);
     lastWeekStart.setDate(lastWeekStart.getDate() - 7);
     const lastWeekEnd = new Date(lastWeekStart);
     lastWeekEnd.setDate(lastWeekStart.getDate() + 6);
@@ -380,6 +396,23 @@ export default function WeeklyPage() {
     const start = lastWeekStart.toLocaleDateString("en-US", options);
     const end = lastWeekEnd.toLocaleDateString("en-US", options);
     return `${start} - ${end}`;
+  };
+
+  const getWeekLabel = () => {
+    if (selectedWeekOffset === 0) return "This week";
+    if (selectedWeekOffset === 1) return "Last week";
+    return `${selectedWeekOffset} weeks ago`;
+  };
+
+  const handleWeekChange = (newOffset: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (newOffset === 0) {
+      params.delete("week");
+    } else {
+      params.set("week", newOffset.toString());
+    }
+    const query = params.toString();
+    router.replace(query ? `/weekly?${query}` : "/weekly");
   };
 
   const StatCard = ({
@@ -465,12 +498,31 @@ export default function WeeklyPage() {
             </h1>
           </div>
 
-          <Link
-            href="/"
-            className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
-          >
-            Back home
-          </Link>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => handleWeekChange(selectedWeekOffset + 1)}
+              className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
+            >
+              Previous week
+            </button>
+            <button
+              onClick={() => handleWeekChange(Math.max(0, selectedWeekOffset - 1))}
+              disabled={selectedWeekOffset === 0}
+              className={`inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                selectedWeekOffset === 0
+                  ? "cursor-not-allowed border-zinc-700 bg-zinc-800/50 text-zinc-500"
+                  : "cursor-pointer border-violet-500/40 bg-violet-500/10 text-violet-100 hover:border-violet-400 hover:bg-violet-500/20"
+              }`}
+            >
+              Next week
+            </button>
+            <Link
+              href="/"
+              className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
+            >
+              Back home
+            </Link>
+          </div>
         </div>
 
         {!weeklyLoading && !stats ? (
@@ -517,7 +569,7 @@ export default function WeeklyPage() {
               <div className="mb-4 flex items-center justify-between gap-4">
                 <div>
                   <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-violet-400/80">
-                    This week
+                    {getWeekLabel()}
                   </p>
                   <h2 className="text-xl font-bold text-white">
                     {formatDateRange()}
