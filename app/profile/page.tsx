@@ -30,8 +30,6 @@ type RuntimeStats = {
   totalMinutes: number;
 };
 
-
-
 export default function ProfilePage() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -48,6 +46,7 @@ export default function ProfilePage() {
   const [viewFilter, setViewFilter] = useState<"all" | "year">("all");
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showYearDropdown, setShowYearDropdown] = useState(false);
 
   const formatEuropeanDate = (date: Date | string) => {
     const normalizedDate = date instanceof Date ? date : new Date(date);
@@ -116,6 +115,24 @@ export default function ProfilePage() {
       document.body.style.overflow = "";
     };
   }, [showDeleteConfirm]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      const dropdown = document.getElementById("year-dropdown");
+      if (dropdown && !dropdown.contains(target)) {
+        setShowYearDropdown(false);
+      }
+    };
+
+    if (showYearDropdown) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showYearDropdown]);
 
   useEffect(() => {
     if (!showDeleteConfirm) return;
@@ -429,7 +446,11 @@ export default function ProfilePage() {
       );
     } catch (error) {
       console.error("Error updating profile photo:", error);
-      alert(error instanceof Error ? error.message : "Failed to upload profile picture");
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Failed to upload profile picture",
+      );
     } finally {
       setUploading(false);
     }
@@ -471,7 +492,11 @@ export default function ProfilePage() {
       );
     } catch (error) {
       console.error("Error deleting profile photo:", error);
-      alert(error instanceof Error ? error.message : "Failed to delete profile picture");
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Failed to delete profile picture",
+      );
     } finally {
       setUploading(false);
     }
@@ -543,22 +568,54 @@ export default function ProfilePage() {
               </button>
             </div>
             {viewFilter === "year" && stats.availableYears.length > 0 && (
-              <select
-                value={selectedYear || ""}
-                onChange={(e) =>
-                  setSelectedYear(
-                    e.target.value ? Number(e.target.value) : null,
-                  )
-                }
-                className="rounded-full border border-zinc-700 bg-zinc-800/50 px-3 py-1.5 text-sm text-white outline-none focus:border-violet-500 cursor-pointer"
-              >
-                <option value="">All Years</option>
-                {stats.availableYears.map((year) => (
-                  <option key={year} value={year}>
-                    {year}
-                  </option>
-                ))}
-              </select>
+              <div className="relative" id="year-dropdown">
+                <button
+                  onClick={() => setShowYearDropdown(!showYearDropdown)}
+                  className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
+                >
+                  {selectedYear ? selectedYear : "All Years"}
+                  <svg
+                    className={`h-4 w-4 transition-transform duration-200 ${
+                      showYearDropdown ? "rotate-180" : ""
+                    }`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </button>
+                {showYearDropdown && (
+                  <div className="absolute right-0 mt-2 w-32 rounded-xl border border-zinc-700 bg-zinc-900/95 shadow-xl backdrop-blur-sm z-50">
+                    <button
+                      onClick={() => {
+                        setSelectedYear(null);
+                        setShowYearDropdown(false);
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-800 transition first:rounded-t-xl cursor-pointer"
+                    >
+                      All Years
+                    </button>
+                    {stats.availableYears.map((year) => (
+                      <button
+                        key={year}
+                        onClick={() => {
+                          setSelectedYear(year);
+                          setShowYearDropdown(false);
+                        }}
+                        className="w-full px-4 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-800 transition last:rounded-b-xl cursor-pointer"
+                      >
+                        {year}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
             <Link
               href="/settings"
@@ -995,7 +1052,8 @@ export default function ProfilePage() {
               Remove profile picture?
             </h3>
             <p className="text-zinc-300 mb-6">
-              Are you sure you want to remove your profile picture? This action cannot be undone.
+              Are you sure you want to remove your profile picture? This action
+              cannot be undone.
             </p>
             <div className="flex gap-3 justify-end">
               <button

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSupabase } from "@/components/supabase-provider";
@@ -134,7 +134,7 @@ async function getRuntimeMinutes(
   return new Map(runtimeGroups.flatMap((group) => Array.from(group)));
 }
 
-export default function WeeklyPage() {
+function WeeklyPageContent() {
   const searchParams = useSearchParams();
   const weekFromUrl = searchParams.get("week");
   const parsedWeekOffset = weekFromUrl ? parseInt(weekFromUrl, 10) : 0;
@@ -744,5 +744,22 @@ export default function WeeklyPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function WeeklyPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen flex-1 items-center justify-center bg-black">
+        <div className="flex items-center gap-3 text-violet-300">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-violet-300" />
+          <span className="text-sm font-medium uppercase tracking-[0.2em]">
+            Loading
+          </span>
+        </div>
+      </div>
+    }>
+      <WeeklyPageContent />
+    </Suspense>
   );
 }

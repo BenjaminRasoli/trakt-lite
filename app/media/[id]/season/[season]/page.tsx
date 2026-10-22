@@ -545,7 +545,7 @@ export default function SeasonPage() {
             }
           }}
         >
-          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg border border-zinc-700 bg-zinc-900 p-6">
+          <div className="max-h-[90vh] min-w-0 w-full max-w-md overflow-x-hidden overflow-y-auto rounded-lg border border-zinc-700 bg-zinc-900 p-4 sm:p-6">
             <h2 className="mb-4 text-2xl font-bold text-white">
               Mark Episode as Watched
             </h2>
@@ -598,26 +598,61 @@ export default function SeasonPage() {
             </div>
 
             {watchOption === "otherDate" && (
-              <div className="mb-6 space-y-4">
-                <div>
+              <div className="mb-6 min-w-0 space-y-4">
+                <div className="min-w-0">
                   <label className="mb-2 block text-zinc-300">Date</label>
-                  <input
-                    type="date"
-                    value={watchDate}
-                    onChange={(e) => setWatchDate(e.target.value)}
-                    className="w-full rounded border border-zinc-600 bg-zinc-800 px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
-                    required
-                  />
+                  <div className="relative min-w-0">
+                    <input
+                      type="date"
+                      value={watchDate}
+                      onChange={(e) => setWatchDate(e.target.value)}
+                      className="block w-full min-w-0 max-w-full box-border rounded border border-zinc-600 bg-zinc-800 px-3 py-2 pr-11 text-base text-white focus:outline-none focus:ring-2 focus:ring-violet-500 [&::-webkit-calendar-picker-indicator]:opacity-0"
+                      style={{ colorScheme: "dark" }}
+                      required
+                    />
+                    <svg
+                      aria-hidden="true"
+                      className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-violet-300"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.8}
+                        d="M8 3v3m8-3v3M4 9h16M6 5h12a2 2 0 0 1 2 2v12H4V7a2 2 0 0 1 2-2Z"
+                      />
+                    </svg>
+                  </div>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <label className="mb-2 block text-zinc-300">Time</label>
-                  <input
-                    type="time"
-                    value={watchTime}
-                    onChange={(e) => setWatchTime(e.target.value)}
-                    className="w-full rounded border border-zinc-600 bg-zinc-800 px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
-                    required
-                  />
+                  <div className="relative min-w-0">
+                    <input
+                      type="time"
+                      value={watchTime}
+                      onChange={(e) => setWatchTime(e.target.value)}
+                      className="block w-full min-w-0 max-w-full box-border rounded border border-zinc-600 bg-zinc-800 px-3 py-2 pr-11 text-base text-white focus:outline-none focus:ring-2 focus:ring-violet-500 [&::-webkit-calendar-picker-indicator]:opacity-0"
+                      style={{ colorScheme: "dark" }}
+                      required
+                    />
+                    <svg
+                      aria-hidden="true"
+                      className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-violet-300"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle cx="12" cy="12" r="9" strokeWidth={1.8} />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.8}
+                        d="M12 7v5l3 2"
+                      />
+                    </svg>
+                  </div>
                 </div>
               </div>
             )}
