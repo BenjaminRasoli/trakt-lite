@@ -537,8 +537,8 @@ export default function EpisodePage() {
                         type="date"
                         value={watchDate}
                         onChange={(e) => setWatchDate(e.target.value)}
-                        className="block w-full min-w-0 max-w-full box-border rounded border border-zinc-600 bg-zinc-800 px-3 py-2 pr-11 text-base text-white focus:outline-none focus:ring-2 focus:ring-violet-500 [&::-webkit-calendar-picker-indicator]:opacity-0"
-                        style={{ colorScheme: "dark" }}
+                        className="block w-full min-w-0 max-w-full appearance-none box-border rounded border border-zinc-600 bg-zinc-800 px-3 py-2 pr-11 text-base text-white focus:outline-none focus:ring-2 focus:ring-violet-500 [&::-webkit-calendar-picker-indicator]:opacity-0"
+                        style={{ colorScheme: "dark", width: "100%", minWidth: 0 }}
                         required
                       />
                       <svg
@@ -564,8 +564,8 @@ export default function EpisodePage() {
                         type="time"
                         value={watchTime}
                         onChange={(e) => setWatchTime(e.target.value)}
-                        className="block w-full min-w-0 max-w-full box-border rounded border border-zinc-600 bg-zinc-800 px-3 py-2 pr-11 text-base text-white focus:outline-none focus:ring-2 focus:ring-violet-500 [&::-webkit-calendar-picker-indicator]:opacity-0"
-                        style={{ colorScheme: "dark" }}
+                        className="block w-full min-w-0 max-w-full appearance-none box-border rounded border border-zinc-600 bg-zinc-800 px-3 py-2 pr-11 text-base text-white focus:outline-none focus:ring-2 focus:ring-violet-500 [&::-webkit-calendar-picker-indicator]:opacity-0"
+                        style={{ colorScheme: "dark", width: "100%", minWidth: 0 }}
                         required
                       />
                       <svg

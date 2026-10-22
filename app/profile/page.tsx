@@ -568,7 +568,7 @@ export default function ProfilePage() {
               </button>
             </div>
             {viewFilter === "year" && stats.availableYears.length > 0 && (
-              <div className="relative" id="year-dropdown">
+              <div className="relative w-fit self-start sm:self-auto" id="year-dropdown">
                 <button
                   onClick={() => setShowYearDropdown(!showYearDropdown)}
                   className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
@@ -591,7 +591,7 @@ export default function ProfilePage() {
                   </svg>
                 </button>
                 {showYearDropdown && (
-                  <div className="absolute right-0 mt-2 w-32 rounded-xl border border-zinc-700 bg-zinc-900/95 shadow-xl backdrop-blur-sm z-50">
+                  <div className="absolute left-0 z-50 mt-2 w-32 rounded-xl border border-zinc-700 bg-zinc-900/95 shadow-xl backdrop-blur-sm sm:right-0 sm:left-auto">
                     <button
                       onClick={() => {
                         setSelectedYear(null);
