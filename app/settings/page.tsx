@@ -25,6 +25,16 @@ export default function SettingsPage() {
   });
   const [jellyfinStatus, setJellyfinStatus] = useState<string | null>(null);
   const [savingJellyfin, setSavingJellyfin] = useState(false);
+  const [jellyfinImport, setJellyfinImport] = useState({
+    serverUrl: "",
+    username: "",
+    password: "",
+  });
+  const [importingJellyfin, setImportingJellyfin] = useState(false);
+  const [jellyfinImportError, setJellyfinImportError] = useState<string | null>(null);
+  const [jellyfinImportSuccess, setJellyfinImportSuccess] = useState(false);
+  const [jellyfinImportProgress, setJellyfinImportProgress] = useState<string>("");
+  const [jellyfinImportPercent, setJellyfinImportPercent] = useState<number>(0);
   const [liveSession, setLiveSession] = useState<any>(null);
   const [loadingLiveSession, setLoadingLiveSession] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -200,6 +210,15 @@ export default function SettingsPage() {
     setImportSuccess(false);
     setImportProgress("Uploading file...");
     setImportPercent(0);
+    setExportProgress("");
+    setJellyfinStatus(null);
+    setJellyfinImportError(null);
+    setJellyfinImportSuccess(false);
+    setJellyfinImportProgress("");
+    setJellyfinImportPercent(0);
+
+    // Clear the file input
+    (e.currentTarget.elements.namedItem('zipFile') as HTMLInputElement).value = '';
 
     try {
       const uploadFormData = new FormData();
@@ -253,11 +272,6 @@ export default function SettingsPage() {
                 setImportProgress(`Successfully imported ${data.imported} entries${watchlistMsg}`);
                 setImportSuccess(true);
                 setImportPercent(100);
-                setTimeout(() => {
-                  setImportSuccess(false);
-                  setImportProgress("");
-                  setImportPercent(0);
-                }, 3000);
               }
             } catch (e) {
               // Ignore parse errors for incomplete chunks
@@ -269,6 +283,7 @@ export default function SettingsPage() {
       setImportError(error instanceof Error ? error.message : "Import failed");
       setImportProgress("");
       setImportPercent(0);
+      setImportSuccess(false);
     } finally {
       setImporting(false);
     }
@@ -277,6 +292,15 @@ export default function SettingsPage() {
   const handleExport = async () => {
     setExporting(true);
     setExportProgress("Preparing export...");
+    setImportError(null);
+    setImportSuccess(false);
+    setImportProgress("");
+    setImportPercent(0);
+    setJellyfinStatus(null);
+    setJellyfinImportError(null);
+    setJellyfinImportSuccess(false);
+    setJellyfinImportProgress("");
+    setJellyfinImportPercent(0);
 
     try {
       setExportProgress("Fetching data...");
@@ -297,9 +321,6 @@ export default function SettingsPage() {
       document.body.removeChild(a);
 
       setExportProgress("Export complete!");
-      setTimeout(() => {
-        setExportProgress("");
-      }, 2000);
     } catch (error) {
       console.error("Export error:", error);
       setExportProgress("");
@@ -312,6 +333,15 @@ export default function SettingsPage() {
     e.preventDefault();
     setSavingJellyfin(true);
     setJellyfinStatus(null);
+    setImportError(null);
+    setImportSuccess(false);
+    setImportProgress("");
+    setImportPercent(0);
+    setExportProgress("");
+    setJellyfinImportError(null);
+    setJellyfinImportSuccess(false);
+    setJellyfinImportProgress("");
+    setJellyfinImportPercent(0);
 
     try {
       const response = await fetch("/api/settings/jellyfin", {
@@ -336,6 +366,88 @@ export default function SettingsPage() {
       );
     } finally {
       setSavingJellyfin(false);
+    }
+  };
+
+  const handleJellyfinImport = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setImportingJellyfin(true);
+    setJellyfinImportError(null);
+    setJellyfinImportSuccess(false);
+    setJellyfinImportProgress("Connecting to Jellyfin...");
+    setJellyfinImportPercent(0);
+    setImportError(null);
+    setImportSuccess(false);
+    setImportProgress("");
+    setImportPercent(0);
+    setExportProgress("");
+    setJellyfinStatus(null);
+
+    try {
+      const response = await fetch("/api/settings/jellyfin-import", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(jellyfinImport),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Import failed");
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        throw new Error("Failed to read response");
+      }
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split("\n\n");
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            try {
+              const data = JSON.parse(line.slice(6));
+
+              if (data.error) {
+                throw new Error(data.error);
+              }
+
+              if (data.status) {
+                setJellyfinImportProgress(data.status);
+              }
+
+              if (data.progress !== undefined) {
+                setJellyfinImportPercent(data.progress);
+              }
+
+              if (data.success) {
+                setJellyfinImportProgress(`Successfully imported ${data.imported} entries`);
+                setJellyfinImportSuccess(true);
+                setJellyfinImportPercent(100);
+              }
+            } catch (e) {
+              // Ignore parse errors for incomplete chunks
+            }
+          }
+        }
+      }
+    } catch (error) {
+      setJellyfinImportError(
+        error instanceof Error ? error.message : "Import failed"
+      );
+      setJellyfinImportProgress("");
+      setJellyfinImportPercent(0);
+      setJellyfinImportSuccess(false);
+    } finally {
+      setImportingJellyfin(false);
     }
   };
 
@@ -416,7 +528,7 @@ export default function SettingsPage() {
               <button
                 type="submit"
                 disabled={importing}
-                className={`inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-5 py-2.5 text-sm font-semibold text-violet-100 transition ${importing ? '' : 'hover:border-violet-400 hover:bg-violet-500/20'} disabled:cursor-not-allowed disabled:opacity-60`}
+                className={`inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-5 py-2.5 text-sm font-semibold text-violet-100 transition ${!importing ? 'hover:border-violet-400 hover:bg-violet-500/20' : ''} disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-violet-500/40 disabled:hover:bg-violet-500/10`}
               >
                 {importing ? (
                   <>
@@ -440,7 +552,7 @@ export default function SettingsPage() {
             <button
               onClick={handleExport}
               disabled={exporting}
-              className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-5 py-2.5 text-sm font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-5 py-2.5 text-sm font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-violet-500/40 disabled:hover:bg-violet-500/10"
             >
               {exporting ? (
                 <>
@@ -451,6 +563,104 @@ export default function SettingsPage() {
                 "Export Data"
               )}
             </button>
+          </div>
+
+          <div className="bg-zinc-900 rounded-lg p-6 border border-zinc-700/50">
+            <h2 className="text-xl font-bold text-white mb-4">
+              Import Watch Data from Jellyfin
+            </h2>
+            <p className="text-zinc-400 mb-4">
+              Import your watch history directly from Jellyfin. This will overwrite all existing data.
+            </p>
+            <form onSubmit={handleJellyfinImport} className="space-y-4">
+              <div>
+                <label className="block text-zinc-300 mb-2">
+                  Jellyfin Server URL
+                </label>
+                <input
+                  type="url"
+                  value={jellyfinImport.serverUrl}
+                  onChange={(e) =>
+                    setJellyfinImport((current) => ({
+                      ...current,
+                      serverUrl: e.target.value,
+                    }))
+                  }
+                  placeholder="https://jellyfin.example.com"
+                  className="w-full px-4 py-2 bg-zinc-800 border border-zinc-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-zinc-300 mb-2">
+                  Username
+                </label>
+                <input
+                  type="text"
+                  value={jellyfinImport.username}
+                  onChange={(e) =>
+                    setJellyfinImport((current) => ({
+                      ...current,
+                      username: e.target.value,
+                    }))
+                  }
+                  placeholder="Your Jellyfin username"
+                  className="w-full px-4 py-2 bg-zinc-800 border border-zinc-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-zinc-300 mb-2">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  value={jellyfinImport.password}
+                  onChange={(e) =>
+                    setJellyfinImport((current) => ({
+                      ...current,
+                      password: e.target.value,
+                    }))
+                  }
+                  placeholder="Your Jellyfin password"
+                  className="w-full px-4 py-2 bg-zinc-800 border border-zinc-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  required
+                />
+              </div>
+              {jellyfinImportError && (
+                <div className="text-red-400 text-sm">{jellyfinImportError}</div>
+              )}
+              {jellyfinImportSuccess && (
+                <div className="text-green-400 text-sm">Import successful!</div>
+              )}
+              {jellyfinImportProgress && !jellyfinImportSuccess && (
+                <div className="space-y-2">
+                  <div className="text-violet-300 text-sm">{jellyfinImportProgress}</div>
+                  {jellyfinImportPercent > 0 && jellyfinImportPercent < 100 && (
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-violet-500 to-emerald-400 transition-all duration-300"
+                        style={{ width: `${jellyfinImportPercent}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+              <button
+                type="submit"
+                disabled={importingJellyfin}
+                className={`inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-5 py-2.5 text-sm font-semibold text-violet-100 transition ${!importingJellyfin ? 'hover:border-violet-400 hover:bg-violet-500/20' : ''} disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-violet-500/40 disabled:hover:bg-violet-500/10`}
+              >
+                {importingJellyfin ? (
+                  <>
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    Importing...
+                  </>
+                ) : (
+                  "Import from Jellyfin"
+                )}
+              </button>
+            </form>
           </div>
 
           <div className="bg-zinc-900 rounded-lg p-6 border border-zinc-700/50">
@@ -657,7 +867,7 @@ export default function SettingsPage() {
               <button
                 type="submit"
                 disabled={savingJellyfin}
-                className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-5 py-2.5 text-sm font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-5 py-2.5 text-sm font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-violet-500/40 disabled:hover:bg-violet-500/10"
               >
                 {savingJellyfin ? (
                   <>
