@@ -5,6 +5,7 @@ import {
   getJellyfinCurrentSession,
   getJellyfinTmdbId,
   getJellyfinMediaType,
+  authenticateJellyfin,
 } from "@/lib/jellyfin";
 import { getMediaDetails, getPosterUrl, searchMedia } from "@/lib/tmdb";
 
@@ -35,11 +36,29 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ active: null }, { status: 200 });
     }
 
+    // Authenticate to get access token
+    let accessToken: string | null = null;
+    let jellyfinUserId: string | null = null;
+    try {
+      const auth = await authenticateJellyfin(
+        config.serverUrl,
+        config.username || "",
+        config.password || "",
+      );
+      accessToken = auth.accessToken;
+      jellyfinUserId = auth.userId;
+    } catch (error) {
+      console.error("Error authenticating with Jellyfin:", error);
+      return NextResponse.json({ active: null }, { status: 200 });
+    }
+
     const session = await getJellyfinCurrentSession({
       serverUrl: config.serverUrl,
-      apiKey: config.apiKey,
-      jellyfinUserId: config.jellyfinUserId,
+      username: config.username || "",
+      password: config.password || "",
+      jellyfinUserId,
       enabled: config.enabled,
+      accessToken,
     }).catch(() => null);
 
     if (!session || !session.NowPlayingItem) {
@@ -129,12 +148,12 @@ export async function GET(request: NextRequest) {
       }
 
       if (posterUrl === "/placeholder-poster.svg" && seriesId) {
-        const imageUrl = `${config.serverUrl}/Items/${seriesId}/Images/Primary?maxHeight=500&maxWidth=400&quality=90${seriesPosterTag ? `&tag=${encodeURIComponent(seriesPosterTag)}` : ""}&api_key=${encodeURIComponent(config.apiKey)}`;
+        const imageUrl = `${config.serverUrl}/Items/${seriesId}/Images/Primary?maxHeight=500&maxWidth=400&quality=90${seriesPosterTag ? `&tag=${encodeURIComponent(seriesPosterTag)}` : ""}&api_key=${encodeURIComponent(accessToken)}`;
         posterUrl = imageUrl;
       }
 
       if (posterUrl === "/placeholder-poster.svg" && itemId && itemPosterTag) {
-        posterUrl = `${config.serverUrl}/Items/${itemId}/Images/Primary?maxHeight=500&maxWidth=400&quality=90&tag=${encodeURIComponent(itemPosterTag)}&api_key=${encodeURIComponent(config.apiKey)}`;
+        posterUrl = `${config.serverUrl}/Items/${itemId}/Images/Primary?maxHeight=500&maxWidth=400&quality=90&tag=${encodeURIComponent(itemPosterTag)}&api_key=${encodeURIComponent(accessToken)}`;
       }
     } else {
       tmdbId = getJellyfinTmdbId(item);
@@ -150,7 +169,7 @@ export async function GET(request: NextRequest) {
       }
 
       if (posterUrl === "/placeholder-poster.svg" && itemId && itemPosterTag) {
-        posterUrl = `${config.serverUrl}/Items/${itemId}/Images/Primary?maxHeight=500&maxWidth=400&quality=90&tag=${encodeURIComponent(itemPosterTag)}&api_key=${encodeURIComponent(config.apiKey)}`;
+        posterUrl = `${config.serverUrl}/Items/${itemId}/Images/Primary?maxHeight=500&maxWidth=400&quality=90&tag=${encodeURIComponent(itemPosterTag)}&api_key=${encodeURIComponent(accessToken)}`;
       }
     }
 

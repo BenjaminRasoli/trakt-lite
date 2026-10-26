@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
-import { validateJellyfinConnection } from "@/lib/jellyfin";
+import { authenticateJellyfin } from "@/lib/jellyfin";
 
 export async function GET() {
   try {
@@ -29,11 +29,10 @@ export async function GET() {
     return NextResponse.json(
       config
         ? {
-            serverUrl: config.serverUrl,
-            apiKey: config.apiKey,
-            jellyfinUserId: config.jellyfinUserId,
-            enabled: config.enabled,
-          }
+          serverUrl: config.serverUrl,
+          username: config.username,
+          enabled: config.enabled,
+        }
         : null,
     );
   } catch (error) {
@@ -66,28 +65,29 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const serverUrl = String(body.serverUrl || "").trim();
-    const apiKey = String(body.apiKey || "").trim();
-    const jellyfinUserId = String(body.jellyfinUserId || "").trim();
+    const username = String(body.username || "").trim();
+    const submittedPassword = String(body.password || "");
     const enabled = Boolean(body.enabled ?? true);
 
-    if (!serverUrl || !apiKey) {
+    if (!serverUrl || !username) {
       return NextResponse.json(
-        { error: "Jellyfin server URL and API key are required." },
+        { error: "Jellyfin server URL and username are required." },
         { status: 400 },
       );
     }
 
-    const config = {
-      serverUrl,
-      apiKey,
-      jellyfinUserId: jellyfinUserId || null,
-      enabled,
-    };
+    const existing = await prisma.jellyfinConnection.findUnique({
+      where: { userId: dbUser.id },
+    });
+    const password = submittedPassword || existing?.password || "";
 
-    const valid = await validateJellyfinConnection(config).catch(() => false);
-    if (!valid) {
+    let auth: Awaited<ReturnType<typeof authenticateJellyfin>>;
+    try {
+      auth = await authenticateJellyfin(serverUrl, username, password);
+    } catch (error) {
+      console.error("Error authenticating Jellyfin settings:", error);
       return NextResponse.json(
-        { error: "Jellyfin connection failed. Check your URL and API key." },
+        { error: "Jellyfin connection failed. Check your URL, username, and password." },
         { status: 400 },
       );
     }
@@ -96,15 +96,17 @@ export async function POST(request: NextRequest) {
       where: { userId: dbUser.id },
       update: {
         serverUrl,
-        apiKey,
-        jellyfinUserId: jellyfinUserId || null,
+        username,
+        password,
+        jellyfinUserId: auth.userId,
         enabled,
       },
       create: {
         userId: dbUser.id,
         serverUrl,
-        apiKey,
-        jellyfinUserId: jellyfinUserId || null,
+        username,
+        password,
+        jellyfinUserId: auth.userId,
         enabled,
       },
     });
@@ -113,8 +115,7 @@ export async function POST(request: NextRequest) {
       ok: true,
       config: {
         serverUrl: saved.serverUrl,
-        apiKey: saved.apiKey,
-        jellyfinUserId: saved.jellyfinUserId,
+        username: saved.username,
         enabled: saved.enabled,
       },
     });

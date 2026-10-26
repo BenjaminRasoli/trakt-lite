@@ -19,8 +19,8 @@ export default function SettingsPage() {
   const [pageBackdrop, setPageBackdrop] = useState("");
   const [jellyfinConfig, setJellyfinConfig] = useState({
     serverUrl: "",
-    apiKey: "",
-    jellyfinUserId: "",
+    username: "",
+    password: "",
     enabled: true,
   });
   const [jellyfinStatus, setJellyfinStatus] = useState<string | null>(null);
@@ -104,8 +104,8 @@ export default function SettingsPage() {
 
         setJellyfinConfig({
           serverUrl: data.serverUrl || "",
-          apiKey: data.apiKey || "",
-          jellyfinUserId: data.jellyfinUserId || "",
+          username: data.username || "",
+          password: "",
           enabled: data.enabled ?? true,
         });
       } catch {
@@ -787,7 +787,10 @@ export default function SettingsPage() {
 
             <p className="text-zinc-400 mb-4">
               Connect your Jellyfin server so playback completion from Jellyfin
-              can be synced into this app as watched history.
+              can be synced into this app as watched history. To sync items
+              marked watched manually, configure Jellyfin&apos;s Webhook plugin
+              to send <code>UserDataSaved</code> events to
+              <code> /api/jellyfin/webhook</code> on this app.
             </p>
 
             <form onSubmit={handleJellyfinSave} className="space-y-4">
@@ -811,36 +814,37 @@ export default function SettingsPage() {
 
               <div>
                 <label className="mb-2 block text-sm text-zinc-300">
-                  Jellyfin API key
+                  Jellyfin username
                 </label>
                 <input
-                  type="password"
-                  value={jellyfinConfig.apiKey}
+                  type="text"
+                  value={jellyfinConfig.username}
                   onChange={(event) =>
                     setJellyfinConfig((current) => ({
                       ...current,
-                      apiKey: event.target.value,
+                      username: event.target.value,
                     }))
                   }
-                  placeholder="Enter your Jellyfin API key"
+                  placeholder="Your Jellyfin username"
                   className="w-full rounded border border-zinc-600 bg-zinc-800 px-4 py-2 text-white outline-none focus:border-violet-500"
                 />
               </div>
 
               <div>
                 <label className="mb-2 block text-sm text-zinc-300">
-                  Jellyfin user ID
+                  Jellyfin password
                 </label>
                 <input
-                  type="text"
-                  value={jellyfinConfig.jellyfinUserId}
+                  type="password"
+                  autoComplete="current-password"
+                  value={jellyfinConfig.password}
                   onChange={(event) =>
                     setJellyfinConfig((current) => ({
                       ...current,
-                      jellyfinUserId: event.target.value,
+                      password: event.target.value,
                     }))
                   }
-                  placeholder="Copy the user ID from Jellyfin"
+                  placeholder="Your Jellyfin password"
                   className="w-full rounded border border-zinc-600 bg-zinc-800 px-4 py-2 text-white outline-none focus:border-violet-500"
                 />
               </div>

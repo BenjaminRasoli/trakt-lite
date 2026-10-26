@@ -1,7 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { upsertJellyfinWatchEntry } from "@/lib/jellyfin";
+import {
+  authenticateJellyfin,
+  jellyfinRequest,
+  upsertJellyfinWatchEntry,
+} from "@/lib/jellyfin";
 import crypto from "crypto";
+
+interface JellyfinWebhookItem extends Record<string, unknown> {
+  Id?: string;
+  UserData?: {
+    Played?: boolean;
+    PlayCount?: number;
+    LastPlayedDate?: string | null;
+    DatePlayed?: string | null;
+  };
+  ProviderIds?: Record<string, unknown>;
+}
 
 function generateIdempotencyKey(itemId: string, userId: string, timestamp: string): string {
   const key = `jellyfin:${itemId}:${userId}:${timestamp}`;
@@ -38,23 +53,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log("Jellyfin webhook:", {
-      event: body?.NotificationType,
-      item: item?.Name || item?.SeriesName,
-      type: item?.Type || item?.ItemType,
-    });
-
     if (!item || !eventName) {
       return NextResponse.json({ ok: false, skipped: true }, { status: 200 });
     }
 
     if (!eventName.includes("userdatasaved")) {
       return NextResponse.json({ ok: true, skipped: true }, { status: 200 });
-    }
-
-    const played = body?.Played || item?.Played || body?.UserData?.Played || item?.UserData?.Played;
-    if (!played) {
-      return NextResponse.json({ ok: true, skipped: true, reason: "not_marked_played" }, { status: 200 });
     }
 
     const saveReason = String(body?.SaveReason || "").toLowerCase();
@@ -65,7 +69,10 @@ export async function POST(request: NextRequest) {
     const jellyfinUserId = String(
       body?.UserId ||
         body?.userId ||
+        body?.User?.Id ||
+        body?.User?.UserId ||
         body?.Session?.UserId ||
+        body?.Session?.User?.Id ||
         item?.UserId ||
         item?.User?.Id ||
         "",
@@ -81,8 +88,8 @@ export async function POST(request: NextRequest) {
         })
       : null;
 
-    const user = matchingConnection?.user ?? null;
-    if (!user) {
+    const user = matchingConnection?.user;
+    if (!matchingConnection || !user) {
       return NextResponse.json(
         {
           ok: false,
@@ -93,11 +100,59 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const itemId = String(item?.Id || item?.ItemId || body?.ItemId || "").trim();
+    if (!itemId) {
+      return NextResponse.json(
+        { ok: true, skipped: true, reason: "missing_item_id" },
+        { status: 200 },
+      );
+    }
+
+    const auth = await authenticateJellyfin(
+      matchingConnection.serverUrl,
+      matchingConnection.username || "",
+      matchingConnection.password || "",
+    );
+    const jellyfinItem = await jellyfinRequest<JellyfinWebhookItem>(
+      {
+        serverUrl: matchingConnection.serverUrl,
+        username: matchingConnection.username || "",
+        password: matchingConnection.password || "",
+        accessToken: auth.accessToken,
+      },
+      `/Users/${auth.userId}/Items/${encodeURIComponent(itemId)}`,
+    );
+    const played =
+      jellyfinItem?.UserData?.Played === true ||
+      Number(jellyfinItem?.UserData?.PlayCount || 0) > 0 ||
+      jellyfinItem?.UserData?.LastPlayedDate != null ||
+      jellyfinItem?.UserData?.DatePlayed != null;
+    if (!played) {
+      return NextResponse.json(
+        { ok: true, skipped: true, reason: "not_marked_played" },
+        { status: 200 },
+      );
+    }
+
+    const providerIds = jellyfinItem?.ProviderIds || {};
+    for (const [key, value] of Object.entries(item || {})) {
+      if (key.startsWith("Provider_")) {
+        const providerName = key.slice("Provider_".length).toLowerCase();
+        if (providerIds[providerName] == null) {
+          providerIds[providerName] = value;
+        }
+      }
+    }
+    const normalizedItem = {
+      ...jellyfinItem,
+      ProviderIds: providerIds,
+      Id: jellyfinItem.Id || itemId,
+    };
+
     const jellyfinTimestamp = body?.UtcTimestamp || body?.Timestamp;
     const watchedAt = jellyfinTimestamp ? new Date(jellyfinTimestamp) : new Date();
 
     const timeWindow = Math.floor(watchedAt.getTime() / (5 * 60 * 1000));
-    const itemId = String(item?.Id || item?.ItemId || "");
     const idempotencyKey = generateIdempotencyKey(itemId, user.id, String(timeWindow));
 
     const existingEvent = await prisma.webhookEventLog.findUnique({
@@ -105,11 +160,6 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingEvent) {
-      console.log("Duplicate webhook event detected, skipping:", {
-        idempotencyKey,
-        itemId,
-        originalProcessedAt: existingEvent.processedAt,
-      });
       return NextResponse.json(
         {
           ok: true,
@@ -123,7 +173,7 @@ export async function POST(request: NextRequest) {
 
     const result = await upsertJellyfinWatchEntry({
       userId: user.id,
-      item,
+      item: normalizedItem,
       watchedAt,
       source: "jellyfin-webhook",
     });

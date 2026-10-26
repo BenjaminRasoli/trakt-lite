@@ -1,11 +1,15 @@
 import { prisma } from "@/lib/prisma";
 import { searchMedia, getMediaDetails } from "@/lib/tmdb";
 
+const CLIENT_AUTH = 'MediaBrowser Client="TraktExporter", Device="WindowsCMD", DeviceId="TraktExportScript", Version="1.0.0"';
+
 export type JellyfinConfig = {
   serverUrl: string;
-  apiKey: string;
+  username: string;
+  password: string;
   jellyfinUserId?: string | null;
   enabled?: boolean;
+  accessToken?: string;
 };
 
 function normalizeServerUrl(serverUrl: string) {
@@ -25,12 +29,43 @@ function toNumber(value: unknown): number | null {
   return null;
 }
 
-export function buildJellyfinHeaders(apiKey: string) {
+export async function authenticateJellyfin(
+  serverUrl: string,
+  username: string,
+  password: string,
+): Promise<{ userId: string; accessToken: string }> {
+  const url = `${normalizeServerUrl(serverUrl)}/Users/AuthenticateByName`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Authorization": CLIENT_AUTH,
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+    },
+    body: JSON.stringify({
+      Username: username,
+      Pw: password || "",
+    }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || "Jellyfin authentication failed");
+  }
+
+  const data = await response.json();
+  return {
+    userId: data.User.Id,
+    accessToken: data.AccessToken,
+  };
+}
+
+export function buildJellyfinHeaders(accessToken: string) {
   return {
     "Content-Type": "application/json",
-    "X-Emby-Token": apiKey,
-    "X-Emby-Authorization": `MediaBrowser Token="${apiKey}"`,
-    Authorization: `MediaBrowser Token="${apiKey}"`,
+    "Authorization": `${CLIENT_AUTH}, Token="${accessToken}"`,
+    "X-Emby-Token": accessToken,
+    "Accept": "application/json",
   };
 }
 
@@ -40,10 +75,18 @@ export async function jellyfinRequest<T>(
   init: RequestInit = {},
 ): Promise<T> {
   const serverUrl = normalizeServerUrl(config.serverUrl);
-  const apiKey = config.apiKey.trim();
+  const username = config.username?.trim();
+  const password = config.password;
 
-  if (!serverUrl || !apiKey) {
-    throw new Error("Jellyfin server URL and API key are required.");
+  if (!serverUrl || !username) {
+    throw new Error("Jellyfin server URL and username are required.");
+  }
+
+  // Authenticate if we don't have an access token
+  let accessToken = config.accessToken;
+  if (!accessToken) {
+    const auth = await authenticateJellyfin(serverUrl, username, password);
+    accessToken = auth.accessToken;
   }
 
   const url = new URL(
@@ -53,7 +96,7 @@ export async function jellyfinRequest<T>(
   const response = await fetch(url, {
     ...init,
     headers: {
-      ...buildJellyfinHeaders(apiKey),
+      ...buildJellyfinHeaders(accessToken),
       ...(init.headers ?? {}),
     },
   });
@@ -74,11 +117,16 @@ export async function jellyfinRequest<T>(
 }
 
 export async function validateJellyfinConnection(config: JellyfinConfig) {
-  const info = await jellyfinRequest<{ ServerName?: string }>(
-    config,
-    "/System/Info",
-  );
-  return Boolean(info?.ServerName);
+  try {
+    const auth = await authenticateJellyfin(
+      config.serverUrl,
+      config.username,
+      config.password,
+    );
+    return Boolean(auth.accessToken);
+  } catch {
+    return false;
+  }
 }
 
 export function getJellyfinMediaType(
@@ -318,7 +366,6 @@ export async function upsertJellyfinWatchEntry({
         };
       }
 
-      console.log("Existing entry is older than 24 hours, allowing as re-watch");
     }
 
     const createdEntry = await transaction.watchHistory.create({

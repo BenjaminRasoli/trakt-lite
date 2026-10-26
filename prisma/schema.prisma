@@ -29,7 +29,8 @@ model JellyfinConnection {
   id            String   @id @default(cuid())
   userId        String   @unique
   serverUrl     String
-  apiKey        String
+  username      String?
+  password      String?
   jellyfinUserId String?
   enabled       Boolean  @default(true)
   createdAt     DateTime @default(now())
