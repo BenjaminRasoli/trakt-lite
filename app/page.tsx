@@ -96,7 +96,6 @@ function HomeContent() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [initialCheckDone, setInitialCheckDone] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
   const [recentHistory, setRecentHistory] = useState<any[]>([]);
@@ -109,6 +108,7 @@ function HomeContent() {
   const supabase = useSupabase();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const searchQuery = searchParams.get("q")?.trim() ?? "";
 
   const handleTitleClick = (
     e: React.MouseEvent,
@@ -159,7 +159,6 @@ function HomeContent() {
   useEffect(() => {
     const query = searchParams.get("q");
     if (query) {
-      setSearchQuery(query);
       setSearching(true);
       setRecentHistory([]);
       setNextUp([]);
@@ -170,7 +169,6 @@ function HomeContent() {
       });
     } else {
       setSearchResults([]);
-      setSearchQuery("");
       setSearching(false);
     }
   }, [searchParams]);
@@ -263,20 +261,6 @@ function HomeContent() {
     return () => clearInterval(timer);
   }, []);
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) return;
-
-    router.push(`/?q=${encodeURIComponent(searchQuery)}`);
-    setSearching(true);
-    setRecentHistory([]);
-    setNextUp([]);
-    setUpcoming([]);
-    const results = await searchMedia(searchQuery);
-    setSearchResults(results);
-    setSearching(false);
-  };
-
   const [homeBackdrop, setHomeBackdrop] = useState<string>("");
 
   useEffect(() => {
@@ -323,7 +307,6 @@ function HomeContent() {
               <div className="h-12 w-32 rounded-md bg-zinc-800" />
               <div className="h-12 w-24 rounded-md bg-zinc-800" />
             </div>
-            <div className="mb-8 h-14 w-full max-w-2xl rounded-lg bg-zinc-800" />
           </div>
           <div className="mb-8">
             <div className="mb-4 h-4 w-28 rounded-full bg-zinc-700" />
@@ -401,68 +384,35 @@ function HomeContent() {
 
       <main className="relative z-10 w-full max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 py-16 flex-1">
         <div className="mb-12">
-          <div className="flex items-center gap-4 mb-8">
-            <h1 className="text-3xl font-bold text-white">Welcome</h1>
-            <p className="text-3xl text-violet-400 font-semibold">
-              {capitalizedUsername}
-            </p>
-          </div>
-
-          <form
-            onSubmit={handleSearch}
-            className="flex items-stretch gap-4 max-w-2xl"
-          >
-            <input
-              type="text"
-              placeholder="Search for movies and TV shows..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1 h-[58px] px-6 py-4 bg-zinc-800/50 border border-zinc-600/50 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-transparent transition-all text-lg"
-            />
-            <button
-              type="submit"
-              disabled={searching}
-              className="inline-flex h-[58px] w-[58px] cursor-pointer items-center justify-center rounded-xl border border-violet-500/40 bg-violet-500/10 text-violet-100 shadow-lg shadow-violet-500/10 transition hover:border-violet-400 hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <div className="flex h-5 w-5 items-center justify-center">
-                {searching ? (
-                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-violet-200" />
-                ) : (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-5 w-5"
-                  >
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <path d="m21 21-4.3-4.3"></path>
-                  </svg>
-                )}
-              </div>
-            </button>
-          </form>
+          {!searchQuery && (
+            <div className="flex items-center gap-4 mb-8">
+              <h1 className="text-3xl font-bold text-white">Welcome</h1>
+              <p className="text-3xl text-violet-400 font-semibold">
+                {capitalizedUsername}
+              </p>
+            </div>
+          )}
         </div>
 
-        {searching ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="h-12 w-12 animate-spin rounded-full border-2 border-white/30 border-t-violet-300" />
-          </div>
-        ) : searchResults.length > 0 ? (
+        {searchQuery ? (
           <div>
             <h2 className="text-2xl font-bold text-white mb-6">
-              Search Results
+              Search Results for &quot;
+              <span className="text-violet-400">{searchQuery}</span>&quot;
             </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {searchResults.map((media) => (
-                <MediaCard key={media.id} media={media} />
-              ))}
-            </div>
+            {searching ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="h-12 w-12 animate-spin rounded-full border-2 border-white/30 border-t-violet-300" />
+              </div>
+            ) : searchResults.length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {searchResults.map((media) => (
+                  <MediaCard key={media.id} media={media} />
+                ))}
+              </div>
+            ) : (
+              <p className="text-zinc-400">No results found.</p>
+            )}
           </div>
         ) : (
           <>
@@ -596,9 +546,7 @@ function HomeContent() {
                     >
                       <div className="relative aspect-[2/3] overflow-hidden">
                         {isSpecialEpisodeType(item.episodeType) && (
-                          <EpisodeTypeBadge
-                            episodeType={item.episodeType}
-                          />
+                          <EpisodeTypeBadge episodeType={item.episodeType} />
                         )}
                         <NextUpEpisodeInfo
                           episodeRuntimeMinutes={item.episodeRuntimeMinutes}
@@ -675,9 +623,7 @@ function HomeContent() {
                       >
                         <div className="relative aspect-[2/3] overflow-hidden">
                           {!isMovie && (
-                            <EpisodeTypeBadge
-                              episodeType={item.episodeType}
-                            />
+                            <EpisodeTypeBadge episodeType={item.episodeType} />
                           )}
                           <img
                             src={getPosterUrl(item.posterPath || null)}
@@ -706,7 +652,9 @@ function HomeContent() {
                             </span>
                             {daysUntil !== null && (
                               <span className="flex items-center gap-1 text-[9px] tracking-normal text-zinc-400/75">
-                                <span className="hidden text-zinc-500 sm:inline">•</span>
+                                <span className="hidden text-zinc-500 sm:inline">
+                                  •
+                                </span>
                                 {daysUntil === 0
                                   ? "today"
                                   : `in ${daysUntil} ${daysUntil === 1 ? "day" : "days"}`}

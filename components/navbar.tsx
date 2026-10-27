@@ -1,10 +1,97 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
 import NextImage from "next/image";
 import { useSupabase } from "./supabase-provider";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+
+function GlobalSearch() {
+  const searchParams = useSearchParams();
+  const query = searchParams.get("q") ?? "";
+
+  return <GlobalSearchForm key={query} initialQuery={query} />;
+}
+
+function GlobalSearchForm({ initialQuery }: { initialQuery: string }) {
+  const [query, setQuery] = useState(initialQuery);
+  const router = useRouter();
+
+  const handleSearch = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const trimmedQuery = query.trim();
+    if (!trimmedQuery) return;
+
+    router.push(`/?q=${encodeURIComponent(trimmedQuery)}`);
+  };
+
+  return (
+    <form
+      role="search"
+      onSubmit={handleSearch}
+      className="flex w-full max-w-2xl items-stretch gap-2 pb-3"
+    >
+      <div className="relative min-w-0 flex-1">
+        <input
+          type="text"
+          aria-label="Search movies and TV shows"
+          placeholder="Search for movies and TV shows..."
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          className="h-10 w-full rounded-lg border border-zinc-600/50 bg-zinc-800/50 px-4 pr-11 text-sm text-white placeholder-zinc-500 transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+        />
+        {query && (
+          <button
+            type="button"
+            aria-label="Clear search"
+            onClick={() => {
+              setQuery("");
+              router.push("/");
+            }}
+            className="absolute inset-y-0 right-0 inline-flex w-10 cursor-pointer items-center justify-center text-violet-400 transition-colors hover:text-violet-300"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M18 6 6 18"></path>
+              <path d="m6 6 12 12"></path>
+            </svg>
+          </button>
+        )}
+      </div>
+      <button
+        type="submit"
+        aria-label="Search"
+        className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg border border-violet-500/40 bg-violet-500/10 text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="h-5 w-5"
+        >
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="m21 21-4.3-4.3"></path>
+        </svg>
+      </button>
+    </form>
+  );
+}
 
 export default function Navbar() {
   const [user, setUser] = useState<any>(null);
@@ -237,6 +324,15 @@ export default function Navbar() {
               )}
             </div>
           </div>
+          {user && (
+            <Suspense
+              fallback={
+                <div className="h-10 w-full max-w-2xl rounded-lg border border-zinc-700/50 bg-zinc-800/30" />
+              }
+            >
+              <GlobalSearch />
+            </Suspense>
+          )}
           {user && (
             <div className="flex flex-wrap items-start gap-3 lg:hidden pb-2 min-[1050px]:hidden">
               {[
