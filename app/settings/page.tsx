@@ -804,9 +804,10 @@ export default function SettingsPage() {
             ) : null}
 
             <p className="text-zinc-400 mb-4">
-              Connect your Jellyfin server so playback completion from Jellyfin
-              can be synced into this app as watched history. To set it up,
-              create a webhook in Jellyfin with the URL{" "}
+              Connect your Jellyfin server so items Jellyfin marks as played,
+              either manually or after playback completion, sync into this app
+              as watched history. To set it up, create a webhook in Jellyfin
+              with the URL{" "}
               <code>https://traktlite.vercel.app/api/jellyfin/webhook</code> and
               send <code>UserDataSaved</code> events.
             </p>

@@ -11,9 +11,6 @@ interface JellyfinWebhookItem extends Record<string, unknown> {
   Id?: string;
   UserData?: {
     Played?: boolean;
-    PlayCount?: number;
-    LastPlayedDate?: string | null;
-    DatePlayed?: string | null;
   };
   ProviderIds?: Record<string, unknown>;
 }
@@ -122,12 +119,7 @@ export async function POST(request: NextRequest) {
       },
       `/Users/${auth.userId}/Items/${encodeURIComponent(itemId)}`,
     );
-    const played =
-      jellyfinItem?.UserData?.Played === true ||
-      Number(jellyfinItem?.UserData?.PlayCount || 0) > 0 ||
-      jellyfinItem?.UserData?.LastPlayedDate != null ||
-      jellyfinItem?.UserData?.DatePlayed != null;
-    if (!played) {
+    if (jellyfinItem?.UserData?.Played !== true) {
       return NextResponse.json(
         { ok: true, skipped: true, reason: "not_marked_played" },
         { status: 200 },
