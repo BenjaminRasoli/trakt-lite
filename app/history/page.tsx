@@ -18,6 +18,7 @@ interface HistoryItem {
   seasonNumber: number | null;
   episodeNumber: number | null;
   episodeName: string | null;
+  seasonPosterPath: string | null;
   media: {
     id: number;
     tmdbId: number;
@@ -398,7 +399,9 @@ function HistoryPageContent() {
                   >
                     <div className="relative aspect-[2/3] overflow-hidden">
                       <img
-                        src={getPosterUrl(entry.media.posterPath || null)}
+                        src={getPosterUrl(
+                          entry.seasonPosterPath || entry.media.posterPath || null,
+                        )}
                         alt={entry.media.title}
                         className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                         onError={(e) => {

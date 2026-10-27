@@ -15,6 +15,7 @@ interface NextUpItem {
   tmdbId: number;
   title: string;
   posterPath: string | null;
+  seasonPosterPath?: string | null;
   seasonNumber: number;
   episodeNumber: number;
   episodeTitle: string;
@@ -200,7 +201,9 @@ function NextUpPageContent() {
                     remainingRuntimeMinutes={item.remainingRuntimeMinutes}
                   />
                   <Image
-                    src={getPosterUrl(item.posterPath || null)}
+                    src={getPosterUrl(
+                      item.seasonPosterPath || item.posterPath || null,
+                    )}
                     alt={item.episodeTitle}
                     fill
                     sizes="(max-width: 640px) 33vw, (max-width: 768px) 25vw, (max-width: 1024px) 20vw, (max-width: 1280px) 16vw, 14vw"

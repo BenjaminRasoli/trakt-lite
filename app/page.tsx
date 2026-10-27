@@ -942,7 +942,9 @@ function HomeContent() {
                           remainingRuntimeMinutes={item.remainingRuntimeMinutes}
                         />
                         <img
-                          src={getPosterUrl(item.posterPath || null)}
+                          src={getPosterUrl(
+                            item.seasonPosterPath || item.posterPath || null,
+                          )}
                           alt={item.episodeTitle}
                           className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                           onError={(e) => {
@@ -1014,7 +1016,9 @@ function HomeContent() {
                             <EpisodeTypeBadge episodeType={item.episodeType} />
                           )}
                           <img
-                            src={getPosterUrl(item.posterPath || null)}
+                            src={getPosterUrl(
+                              item.seasonPosterPath || item.posterPath || null,
+                            )}
                             alt={isMovie ? item.title : item.episodeTitle}
                             className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                             onError={(e) => {
@@ -1121,7 +1125,11 @@ function HomeContent() {
                       >
                         <div className="relative aspect-[2/3] overflow-hidden">
                           <img
-                            src={getPosterUrl(media.posterPath || null)}
+                            src={getPosterUrl(
+                              historyItem.seasonPosterPath ||
+                                media.posterPath ||
+                                null,
+                            )}
                             alt={media.title}
                             className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                             onError={(e) => {

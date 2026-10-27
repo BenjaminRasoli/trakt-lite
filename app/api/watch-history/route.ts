@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import {
+  addSeasonPosterPaths,
   addEpisodeTypes,
   addNextUpEpisodeInfo,
   getMediaDetails,
@@ -693,9 +694,16 @@ export async function GET(request: NextRequest) {
         ? watchHistory.slice(0, safeLimit)
         : watchHistory;
 
+      const entriesWithSeasonPosters = await addSeasonPosterPaths(
+        pageItems.map((entry) => ({
+          tmdbId: entry.media.tmdbId,
+          seasonNumber: entry.seasonNumber,
+        })),
+      );
+
       const { getMediaDetails } = await import("@/lib/tmdb");
       const itemsWithPosters = await Promise.all(
-        pageItems.map(async (entry) => {
+        pageItems.map(async (entry, index) => {
           const media = await hydrateMissingMediaMetadata({
             tmdbId: entry.media.tmdbId,
             title: entry.media.title || "Unknown",
@@ -713,6 +721,7 @@ export async function GET(request: NextRequest) {
             episodeNumber: entry.episodeNumber,
             episodeName: entry.episodeName,
             watchedAt: entry.watchedAt,
+            seasonPosterPath: entriesWithSeasonPosters[index].seasonPosterPath,
             createdAt: entry.createdAt,
             updatedAt: entry.updatedAt,
             media: {

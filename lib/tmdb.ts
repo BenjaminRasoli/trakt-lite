@@ -113,6 +113,7 @@ export interface TMDBEpisode {
 }
 
 export interface TMDBSeasonDetails {
+  poster_path?: string | null;
   episodes?: TMDBEpisode[];
 }
 
@@ -142,9 +143,58 @@ function getCachedTVSeasonDetails(
 
 export interface NextUpEpisodeInfo {
   episodeType: string | null;
+  seasonPosterPath: string | null;
   episodeRuntimeMinutes: number | null;
   remainingEpisodeCount: number | null;
   remainingRuntimeMinutes: number | null;
+}
+
+export async function addSeasonPosterPaths<
+  T extends {
+    tmdbId: number;
+    seasonNumber: number | null;
+  },
+>(items: T[]): Promise<Array<T & { seasonPosterPath: string | null }>> {
+  const seasons = new Map<string, { tmdbId: number; seasonNumber: number }>();
+
+  for (const item of items) {
+    if (item.seasonNumber === null) continue;
+
+    const key = `${item.tmdbId}:${item.seasonNumber}`;
+    seasons.set(key, {
+      tmdbId: item.tmdbId,
+      seasonNumber: item.seasonNumber,
+    });
+  }
+
+  const seasonPosterPaths = new Map<string, string | null>();
+  const seasonsToFetch = [...seasons.entries()];
+  let nextSeasonIndex = 0;
+
+  await Promise.all(
+    Array.from(
+      { length: Math.min(4, seasonsToFetch.length) },
+      async () => {
+        while (nextSeasonIndex < seasonsToFetch.length) {
+          const currentIndex = nextSeasonIndex++;
+          const [key, season] = seasonsToFetch[currentIndex];
+          const details = await getCachedTVSeasonDetails(
+            season.tmdbId,
+            season.seasonNumber,
+          );
+          seasonPosterPaths.set(key, details?.poster_path ?? null);
+        }
+      },
+    ),
+  );
+
+  return items.map((item) => ({
+    ...item,
+    seasonPosterPath:
+      item.seasonNumber === null
+        ? null
+        : seasonPosterPaths.get(`${item.tmdbId}:${item.seasonNumber}`) ?? null,
+  }));
 }
 
 export async function addNextUpEpisodeInfo<
@@ -185,6 +235,7 @@ export async function addNextUpEpisodeInfo<
           if (!seasonCount) {
             infos[index] = {
               episodeType: episodeType ?? null,
+              seasonPosterPath: firstSeason?.poster_path ?? null,
               episodeRuntimeMinutes: null,
               remainingEpisodeCount: null,
               remainingRuntimeMinutes: null,
@@ -262,6 +313,7 @@ export async function addNextUpEpisodeInfo<
 
           infos[index] = {
             episodeType: episodeType ?? null,
+            seasonPosterPath: firstSeason?.poster_path ?? null,
             episodeRuntimeMinutes,
             remainingEpisodeCount: allSeasonDetailsKnown
               ? remainingEpisodeCount
@@ -274,6 +326,7 @@ export async function addNextUpEpisodeInfo<
           console.error("Error fetching Next Up episode details:", error);
           infos[index] = {
             episodeType: null,
+            seasonPosterPath: null,
             episodeRuntimeMinutes: null,
             remainingEpisodeCount: null,
             remainingRuntimeMinutes: null,
@@ -292,7 +345,11 @@ export async function addEpisodeTypes<
     seasonNumber: number | null;
     episodeNumber: number | null;
   },
->(items: T[]): Promise<Array<T & { episodeType: string | null }>> {
+>(
+  items: T[],
+): Promise<
+  Array<T & { episodeType: string | null; seasonPosterPath: string | null }>
+> {
   const seasons = new Map<string, { tmdbId: number; seasonNumber: number }>();
 
   for (const item of items) {
@@ -346,7 +403,9 @@ export async function addEpisodeTypes<
     ),
   );
 
-  return items.map((item) => {
+  const itemsWithSeasonPosters = await addSeasonPosterPaths(items);
+
+  return itemsWithSeasonPosters.map((item) => {
     if (item.seasonNumber === null || item.episodeNumber === null) {
       return { ...item, episodeType: null };
     }

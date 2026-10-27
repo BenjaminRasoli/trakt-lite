@@ -15,6 +15,7 @@ interface UpcomingEpisodeItem {
   tmdbId: number;
   title: string;
   posterPath: string | null;
+  seasonPosterPath?: string | null;
   seasonNumber: number | null;
   episodeNumber: number | null;
   episodeTitle: string | null;
@@ -542,7 +543,9 @@ export default async function CalendarPage() {
                               />
                             )}
                             <Image
-                              src={getPosterUrl(item.posterPath || null)}
+                              src={getPosterUrl(
+                                item.seasonPosterPath || item.posterPath || null,
+                              )}
                               alt={
                                 isMovie
                                   ? item.title
