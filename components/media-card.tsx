@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 
 interface MediaCardProps {
   media: TMDBMedia;
+  subtitle?: string;
 }
 
 const GENRE_MAP: Record<number, string> = {
@@ -34,7 +35,7 @@ const GENRE_MAP: Record<number, string> = {
   37: "Western",
 };
 
-export default function MediaCard({ media }: MediaCardProps) {
+export default function MediaCard({ media, subtitle }: MediaCardProps) {
   const router = useRouter();
   const title = getMediaTitle(media);
   const date = getMediaDate(media);
@@ -84,6 +85,12 @@ export default function MediaCard({ media }: MediaCardProps) {
             {title}
           </span>
         </h3>
+
+        {subtitle && (
+          <p className="text-zinc-400 text-xs mb-1.5 line-clamp-1">
+            {subtitle}
+          </p>
+        )}
 
         <div className="flex md:flex-row md:items-center flex-col items-start gap-1.5 mb-1.5">
           <div className="flex items-center gap-0.5">

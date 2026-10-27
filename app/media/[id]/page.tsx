@@ -781,30 +781,32 @@ export default function MediaDetailsPage() {
           {credits && credits.cast.length > 0 && (
             <div className="mb-8">
               <h2 className="text-xl font-bold text-white mb-4">Top Cast</h2>
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-2">
-                {credits.cast.slice(0, 10).map((actor) => {
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+                {credits.cast.slice(0, 12).map((actor) => {
                   const avatarUrl = actor.profile_path
                     ? getProfileUrl(actor.profile_path)
                     : "";
                   const avatarLabel = getInitials(actor.name);
 
                   return (
-                    <div
+                    <Link
+                      href={`/actor/${actor.id}`}
+                      aria-label={`View ${actor.name}'s actor profile`}
                       key={actor.id}
-                      className="mx-auto w-full max-w-[150px] pb-6 text-center"
+                      className="group mx-auto block w-full max-w-[180px] overflow-hidden rounded-xl border border-zinc-700/50 bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 text-center shadow-lg shadow-black/20 transition-colors hover:border-violet-500/50 hover:shadow-violet-500/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-400"
                     >
                       {avatarUrl && avatarUrl !== "/placeholder-avatar.svg" ? (
                         <img
                           src={avatarUrl}
                           alt={actor.name}
-                          className="mb-2 aspect-[3/4] w-full rounded-xl object-cover shadow-lg shadow-violet-500/10"
+                          className="aspect-[3/4] w-full object-cover transition duration-300 group-hover:scale-105"
                           onError={(e) => {
                             const fallback = e.currentTarget
                               .parentElement as HTMLDivElement;
                             if (fallback) {
                               const initialCard = document.createElement("div");
                               initialCard.className =
-                                "mb-2 flex aspect-[3/4] w-full items-center justify-center rounded-xl text-2xl font-bold text-white shadow-lg shadow-violet-500/10";
+                                "flex aspect-[3/4] w-full items-center justify-center text-2xl font-bold text-white";
                               initialCard.style.background = getAvatarColor(
                                 actor.name,
                               );
@@ -815,7 +817,7 @@ export default function MediaDetailsPage() {
                         />
                       ) : (
                         <div
-                          className="mb-2 flex aspect-[3/4] w-full items-center justify-center rounded-xl text-2xl font-bold text-white shadow-lg shadow-violet-500/10"
+                          className="flex aspect-[3/4] w-full items-center justify-center text-2xl font-bold text-white"
                           style={{
                             background: getAvatarColor(actor.name),
                           }}
@@ -823,13 +825,15 @@ export default function MediaDetailsPage() {
                           {avatarLabel}
                         </div>
                       )}
-                      <p className="text-white text-sm font-semibold truncate">
-                        {actor.name}
-                      </p>
-                      <p className="text-zinc-400 text-xs truncate">
-                        as {actor.character || "Unknown role"}
-                      </p>
-                    </div>
+                      <div className="px-2.5 py-3">
+                        <p className="truncate text-sm font-semibold text-white transition-colors group-hover:text-violet-200">
+                          {actor.name}
+                        </p>
+                        <p className="mt-1 truncate text-xs text-zinc-400">
+                          {actor.character || "Unknown role"}
+                        </p>
+                      </div>
+                    </Link>
                   );
                 })}
               </div>
@@ -1051,7 +1055,11 @@ export default function MediaDetailsPage() {
                         value={watchDate}
                         onChange={(e) => setWatchDate(e.target.value)}
                         className="block w-full min-w-0 max-w-full appearance-none box-border rounded border border-zinc-600 bg-zinc-800 px-3 py-2 pr-11 text-base text-white focus:outline-none focus:ring-2 focus:ring-violet-500 [&::-webkit-calendar-picker-indicator]:opacity-0"
-                        style={{ colorScheme: "dark", width: "100%", minWidth: 0 }}
+                        style={{
+                          colorScheme: "dark",
+                          width: "100%",
+                          minWidth: 0,
+                        }}
                         required
                       />
                       <svg
@@ -1078,7 +1086,11 @@ export default function MediaDetailsPage() {
                         value={watchTime}
                         onChange={(e) => setWatchTime(e.target.value)}
                         className="block w-full min-w-0 max-w-full appearance-none box-border rounded border border-zinc-600 bg-zinc-800 px-3 py-2 pr-11 text-base text-white focus:outline-none focus:ring-2 focus:ring-violet-500 [&::-webkit-calendar-picker-indicator]:opacity-0"
-                        style={{ colorScheme: "dark", width: "100%", minWidth: 0 }}
+                        style={{
+                          colorScheme: "dark",
+                          width: "100%",
+                          minWidth: 0,
+                        }}
                         required
                       />
                       <svg

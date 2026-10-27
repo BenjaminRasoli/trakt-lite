@@ -40,6 +40,42 @@ export interface TMDBActor {
   order: number;
 }
 
+interface TMDBAggregateCredits {
+  cast: Array<{
+    id: number;
+    name: string;
+    profile_path: string | null;
+    order: number;
+    total_episode_count: number;
+    roles: Array<{
+      character: string;
+      episode_count: number;
+    }>;
+  }>;
+}
+
+export interface TMDBPersonCredit extends TMDBMedia {
+  media_type: "movie" | "tv";
+  character?: string;
+  credit_id?: string;
+  popularity?: number;
+  vote_count?: number;
+}
+
+export interface TMDBPersonDetails {
+  id: number;
+  name: string;
+  biography: string;
+  birthday: string | null;
+  deathday: string | null;
+  place_of_birth: string | null;
+  known_for_department: string | null;
+  profile_path: string | null;
+  combined_credits?: {
+    cast: TMDBPersonCredit[];
+  };
+}
+
 export interface TMDBCrew {
   id: number;
   name: string;
@@ -505,21 +541,31 @@ export async function getMovieCredits(
 export async function getTVCredits(
   tvId: number,
 ): Promise<{ cast: TMDBActor[]; crew: TMDBCrew[] } | null> {
-  if (!TMDB_API_KEY) {
-    console.error("TMDB API key is not configured");
-    return null;
-  }
+  const credits = await fetchTmdbJson<TMDBAggregateCredits>(
+    `${TMDB_BASE_URL}/tv/${tvId}/aggregate_credits?api_key=${TMDB_API_KEY}`,
+  );
+  if (!credits) return null;
 
-  try {
-    const response = await fetch(
-      `${TMDB_BASE_URL}/tv/${tvId}/credits?api_key=${TMDB_API_KEY}`,
-    );
-    const data = await response.json();
-    return { cast: data.cast || [], crew: data.crew || [] };
-  } catch (error) {
-    console.error("Error fetching TV credits:", error);
-    return null;
-  }
+  const cast = [...credits.cast]
+    .sort(
+      (a, b) =>
+        b.total_episode_count - a.total_episode_count || a.order - b.order,
+    )
+    .map((actor, index) => {
+      const character = [...actor.roles]
+        .sort((a, b) => b.episode_count - a.episode_count)
+        .find((role) => role.character)?.character;
+
+      return {
+        id: actor.id,
+        name: actor.name,
+        character: character || "Unknown role",
+        profile_path: actor.profile_path,
+        order: index,
+      };
+    });
+
+  return { cast, crew: [] };
 }
 
 export async function getMediaCredits(
@@ -689,6 +735,14 @@ export function getMediaDate(media: TMDBMedia): string {
 export function getMediaType(media: TMDBMedia): string {
   if (media.media_type) return media.media_type;
   return media.title ? "movie" : "tv";
+}
+
+export async function getPersonDetails(
+  personId: number,
+): Promise<TMDBPersonDetails | null> {
+  return fetchTmdbJson<TMDBPersonDetails>(
+    `${TMDB_BASE_URL}/person/${personId}?api_key=${TMDB_API_KEY}&append_to_response=combined_credits`,
+  );
 }
 
 async function fetchTmdbJson<T>(url: string): Promise<T | null> {
