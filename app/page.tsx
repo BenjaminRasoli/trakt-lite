@@ -936,11 +936,6 @@ function HomeContent() {
                         {isSpecialEpisodeType(item.episodeType) && (
                           <EpisodeTypeBadge episodeType={item.episodeType} />
                         )}
-                        <NextUpEpisodeInfo
-                          episodeRuntimeMinutes={item.episodeRuntimeMinutes}
-                          remainingEpisodeCount={item.remainingEpisodeCount}
-                          remainingRuntimeMinutes={item.remainingRuntimeMinutes}
-                        />
                         <img
                           src={getPosterUrl(
                             item.seasonPosterPath || item.posterPath || null,
@@ -970,6 +965,11 @@ function HomeContent() {
                         <div className="line-clamp-1 text-[10px] text-zinc-400">
                           {item.episodeTitle}
                         </div>
+                        <NextUpEpisodeInfo
+                          episodeRuntimeMinutes={item.episodeRuntimeMinutes}
+                          remainingEpisodeCount={item.remainingEpisodeCount}
+                          remainingRuntimeMinutes={item.remainingRuntimeMinutes}
+                        />
                       </div>
                     </Link>
                   ))}

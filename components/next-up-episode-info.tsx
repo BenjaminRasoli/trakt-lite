@@ -18,20 +18,16 @@ export default function NextUpEpisodeInfo({
   remainingRuntimeMinutes?: number | null;
 }) {
   return (
-    <div className="absolute bottom-2 left-2 right-2 z-10 flex flex-col items-start gap-1">
-      <div className="flex w-full flex-col gap-0.5 whitespace-nowrap rounded-md border border-white/10 bg-black/50 px-1.5 py-1 text-[8px] font-medium text-white shadow-lg backdrop-blur-sm sm:text-[9px] xl:flex-row xl:items-center xl:justify-between xl:gap-1.5">
-        <span className="shrink-0">{formatRuntime(episodeRuntimeMinutes)}</span>
-        <span className="flex min-w-0 flex-col items-start gap-0.5 whitespace-nowrap lg:flex-row lg:items-center lg:gap-1 xl:justify-end">
-          <span className="shrink-0">
-            {remainingEpisodeCount ?? "--"}{" "}
-            {remainingEpisodeCount === 1 ? "episode" : "episodes"} left
-          </span>
-          <span className="hidden shrink-0 text-zinc-400 lg:inline">•</span>
-          <span className="hidden lg:block shrink-0">
-            {formatRuntime(remainingRuntimeMinutes)}
-          </span>
-        </span>
-      </div>
+    <div className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 rounded-md border border-violet-400/15 bg-violet-500/5 px-1.5 py-1 text-[8px] leading-tight sm:text-[9px]">
+      <span className="whitespace-nowrap text-violet-200">
+        {formatRuntime(episodeRuntimeMinutes)}
+      </span>
+      <span className="h-2.5 border-l border-white/15" aria-hidden="true" />
+      <span className="min-w-0 text-zinc-300">
+        {remainingEpisodeCount ?? "--"} left
+        <span className="px-0.5 text-xs leading-none text-zinc-400">·</span>
+        {formatRuntime(remainingRuntimeMinutes)}
+      </span>
     </div>
   );
 }
