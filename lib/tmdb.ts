@@ -469,9 +469,17 @@ export async function searchMedia(query: string): Promise<TMDBMedia[]> {
 }
 
 export async function getTrendingMedia(): Promise<TMDBMedia[]> {
+  const trendingPage = await getTrendingMediaPage();
+  return trendingPage.results;
+}
+
+export async function getTrendingMediaPage(
+  page = 1,
+  mediaType: "all" | "movie" | "tv" = "all",
+): Promise<TMDBSearchPage> {
   if (!TMDB_API_KEY) {
     console.error("TMDB API key is not configured");
-    return [];
+    return { results: [], page, total_pages: 0, total_results: 0 };
   }
 
   const controller = new AbortController();
@@ -479,18 +487,30 @@ export async function getTrendingMedia(): Promise<TMDBMedia[]> {
 
   try {
     const response = await fetch(
-      `${TMDB_BASE_URL}/trending/all/week?api_key=${TMDB_API_KEY}`,
+      `${TMDB_BASE_URL}/trending/${mediaType}/week?api_key=${TMDB_API_KEY}&page=${page}`,
       { signal: controller.signal },
     );
     if (!response.ok) {
       console.error(`TMDB trending request failed (${response.status})`);
-      return [];
+      return { results: [], page, total_pages: 0, total_results: 0 };
     }
-    const data = await response.json();
-    return data.results || [];
+    const data = (await response.json()) as {
+      results?: Array<Omit<TMDBMedia, "media_type"> & { media_type?: string }>;
+      page?: number;
+      total_pages?: number;
+      total_results?: number;
+    };
+    return {
+      results: (data.results ?? []).filter(
+        (item) => item.media_type !== "person",
+      ) as TMDBMedia[],
+      page: data.page ?? page,
+      total_pages: data.total_pages ?? 0,
+      total_results: data.total_results ?? 0,
+    };
   } catch (error) {
     console.error("Error fetching trending media:", error);
-    return [];
+    return { results: [], page, total_pages: 0, total_results: 0 };
   } finally {
     clearTimeout(timeout);
   }
