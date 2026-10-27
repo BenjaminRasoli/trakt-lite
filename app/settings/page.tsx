@@ -25,15 +25,21 @@ export default function SettingsPage() {
   });
   const [jellyfinStatus, setJellyfinStatus] = useState<string | null>(null);
   const [savingJellyfin, setSavingJellyfin] = useState(false);
+  const [hasSavedJellyfinPassword, setHasSavedJellyfinPassword] =
+    useState(false);
+  const [jellyfinConnected, setJellyfinConnected] = useState(false);
   const [jellyfinImport, setJellyfinImport] = useState({
     serverUrl: "",
     username: "",
     password: "",
   });
   const [importingJellyfin, setImportingJellyfin] = useState(false);
-  const [jellyfinImportError, setJellyfinImportError] = useState<string | null>(null);
+  const [jellyfinImportError, setJellyfinImportError] = useState<string | null>(
+    null,
+  );
   const [jellyfinImportSuccess, setJellyfinImportSuccess] = useState(false);
-  const [jellyfinImportProgress, setJellyfinImportProgress] = useState<string>("");
+  const [jellyfinImportProgress, setJellyfinImportProgress] =
+    useState<string>("");
   const [jellyfinImportPercent, setJellyfinImportPercent] = useState<number>(0);
   const [liveSession, setLiveSession] = useState<any>(null);
   const [loadingLiveSession, setLoadingLiveSession] = useState(false);
@@ -102,6 +108,8 @@ export default function SettingsPage() {
           return;
         }
 
+        setHasSavedJellyfinPassword(data.hasPassword === true);
+        setJellyfinConnected(data.enabled === true);
         setJellyfinConfig({
           serverUrl: data.serverUrl || "",
           username: data.username || "",
@@ -217,8 +225,8 @@ export default function SettingsPage() {
     setJellyfinImportProgress("");
     setJellyfinImportPercent(0);
 
-    // Clear the file input
-    (e.currentTarget.elements.namedItem('zipFile') as HTMLInputElement).value = '';
+    (e.currentTarget.elements.namedItem("zipFile") as HTMLInputElement).value =
+      "";
 
     try {
       const uploadFormData = new FormData();
@@ -252,24 +260,27 @@ export default function SettingsPage() {
           if (line.startsWith("data: ")) {
             try {
               const data = JSON.parse(line.slice(6));
-              
+
               if (data.error) {
                 throw new Error(data.error);
               }
-              
+
               if (data.status) {
                 setImportProgress(data.status);
               }
-              
+
               if (data.progress !== undefined) {
                 setImportPercent(data.progress);
               }
-              
+
               if (data.success) {
-                const watchlistMsg = data.watchlistImported > 0
-                  ? ` and ${data.watchlistImported} watchlist items`
-                  : "";
-                setImportProgress(`Successfully imported ${data.imported} entries${watchlistMsg}`);
+                const watchlistMsg =
+                  data.watchlistImported > 0
+                    ? ` and ${data.watchlistImported} watchlist items`
+                    : "";
+                setImportProgress(
+                  `Successfully imported ${data.imported} entries${watchlistMsg}`,
+                );
                 setImportSuccess(true);
                 setImportPercent(100);
               }
@@ -357,6 +368,8 @@ export default function SettingsPage() {
         throw new Error(data.error || "Unable to save Jellyfin settings");
       }
 
+      setHasSavedJellyfinPassword(data.config?.hasPassword === true);
+      setJellyfinConnected(data.config?.enabled === true);
       setJellyfinStatus("Jellyfin scrobble sync saved successfully.");
     } catch (error) {
       setJellyfinStatus(
@@ -429,7 +442,9 @@ export default function SettingsPage() {
               }
 
               if (data.success) {
-                setJellyfinImportProgress(`Successfully imported ${data.imported} entries`);
+                setJellyfinImportProgress(
+                  `Successfully imported ${data.imported} entries`,
+                );
                 setJellyfinImportSuccess(true);
                 setJellyfinImportPercent(100);
               }
@@ -441,7 +456,7 @@ export default function SettingsPage() {
       }
     } catch (error) {
       setJellyfinImportError(
-        error instanceof Error ? error.message : "Import failed"
+        error instanceof Error ? error.message : "Import failed",
       );
       setJellyfinImportProgress("");
       setJellyfinImportPercent(0);
@@ -514,7 +529,9 @@ export default function SettingsPage() {
               )}
               {importProgress && !importSuccess && (
                 <div className="space-y-2">
-                  <div className="text-violet-300 text-sm">{importProgress}</div>
+                  <div className="text-violet-300 text-sm">
+                    {importProgress}
+                  </div>
                   {importPercent > 0 && importPercent < 100 && (
                     <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
                       <div
@@ -528,7 +545,7 @@ export default function SettingsPage() {
               <button
                 type="submit"
                 disabled={importing}
-                className={`inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-5 py-2.5 text-sm font-semibold text-violet-100 transition ${!importing ? 'hover:border-violet-400 hover:bg-violet-500/20' : ''} disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-violet-500/40 disabled:hover:bg-violet-500/10`}
+                className={`inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-5 py-2.5 text-sm font-semibold text-violet-100 transition ${!importing ? "hover:border-violet-400 hover:bg-violet-500/20" : ""} disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-violet-500/40 disabled:hover:bg-violet-500/10`}
               >
                 {importing ? (
                   <>
@@ -570,7 +587,8 @@ export default function SettingsPage() {
               Import Watch Data from Jellyfin
             </h2>
             <p className="text-zinc-400 mb-4">
-              Import your watch history directly from Jellyfin. This will overwrite all existing data.
+              Import your watch history directly from Jellyfin. This will
+              overwrite all existing data.
             </p>
             <form onSubmit={handleJellyfinImport} className="space-y-4">
               <div>
@@ -592,9 +610,7 @@ export default function SettingsPage() {
                 />
               </div>
               <div>
-                <label className="block text-zinc-300 mb-2">
-                  Username
-                </label>
+                <label className="block text-zinc-300 mb-2">Username</label>
                 <input
                   type="text"
                   value={jellyfinImport.username}
@@ -610,9 +626,7 @@ export default function SettingsPage() {
                 />
               </div>
               <div>
-                <label className="block text-zinc-300 mb-2">
-                  Password
-                </label>
+                <label className="block text-zinc-300 mb-2">Password</label>
                 <input
                   type="password"
                   value={jellyfinImport.password}
@@ -628,14 +642,18 @@ export default function SettingsPage() {
                 />
               </div>
               {jellyfinImportError && (
-                <div className="text-red-400 text-sm">{jellyfinImportError}</div>
+                <div className="text-red-400 text-sm">
+                  {jellyfinImportError}
+                </div>
               )}
               {jellyfinImportSuccess && (
                 <div className="text-green-400 text-sm">Import successful!</div>
               )}
               {jellyfinImportProgress && !jellyfinImportSuccess && (
                 <div className="space-y-2">
-                  <div className="text-violet-300 text-sm">{jellyfinImportProgress}</div>
+                  <div className="text-violet-300 text-sm">
+                    {jellyfinImportProgress}
+                  </div>
                   {jellyfinImportPercent > 0 && jellyfinImportPercent < 100 && (
                     <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
                       <div
@@ -649,7 +667,7 @@ export default function SettingsPage() {
               <button
                 type="submit"
                 disabled={importingJellyfin}
-                className={`inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-5 py-2.5 text-sm font-semibold text-violet-100 transition ${!importingJellyfin ? 'hover:border-violet-400 hover:bg-violet-500/20' : ''} disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-violet-500/40 disabled:hover:bg-violet-500/10`}
+                className={`inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-5 py-2.5 text-sm font-semibold text-violet-100 transition ${!importingJellyfin ? "hover:border-violet-400 hover:bg-violet-500/20" : ""} disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-violet-500/40 disabled:hover:bg-violet-500/10`}
               >
                 {importingJellyfin ? (
                   <>
@@ -730,19 +748,19 @@ export default function SettingsPage() {
                     </p>
                     <p className="mt-1 text-sm">
                       {liveSession.mediaType === "tv" &&
-                      liveSession.episodeLabel
-                        ? (
-                          <>
-                            <span className="text-emerald-200">
-                              {liveSession.episodeLabel}
-                            </span>
-                            {" • "}
-                            <span className="text-zinc-300">
-                              {liveSession.episodeName || ""}
-                            </span>
-                          </>
-                        )
-                        : ""}
+                      liveSession.episodeLabel ? (
+                        <>
+                          <span className="text-emerald-200">
+                            {liveSession.episodeLabel}
+                          </span>
+                          {" • "}
+                          <span className="text-zinc-300">
+                            {liveSession.episodeName || ""}
+                          </span>
+                        </>
+                      ) : (
+                        ""
+                      )}
                     </p>
                     <p className="mt-1 text-sm">
                       <span className="text-emerald-200">
@@ -779,18 +797,31 @@ export default function SettingsPage() {
                   </div>
                 </div>
               </Link>
-            ) : (
+            ) : jellyfinConnected && jellyfinConfig.enabled ? (
               <p className="mb-5 text-sm text-zinc-400">
                 No active Jellyfin session right now.
               </p>
-            )}
+            ) : null}
 
             <p className="text-zinc-400 mb-4">
               Connect your Jellyfin server so playback completion from Jellyfin
-              can be synced into this app as watched history. To sync items
-              marked watched manually, configure Jellyfin&apos;s Webhook plugin
-              to send <code>UserDataSaved</code> events to
-              <code> /api/jellyfin/webhook</code> on this app.
+              can be synced into this app as watched history. To set it up,
+              create a webhook in Jellyfin with the URL{" "}
+              <code>https://traktlite.vercel.app/api/jellyfin/webhook</code> and
+              send <code>UserDataSaved</code> events.
+            </p>
+
+            <p
+              className={`mb-4 text-sm font-medium ${
+                jellyfinConnected && jellyfinConfig.enabled
+                  ? "text-green-400"
+                  : "text-zinc-500"
+              }`}
+              role="status"
+            >
+              {jellyfinConnected && jellyfinConfig.enabled
+                ? "Jellyfin scrobble is connected."
+                : "Jellyfin scrobble is not connected."}
             </p>
 
             <form onSubmit={handleJellyfinSave} className="space-y-4">
@@ -801,12 +832,13 @@ export default function SettingsPage() {
                 <input
                   type="url"
                   value={jellyfinConfig.serverUrl}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    setJellyfinConnected(false);
                     setJellyfinConfig((current) => ({
                       ...current,
                       serverUrl: event.target.value,
-                    }))
-                  }
+                    }));
+                  }}
                   placeholder="https://jellyfin.example.com"
                   className="w-full rounded border border-zinc-600 bg-zinc-800 px-4 py-2 text-white outline-none focus:border-violet-500"
                 />
@@ -819,12 +851,13 @@ export default function SettingsPage() {
                 <input
                   type="text"
                   value={jellyfinConfig.username}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    setJellyfinConnected(false);
                     setJellyfinConfig((current) => ({
                       ...current,
                       username: event.target.value,
-                    }))
-                  }
+                    }));
+                  }}
                   placeholder="Your Jellyfin username"
                   className="w-full rounded border border-zinc-600 bg-zinc-800 px-4 py-2 text-white outline-none focus:border-violet-500"
                 />
@@ -838,13 +871,23 @@ export default function SettingsPage() {
                   type="password"
                   autoComplete="current-password"
                   value={jellyfinConfig.password}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    setJellyfinConnected(false);
                     setJellyfinConfig((current) => ({
                       ...current,
                       password: event.target.value,
-                    }))
+                    }));
+                  }}
+                  placeholder={
+                    hasSavedJellyfinPassword
+                      ? "••••••••••••"
+                      : "Your Jellyfin password"
                   }
-                  placeholder="Your Jellyfin password"
+                  aria-describedby={
+                    hasSavedJellyfinPassword
+                      ? "jellyfin-password-help"
+                      : undefined
+                  }
                   className="w-full rounded border border-zinc-600 bg-zinc-800 px-4 py-2 text-white outline-none focus:border-violet-500"
                 />
               </div>
@@ -853,12 +896,13 @@ export default function SettingsPage() {
                 <input
                   type="checkbox"
                   checked={jellyfinConfig.enabled}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    setJellyfinConnected(false);
                     setJellyfinConfig((current) => ({
                       ...current,
                       enabled: event.target.checked,
-                    }))
-                  }
+                    }));
+                  }}
                   className="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-violet-500"
                 />
                 Enable Jellyfin scrobble sync

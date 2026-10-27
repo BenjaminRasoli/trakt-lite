@@ -16,6 +16,7 @@ export async function GET() {
 
     const dbUser = await prisma.user.findUnique({
       where: { email: user.email! },
+      select: { id: true },
     });
 
     if (!dbUser) {
@@ -32,6 +33,7 @@ export async function GET() {
           serverUrl: config.serverUrl,
           username: config.username,
           enabled: config.enabled,
+          hasPassword: Boolean(config.password),
         }
         : null,
     );
@@ -57,6 +59,7 @@ export async function POST(request: NextRequest) {
 
     const dbUser = await prisma.user.findUnique({
       where: { email: user.email! },
+      select: { id: true },
     });
 
     if (!dbUser) {
@@ -117,6 +120,7 @@ export async function POST(request: NextRequest) {
         serverUrl: saved.serverUrl,
         username: saved.username,
         enabled: saved.enabled,
+        hasPassword: Boolean(saved.password),
       },
     });
   } catch (error) {
