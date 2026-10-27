@@ -20,6 +20,13 @@ export interface TMDBMedia {
   status?: string;
 }
 
+export interface TMDBSearchPage {
+  results: TMDBMedia[];
+  page: number;
+  total_pages: number;
+  total_results: number;
+}
+
 export interface TMDBGenre {
   id: number;
   name: string;
@@ -317,10 +324,14 @@ export async function addEpisodeTypes<
   });
 }
 
-export async function searchMedia(query: string): Promise<TMDBMedia[]> {
+export async function searchMediaPage(
+  query: string,
+  page = 1,
+  mediaType: "multi" | "movie" | "tv" = "multi",
+): Promise<TMDBSearchPage> {
   if (!TMDB_API_KEY) {
     console.error("TMDB API key is not configured");
-    return [];
+    return { results: [], page, total_pages: 0, total_results: 0 };
   }
 
   const controller = new AbortController();
@@ -328,23 +339,38 @@ export async function searchMedia(query: string): Promise<TMDBMedia[]> {
 
   try {
     const response = await fetch(
-      `${TMDB_BASE_URL}/search/multi?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&include_adult=false`,
+      `${TMDB_BASE_URL}/search/${mediaType}?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&include_adult=false&page=${page}`,
       { signal: controller.signal },
     );
     if (!response.ok) {
       console.error(`TMDB search request failed (${response.status})`);
-      return [];
+      return { results: [], page, total_pages: 0, total_results: 0 };
     }
-    const data = await response.json();
-    return (data.results || []).filter(
-      (item: any) => item.media_type !== "person",
-    );
+    const data = (await response.json()) as {
+      results?: Array<Omit<TMDBMedia, "media_type"> & { media_type?: string }>;
+      page?: number;
+      total_pages?: number;
+      total_results?: number;
+    };
+    return {
+      results: (data.results || []).filter(
+        (item) => item.media_type !== "person",
+      ) as TMDBMedia[],
+      page: data.page ?? page,
+      total_pages: data.total_pages ?? 0,
+      total_results: data.total_results ?? 0,
+    };
   } catch (error) {
     console.error("Error searching TMDB:", error);
-    return [];
+    return { results: [], page, total_pages: 0, total_results: 0 };
   } finally {
     clearTimeout(timeout);
   }
+}
+
+export async function searchMedia(query: string): Promise<TMDBMedia[]> {
+  const searchPage = await searchMediaPage(query);
+  return searchPage.results;
 }
 
 export async function getTrendingMedia(): Promise<TMDBMedia[]> {
