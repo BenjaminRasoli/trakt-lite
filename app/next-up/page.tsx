@@ -189,7 +189,7 @@ function NextUpPageContent() {
               <Link
                 key={`${item.tmdbId}-${item.seasonNumber}-${item.episodeNumber}`}
                 href={`/media/${item.tmdbId}/season/${item.seasonNumber}/episode/${item.episodeNumber}?type=tv`}
-                className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:-translate-y-0.5 hover:border-violet-500/50"
+                className="group flex h-full w-full flex-col overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:-translate-y-0.5 hover:border-violet-500/50"
               >
                 <div className="relative aspect-[2/3] overflow-hidden">
                   {isSpecialEpisodeType(item.episodeType) && (
@@ -206,11 +206,11 @@ function NextUpPageContent() {
                   />
                 </div>
 
-                <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
-                  <div className="text-[10px] font-medium uppercase text-violet-300">
+                <div className="flex flex-1 flex-col gap-1 border-t border-zinc-800 px-2 py-2">
+                  <div className="h-4 text-[10px] font-medium uppercase leading-4 text-violet-300">
                     S{item.seasonNumber} E{item.episodeNumber}
                   </div>
-                  <div className="line-clamp-2 text-xs font-semibold text-white">
+                  <div className="h-4 truncate text-xs font-semibold leading-4 text-white">
                     <span
                       onClick={(e) => handleTitleClick(e, item.tmdbId)}
                       className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
@@ -218,7 +218,7 @@ function NextUpPageContent() {
                       {item.title}
                     </span>
                   </div>
-                  <div className="line-clamp-1 text-[10px] text-zinc-400">
+                  <div className="h-4 truncate text-[10px] leading-4 text-zinc-400">
                     {item.episodeTitle}
                   </div>
                   <NextUpEpisodeInfo

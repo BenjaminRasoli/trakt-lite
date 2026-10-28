@@ -930,7 +930,7 @@ function HomeContent() {
                     <Link
                       key={`${item.tmdbId}-${item.seasonNumber}-${item.episodeNumber}`}
                       href={`/media/${item.tmdbId}/season/${item.seasonNumber}/episode/${item.episodeNumber}?type=tv`}
-                      className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:border-violet-500/50"
+                      className="group flex h-full w-full flex-col overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:border-violet-500/50"
                     >
                       <div className="relative aspect-[2/3] overflow-hidden">
                         {isSpecialEpisodeType(item.episodeType) && (
@@ -948,11 +948,11 @@ function HomeContent() {
                         />
                       </div>
 
-                      <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
-                        <div className="text-[10px] font-medium uppercase text-violet-300">
+                      <div className="flex flex-1 flex-col gap-1 border-t border-zinc-800 px-2 py-2">
+                        <div className="h-4 text-[10px] font-medium uppercase leading-4 text-violet-300">
                           S{item.seasonNumber} E{item.episodeNumber}
                         </div>
-                        <div className="line-clamp-2 text-xs font-semibold text-white">
+                        <div className="h-4 truncate text-xs font-semibold leading-4 text-white">
                           <span
                             onClick={(e) =>
                               handleTitleClick(e, item.tmdbId, "tv")
@@ -962,7 +962,7 @@ function HomeContent() {
                             {item.title}
                           </span>
                         </div>
-                        <div className="line-clamp-1 text-[10px] text-zinc-400">
+                        <div className="h-4 truncate text-[10px] leading-4 text-zinc-400">
                           {item.episodeTitle}
                         </div>
                         <NextUpEpisodeInfo
@@ -1009,7 +1009,7 @@ function HomeContent() {
                       <Link
                         key={`${item.tmdbId}-${item.seasonNumber || "movie"}-${item.episodeNumber || "movie"}-${item.airDate || "unknown"}`}
                         href={linkHref}
-                        className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:border-violet-500/50"
+                        className="group flex h-full w-full flex-col overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:border-violet-500/50"
                       >
                         <div className="relative aspect-[2/3] overflow-hidden">
                           {!isMovie && (
@@ -1027,9 +1027,9 @@ function HomeContent() {
                           />
                         </div>
 
-                        <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
-                          <div className="flex flex-col items-start text-[10px] font-medium tracking-[0.15em] text-violet-300 sm:flex-row sm:items-center sm:gap-1">
-                            <span>
+                        <div className="flex flex-1 flex-col gap-1 border-t border-zinc-800 px-2 py-2">
+                          <div className="flex h-4 min-w-0 items-center overflow-hidden whitespace-nowrap text-[10px] font-medium tracking-[0.15em] text-violet-300">
+                            <span className="shrink-0">
                               {item.airDate
                                 ? (() => {
                                     const date = new Date(item.airDate);
@@ -1043,17 +1043,22 @@ function HomeContent() {
                                 : "Coming soon"}
                             </span>
                             {daysUntil !== null && (
-                              <span className="flex items-center gap-1 text-[9px] tracking-normal text-zinc-400/75">
-                                <span className="hidden text-zinc-500 sm:inline">
-                                  •
+                              <>
+                                <span
+                                  className="inline-flex h-4 w-2 shrink-0 items-center justify-center leading-none text-zinc-500"
+                                  aria-hidden="true"
+                                >
+                                  ·
                                 </span>
-                                {daysUntil === 0
-                                  ? "today"
-                                  : `in ${daysUntil} ${daysUntil === 1 ? "day" : "days"}`}
-                              </span>
+                                <span className="min-w-0 truncate text-[9px] tracking-normal text-zinc-400/75">
+                                  {daysUntil === 0
+                                    ? "today"
+                                    : `in ${daysUntil} ${daysUntil === 1 ? "day" : "days"}`}
+                                </span>
+                              </>
                             )}
                           </div>
-                          <div className="line-clamp-2 text-xs font-semibold text-white">
+                          <div className="h-4 truncate text-xs font-semibold leading-4 text-white">
                             <span
                               onClick={(e) =>
                                 handleTitleClick(e, item.tmdbId, mediaType)
@@ -1064,14 +1069,14 @@ function HomeContent() {
                             </span>
                           </div>
                           {!isMovie && item.episodeTitle && (
-                            <div className="line-clamp-1 text-[10px] text-zinc-400">
+                            <div className="h-4 truncate text-[10px] leading-4 text-zinc-400">
                               {item.episodeTitle}
                             </div>
                           )}
                           {!isMovie &&
                             item.seasonNumber !== null &&
                             item.episodeNumber !== null && (
-                              <div className="text-[10px] text-zinc-400">
+                              <div className="h-4 truncate text-[10px] leading-4 text-zinc-400">
                                 S{item.seasonNumber} E{item.episodeNumber}
                               </div>
                             )}
@@ -1121,7 +1126,7 @@ function HomeContent() {
                       <Link
                         key={historyItem.id}
                         href={historyLink}
-                        className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:border-violet-500/50"
+                        className="group flex h-full w-full flex-col overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:border-violet-500/50"
                       >
                         <div className="relative aspect-[2/3] overflow-hidden">
                           <img
@@ -1138,8 +1143,8 @@ function HomeContent() {
                           />
                         </div>
 
-                        <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
-                          <div className="text-[10px] font-medium tracking-[0.15em] text-violet-300">
+                        <div className="flex flex-1 flex-col gap-1 border-t border-zinc-800 px-2 py-2">
+                          <div className="h-4 truncate text-[10px] font-medium leading-4 tracking-[0.15em] text-violet-300">
                             {(() => {
                               const month = watchedDate.toLocaleDateString(
                                 "en-US",
@@ -1149,7 +1154,7 @@ function HomeContent() {
                               return `${month.charAt(0).toUpperCase() + month.slice(1).toLowerCase()} ${day}`;
                             })()}{" "}
                           </div>
-                          <div className="line-clamp-1 text-xs font-semibold text-white">
+                          <div className="h-4 truncate text-xs font-semibold leading-4 text-white">
                             <span
                               onClick={(e) =>
                                 handleTitleClick(
@@ -1164,12 +1169,12 @@ function HomeContent() {
                             </span>
                           </div>
                           {historyItem.episodeName && (
-                            <div className="line-clamp-1 text-[10px] text-zinc-300">
+                            <div className="h-4 truncate text-[10px] leading-4 text-zinc-300">
                               {historyItem.episodeName}
                             </div>
                           )}
                           {episodeLabel && (
-                            <div className="text-[10px] text-zinc-400">
+                            <div className="h-4 truncate text-[10px] leading-4 text-zinc-400">
                               {episodeLabel}
                             </div>
                           )}
