@@ -18,13 +18,14 @@ export default function NextUpEpisodeInfo({
   remainingRuntimeMinutes?: number | null;
 }) {
   return (
-    <div className="mt-auto grid min-h-9 grid-cols-1 content-center gap-0.5 rounded-md border border-violet-400/15 bg-violet-500/5 px-1.5 py-1 text-[8px] leading-tight sm:text-[9px]">
-      <span className="whitespace-nowrap text-violet-200">
+    <div className="mt-auto flex min-h-9 flex-col justify-center gap-0.5 rounded-md border border-violet-400/15 bg-violet-500/5 px-1.5 py-1 text-[8px] leading-tight sm:min-h-0 sm:py-[5px] sm:justify-start sm:flex-row sm:items-baseline sm:gap-1 sm:text-[9px]">
+      <span className="whitespace-nowrap text-violet-200 sm:shrink-0">
         {formatRuntime(episodeRuntimeMinutes)}
       </span>
-      <span className="truncate text-zinc-300">
+      <span className="hidden text-zinc-500 sm:inline">|</span>
+      <span className="min-w-0 truncate text-zinc-300">
         {remainingEpisodeCount ?? "--"} left
-        <span className="px-0.5 text-xs leading-none text-zinc-400">·</span>
+        <span className="px-0.5 text-zinc-400">·</span>
         {formatRuntime(remainingRuntimeMinutes)}
       </span>
     </div>
