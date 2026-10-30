@@ -11,6 +11,8 @@ export interface TMDBMedia {
   release_date?: string;
   first_air_date?: string;
   vote_average: number;
+  vote_count?: number;
+  popularity?: number;
   genre_ids: number[];
   media_type?: "movie" | "tv";
   genres?: TMDBGenre[];
@@ -708,41 +710,23 @@ export async function getMediaReviews(
 export async function getMovieRecommendations(
   movieId: number,
 ): Promise<TMDBMedia[]> {
-  if (!TMDB_API_KEY) {
-    console.error("TMDB API key is not configured");
-    return [];
-  }
-
-  try {
-    const response = await fetch(
-      `${TMDB_BASE_URL}/movie/${movieId}/recommendations?api_key=${TMDB_API_KEY}`,
-    );
-    const data = await response.json();
-    const results = data.results || [];
-    return results.map((item: any) => ({ ...item, media_type: "movie" }));
-  } catch (error) {
-    console.error("Error fetching movie recommendations:", error);
-    return [];
-  }
+  const data = await fetchTmdbJson<{ results?: TMDBMedia[] }>(
+    `${TMDB_BASE_URL}/movie/${movieId}/recommendations?api_key=${TMDB_API_KEY}`,
+  );
+  return (data?.results ?? []).map((item) => ({
+    ...item,
+    media_type: "movie",
+  }));
 }
 
 export async function getTVRecommendations(tvId: number): Promise<TMDBMedia[]> {
-  if (!TMDB_API_KEY) {
-    console.error("TMDB API key is not configured");
-    return [];
-  }
-
-  try {
-    const response = await fetch(
-      `${TMDB_BASE_URL}/tv/${tvId}/recommendations?api_key=${TMDB_API_KEY}`,
-    );
-    const data = await response.json();
-    const results = data.results || [];
-    return results.map((item: any) => ({ ...item, media_type: "tv" }));
-  } catch (error) {
-    console.error("Error fetching TV recommendations:", error);
-    return [];
-  }
+  const data = await fetchTmdbJson<{ results?: TMDBMedia[] }>(
+    `${TMDB_BASE_URL}/tv/${tvId}/recommendations?api_key=${TMDB_API_KEY}`,
+  );
+  return (data?.results ?? []).map((item) => ({
+    ...item,
+    media_type: "tv",
+  }));
 }
 
 export async function getMediaRecommendations(

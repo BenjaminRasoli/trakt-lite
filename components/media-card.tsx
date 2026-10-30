@@ -87,7 +87,7 @@ export default function MediaCard({ media, subtitle }: MediaCardProps) {
         </h3>
 
         {subtitle && (
-          <p className="text-zinc-400 text-xs mb-1.5 line-clamp-1">
+          <p className="mb-1.5 break-words text-xs leading-relaxed text-zinc-400">
             {subtitle}
           </p>
         )}

@@ -201,6 +201,7 @@ export default function Navbar() {
                 <div className="hidden lg:flex flex-wrap items-center gap-4 min-[1050px]:flex">
                   {[
                     { href: "/new", label: "New" },
+                    { href: "/recommendations", label: "For You" },
                     { href: "/next-up", label: "Next Up" },
                     { href: "/calendar", label: "Calendar" },
                     { href: "/weekly", label: "Weekly" },
@@ -337,6 +338,7 @@ export default function Navbar() {
             <div className="flex flex-wrap items-start gap-3 lg:hidden pb-2 min-[1050px]:hidden">
               {[
                 { href: "/new", label: "New" },
+                { href: "/recommendations", label: "For You" },
                 { href: "/next-up", label: "Next Up" },
                 { href: "/calendar", label: "Calendar" },
                 { href: "/weekly", label: "Weekly" },
