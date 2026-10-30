@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { searchMedia, getMediaDetails } from "@/lib/tmdb";
 
-const CLIENT_AUTH = 'MediaBrowser Client="TraktExporter", Device="WindowsCMD", DeviceId="TraktExportScript", Version="1.0.0"';
+export const JELLYFIN_CLIENT_AUTH =
+  'MediaBrowser Client="Trakt Lite", Device="Trakt Lite", DeviceId="TraktExportScript", Version="1.0.0"';
 
 export type JellyfinConfig = {
   serverUrl: string;
@@ -38,7 +39,7 @@ export async function authenticateJellyfin(
   const response = await fetch(url, {
     method: "POST",
     headers: {
-      "Authorization": CLIENT_AUTH,
+      "Authorization": JELLYFIN_CLIENT_AUTH,
       "Content-Type": "application/json",
       "Accept": "application/json",
     },
@@ -63,7 +64,7 @@ export async function authenticateJellyfin(
 export function buildJellyfinHeaders(accessToken: string) {
   return {
     "Content-Type": "application/json",
-    "Authorization": `${CLIENT_AUTH}, Token="${accessToken}"`,
+    "Authorization": `${JELLYFIN_CLIENT_AUTH}, Token="${accessToken}"`,
     "X-Emby-Token": accessToken,
     "Accept": "application/json",
   };

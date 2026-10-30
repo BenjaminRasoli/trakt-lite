@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { getMediaDetails } from "@/lib/tmdb";
-
-const CLIENT_AUTH = 'MediaBrowser Client="TraktExporter", Device="WindowsCMD", DeviceId="TraktExportScript", Version="1.0.0"';
+import { JELLYFIN_CLIENT_AUTH } from "@/lib/jellyfin";
 
 interface JellyfinAuthResponse {
   User: {
@@ -44,7 +43,7 @@ async function apiPostAuth(baseUrl: string, username: string, password: string):
   const response = await fetch(url, {
     method: "POST",
     headers: {
-      "Authorization": CLIENT_AUTH,
+      "Authorization": JELLYFIN_CLIENT_AUTH,
       "Content-Type": "application/json",
       "Accept": "application/json",
     },
@@ -69,7 +68,7 @@ async function apiGet(baseUrl: string, token: string, path: string, params?: Rec
 
   const response = await fetch(url.toString(), {
     headers: {
-      "Authorization": `${CLIENT_AUTH}, Token="${token}"`,
+      "Authorization": `${JELLYFIN_CLIENT_AUTH}, Token="${token}"`,
       "X-Emby-Token": token,
       "Accept": "application/json",
     },
@@ -120,9 +119,8 @@ async function getItems(
       const userData = item.UserData || {};
       const isPlayed = userData.Played === true;
       const hasPlaycount = (userData.PlayCount || 0) > 0;
-      const hasPlayedDate = userData.LastPlayedDate != null || userData.DatePlayed != null;
 
-      if (isPlayed || hasPlaycount || hasPlayedDate) {
+      if (isPlayed || hasPlaycount) {
         items.push(item);
       }
     }
