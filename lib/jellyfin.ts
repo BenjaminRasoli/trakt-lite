@@ -141,14 +141,19 @@ export function getJellyfinMediaType(
   return "movie";
 }
 
-export function getJellyfinTmdbId(item: Record<string, any>): number | null {
-  const providerIds = item?.ProviderIds || {};
+export function getJellyfinTmdbId(item: Record<string, unknown>): number | null {
+  const providerIds =
+    typeof item.ProviderIds === "object" &&
+    item.ProviderIds !== null &&
+    !Array.isArray(item.ProviderIds)
+      ? (item.ProviderIds as Record<string, unknown>)
+      : {};
   const candidates = [
     providerIds.Tmdb,
     providerIds.tmdb,
-    item?.ProviderIds?.TMDb,
-    item?.TmdbId,
-    item?.tmdbId,
+    providerIds.TMDb,
+    item.TmdbId,
+    item.tmdbId,
   ];
 
   for (const candidate of candidates) {

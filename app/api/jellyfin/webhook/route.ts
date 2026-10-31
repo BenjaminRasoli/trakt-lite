@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
   authenticateJellyfin,
+  getJellyfinTmdbId,
   jellyfinRequest,
   upsertJellyfinWatchEntry,
 } from "@/lib/jellyfin";
@@ -9,6 +10,11 @@ import crypto from "crypto";
 
 interface JellyfinWebhookItem extends Record<string, unknown> {
   Id?: string;
+  Type?: string;
+  Name?: string;
+  SeriesId?: string;
+  SeriesName?: string;
+  ProductionYear?: number;
   UserData?: {
     Played?: boolean;
   };
@@ -126,7 +132,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const providerIds = jellyfinItem?.ProviderIds || {};
+    const providerIds = { ...(jellyfinItem?.ProviderIds || {}) };
     for (const [key, value] of Object.entries(item || {})) {
       if (key.startsWith("Provider_")) {
         const providerName = key.slice("Provider_".length).toLowerCase();
@@ -135,11 +141,44 @@ export async function POST(request: NextRequest) {
         }
       }
     }
-    const normalizedItem = {
+    let normalizedItem: JellyfinWebhookItem = {
       ...jellyfinItem,
       ProviderIds: providerIds,
       Id: jellyfinItem.Id || itemId,
     };
+
+    if (
+      normalizedItem.Type?.toLowerCase() === "episode" &&
+      normalizedItem.SeriesId
+    ) {
+      const series = await jellyfinRequest<JellyfinWebhookItem>(
+        {
+          serverUrl: matchingConnection.serverUrl,
+          username: matchingConnection.username || "",
+          password: matchingConnection.password || "",
+          accessToken: auth.accessToken,
+        },
+        `/Users/${auth.userId}/Items/${encodeURIComponent(normalizedItem.SeriesId)}?Fields=ProviderIds,ProductionYear`,
+      );
+      const seriesProviderIds = series.ProviderIds || {};
+      const mergedProviderIds = { ...providerIds, ...seriesProviderIds };
+
+      if (!getJellyfinTmdbId(series)) {
+        for (const key of Object.keys(mergedProviderIds)) {
+          if (key.toLowerCase() === "tmdb") {
+            delete mergedProviderIds[key];
+          }
+        }
+      }
+
+      normalizedItem = {
+        ...normalizedItem,
+        SeriesName: series.Name || normalizedItem.SeriesName,
+        ProductionYear:
+          series.ProductionYear ?? normalizedItem.ProductionYear,
+        ProviderIds: mergedProviderIds,
+      };
+    }
 
     const jellyfinTimestamp = body?.UtcTimestamp || body?.Timestamp;
     const watchedAt = jellyfinTimestamp ? new Date(jellyfinTimestamp) : new Date();
