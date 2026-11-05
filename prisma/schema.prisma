@@ -30,7 +30,7 @@ model JellyfinConnection {
   userId        String   @unique
   serverUrl     String
   username      String?
-  password      String?
+  apiKey        String?
   jellyfinUserId String?
   enabled       Boolean  @default(true)
   createdAt     DateTime @default(now())

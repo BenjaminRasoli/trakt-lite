@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
-  authenticateJellyfin,
   getJellyfinTmdbId,
   jellyfinRequest,
   upsertJellyfinWatchEntry,
@@ -111,19 +110,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const auth = await authenticateJellyfin(
-      matchingConnection.serverUrl,
-      matchingConnection.username || "",
-      matchingConnection.password || "",
-    );
     const jellyfinItem = await jellyfinRequest<JellyfinWebhookItem>(
       {
         serverUrl: matchingConnection.serverUrl,
         username: matchingConnection.username || "",
-        password: matchingConnection.password || "",
-        accessToken: auth.accessToken,
+        apiKey: matchingConnection.apiKey || "",
       },
-      `/Users/${auth.userId}/Items/${encodeURIComponent(itemId)}`,
+      `/Users/${jellyfinUserId}/Items/${encodeURIComponent(itemId)}`,
     );
     if (jellyfinItem?.UserData?.Played !== true) {
       return NextResponse.json(
@@ -155,10 +148,9 @@ export async function POST(request: NextRequest) {
         {
           serverUrl: matchingConnection.serverUrl,
           username: matchingConnection.username || "",
-          password: matchingConnection.password || "",
-          accessToken: auth.accessToken,
+          apiKey: matchingConnection.apiKey || "",
         },
-        `/Users/${auth.userId}/Items/${encodeURIComponent(normalizedItem.SeriesId)}?Fields=ProviderIds,ProductionYear`,
+        `/Users/${jellyfinUserId}/Items/${encodeURIComponent(normalizedItem.SeriesId)}?Fields=ProviderIds,ProductionYear`,
       );
       const seriesProviderIds = series.ProviderIds || {};
       const mergedProviderIds = { ...providerIds, ...seriesProviderIds };

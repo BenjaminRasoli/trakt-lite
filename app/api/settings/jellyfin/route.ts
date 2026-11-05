@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
-import { authenticateJellyfin } from "@/lib/jellyfin";
+import { authenticateJellyfinApiKey } from "@/lib/jellyfin";
 
 export async function GET() {
   try {
@@ -33,7 +33,7 @@ export async function GET() {
           serverUrl: config.serverUrl,
           username: config.username,
           enabled: config.enabled,
-          hasPassword: Boolean(config.password),
+          hasApiKey: Boolean(config.apiKey),
         }
         : null,
     );
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const serverUrl = String(body.serverUrl || "").trim();
     const username = String(body.username || "").trim();
-    const submittedPassword = String(body.password || "");
+    const submittedApiKey = String(body.apiKey || "");
     const enabled = Boolean(body.enabled ?? true);
 
     if (!serverUrl || !username) {
@@ -82,15 +82,15 @@ export async function POST(request: NextRequest) {
     const existing = await prisma.jellyfinConnection.findUnique({
       where: { userId: dbUser.id },
     });
-    const password = submittedPassword || existing?.password || "";
+    const apiKey = submittedApiKey || existing?.apiKey || "";
 
-    let auth: Awaited<ReturnType<typeof authenticateJellyfin>>;
+    let auth: Awaited<ReturnType<typeof authenticateJellyfinApiKey>>;
     try {
-      auth = await authenticateJellyfin(serverUrl, username, password);
+      auth = await authenticateJellyfinApiKey(serverUrl, username, apiKey);
     } catch (error) {
       console.error("Error authenticating Jellyfin settings:", error);
       return NextResponse.json(
-        { error: "Jellyfin connection failed. Check your URL, username, and password." },
+        { error: "Jellyfin connection failed. Check your URL, username, and API key." },
         { status: 400 },
       );
     }
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
       update: {
         serverUrl,
         username,
-        password,
+        apiKey,
         jellyfinUserId: auth.userId,
         enabled,
       },
@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
         userId: dbUser.id,
         serverUrl,
         username,
-        password,
+        apiKey,
         jellyfinUserId: auth.userId,
         enabled,
       },
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
         serverUrl: saved.serverUrl,
         username: saved.username,
         enabled: saved.enabled,
-        hasPassword: Boolean(saved.password),
+        hasApiKey: Boolean(saved.apiKey),
       },
     });
   } catch (error) {

@@ -1,15 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { getMediaDetails } from "@/lib/tmdb";
-import { JELLYFIN_CLIENT_AUTH } from "@/lib/jellyfin";
-
-interface JellyfinAuthResponse {
-  User: {
-    Id: string;
-  };
-  AccessToken: string;
-}
+import {
+  authenticateJellyfinApiKey,
+  buildJellyfinHeaders,
+} from "@/lib/jellyfin";
 
 interface JellyfinItem {
   Id: string;
@@ -32,33 +28,20 @@ interface JellyfinItem {
 }
 
 interface JellyfinItemsResponse {
-  Items: JellyfinItem[];
+  Items?: JellyfinItem[];
   TotalRecordCount?: number;
 }
 
-async function apiPostAuth(baseUrl: string, username: string, password: string): Promise<{ userId: string; token: string }> {
-  const url = baseUrl.trim().replace(/\/$/, "") + "/Users/AuthenticateByName";
-  const payload = JSON.stringify({ Username: username, Pw: password || "" });
-
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Authorization": JELLYFIN_CLIENT_AUTH,
-      "Content-Type": "application/json",
-      "Accept": "application/json",
-    },
-    body: payload,
-  });
-
-  if (!response.ok) {
-    throw new Error("Authentication failed");
-  }
-
-  const data: JellyfinAuthResponse = await response.json();
-  return { userId: data.User.Id, token: data.AccessToken };
+interface JellyfinViewsResponse {
+  Items?: Array<{ Id: string }>;
 }
 
-async function apiGet(baseUrl: string, token: string, path: string, params?: Record<string, string>): Promise<any> {
+async function apiGet<T>(
+  baseUrl: string,
+  token: string,
+  path: string,
+  params?: Record<string, string>,
+): Promise<T> {
   const url = new URL(baseUrl.trim().replace(/\/$/, "") + path);
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
@@ -67,26 +50,23 @@ async function apiGet(baseUrl: string, token: string, path: string, params?: Rec
   }
 
   const response = await fetch(url.toString(), {
-    headers: {
-      "Authorization": `${JELLYFIN_CLIENT_AUTH}, Token="${token}"`,
-      "X-Emby-Token": token,
-      "Accept": "application/json",
-    },
+    headers: buildJellyfinHeaders(token),
   });
 
   if (!response.ok) {
     throw new Error(`API request failed: ${path}`);
   }
 
-  return response.json();
+  return response.json() as Promise<T>;
 }
 
 async function getLibraryViews(baseUrl: string, token: string, userId: string): Promise<string[]> {
-  const res = await apiGet(baseUrl, token, `/Users/${userId}/Views`);
-  const views = res.Items || [];
-  return views
-    .filter((item: any) => item.Name === "Filmer" || item.Name === "Serier")
-    .map((item: any) => item.Id);
+  const res = await apiGet<JellyfinViewsResponse>(
+    baseUrl,
+    token,
+    `/Users/${userId}/Views`,
+  );
+  return (res.Items || []).map((item) => item.Id);
 }
 
 async function getItems(
@@ -94,14 +74,14 @@ async function getItems(
   token: string,
   userId: string,
   parentId: string,
-  itemType: string
+  itemType: "Movie" | "Episode"
 ): Promise<JellyfinItem[]> {
   const items: JellyfinItem[] = [];
   let start = 0;
   const PAGE_SIZE = 500;
 
   while (true) {
-    const result: JellyfinItemsResponse = await apiGet(baseUrl, token, "/Items", {
+    const result = await apiGet<JellyfinItemsResponse>(baseUrl, token, "/Items", {
       userId,
       ParentId: parentId,
       Recursive: "true",
@@ -126,7 +106,7 @@ async function getItems(
     }
 
     const total = result.TotalRecordCount || 0;
-    if (start + page.length >= total || page.length < PAGE_SIZE) {
+    if (page.length < PAGE_SIZE || (total > 0 && start + page.length >= total)) {
       break;
     }
     start += page.length;
@@ -139,11 +119,8 @@ function tmdbId(item: JellyfinItem): number | null {
   const ids = item.ProviderIds || {};
   const value = ids.Tmdb;
   if (value == null) return null;
-  try {
-    return parseInt(value, 10);
-  } catch {
-    return null;
-  }
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
 function watchedAt(item: JellyfinItem): string {
@@ -211,7 +188,7 @@ async function mapWithConcurrency<T, R>(
 export async function POST(request: NextRequest) {
   const encoder = new TextEncoder();
 
-  const sendEvent = (data: any) => {
+  const sendEvent = (data: Record<string, unknown>) => {
     return encoder.encode(`data: ${JSON.stringify(data)}\n\n`);
   };
 
@@ -245,25 +222,28 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
         const serverUrl = String(body.serverUrl || "").trim();
         const username = String(body.username || "").trim();
-        const password = String(body.password || "");
+        const apiKey = String(body.apiKey || "");
 
-        if (!serverUrl || !username) {
-          controller.enqueue(sendEvent({ error: "Server URL and username are required" }));
+        if (!serverUrl || !username || !apiKey) {
+          controller.enqueue(sendEvent({ error: "Server URL, username, and API key are required" }));
           controller.close();
           return;
         }
 
         controller.enqueue(sendEvent({ status: "Authenticating with Jellyfin..." }));
 
-        // Authenticate with Jellyfin
-        const { userId, token } = await apiPostAuth(serverUrl, username, password);
+        const { userId, accessToken: token } = await authenticateJellyfinApiKey(
+          serverUrl,
+          username,
+          apiKey,
+        );
 
         controller.enqueue(sendEvent({ status: "Fetching library views..." }));
 
         // Get library views
         const libraryIds = await getLibraryViews(serverUrl, token, userId);
         if (libraryIds.length === 0) {
-          controller.enqueue(sendEvent({ error: "No active Filmer or Serier libraries found" }));
+          controller.enqueue(sendEvent({ error: "No Jellyfin libraries were found for this user" }));
           controller.close();
           return;
         }
@@ -330,7 +310,11 @@ export async function POST(request: NextRequest) {
           // Get show TMDB ID
           if (!showTmdbCache.has(seriesId)) {
             try {
-              const showItem = await apiGet(serverUrl, token, `/Users/${userId}/Items/${seriesId}`);
+              const showItem = await apiGet<JellyfinItem>(
+                serverUrl,
+                token,
+                `/Users/${userId}/Items/${seriesId}`,
+              );
               showTmdbCache.set(seriesId, {
                 tmdbId: tmdbId(showItem),
                 year: showItem.ProductionYear,
@@ -363,15 +347,11 @@ export async function POST(request: NextRequest) {
         // Sort by date
         historyEntries.sort((a, b) => a.watched_at.localeCompare(b.watched_at));
 
-        controller.enqueue(sendEvent({ 
-          status: "Deleting existing watch history...",
-          progress: 20,
-        }));
-
-        // Delete existing watch history
-        await prisma.watchHistory.deleteMany({
-          where: { userId: dbUser.id },
-        });
+        if (historyEntries.length === 0) {
+          throw new Error(
+            "No watched movies or episodes with TMDB IDs were found. Existing watch history was kept.",
+          );
+        }
 
         controller.enqueue(sendEvent({ 
           status: "Grouping entries by media...",
@@ -401,6 +381,15 @@ export async function POST(request: NextRequest) {
         const tmdbIds = Array.from(entriesByTmdbId.keys());
         const totalBatches = Math.ceil(tmdbIds.length / batchSize);
         let importedCount = 0;
+        let failedMediaCount = 0;
+        const importedHistoryRows: Array<{
+          userId: string;
+          mediaId: number;
+          seasonNumber: number | null;
+          episodeNumber: number | null;
+          episodeName: string | null;
+          watchedAt: Date;
+        }> = [];
 
         for (let i = 0; i < tmdbIds.length; i += batchSize) {
           const batch = tmdbIds.slice(i, i + batchSize);
@@ -491,21 +480,20 @@ export async function POST(request: NextRequest) {
                     ? (entry.episode?.title || null)
                     : null;
 
-                  await prisma.watchHistory.create({
-                    data: {
-                      userId: dbUser.id,
-                      mediaId: media.id,
-                      seasonNumber,
-                      episodeNumber,
-                      episodeName,
-                      watchedAt: new Date(watchedAt),
-                    },
+                  importedHistoryRows.push({
+                    userId: dbUser.id,
+                    mediaId: media.id,
+                    seasonNumber,
+                    episodeNumber,
+                    episodeName,
+                    watchedAt: new Date(watchedAt),
                   });
                   count++;
                 }
                 return count;
               } catch (error) {
                 console.error("Error importing media:", error);
+                failedMediaCount++;
                 return 0;
               }
             },
@@ -513,6 +501,32 @@ export async function POST(request: NextRequest) {
 
           importedCount += batchResults.reduce((sum, count) => sum + count, 0);
         }
+
+        if (failedMediaCount > 0) {
+          throw new Error(
+            `Could not import ${failedMediaCount} media item(s). Existing watch history was kept.`,
+          );
+        }
+
+        if (importedHistoryRows.length === 0) {
+          throw new Error(
+            "No watch history entries could be imported. Existing watch history was kept.",
+          );
+        }
+
+        controller.enqueue(sendEvent({
+          status: "Replacing existing watch history...",
+          progress: 95,
+        }));
+
+        await prisma.$transaction(async (transaction) => {
+          await transaction.watchHistory.deleteMany({
+            where: { userId: dbUser.id },
+          });
+          await transaction.watchHistory.createMany({
+            data: importedHistoryRows,
+          });
+        });
 
         controller.enqueue(sendEvent({
           status: "Complete!",

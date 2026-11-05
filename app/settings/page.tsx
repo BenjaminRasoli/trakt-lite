@@ -20,18 +20,17 @@ export default function SettingsPage() {
   const [jellyfinConfig, setJellyfinConfig] = useState({
     serverUrl: "",
     username: "",
-    password: "",
+    apiKey: "",
     enabled: true,
   });
   const [jellyfinStatus, setJellyfinStatus] = useState<string | null>(null);
   const [savingJellyfin, setSavingJellyfin] = useState(false);
-  const [hasSavedJellyfinPassword, setHasSavedJellyfinPassword] =
-    useState(false);
+  const [hasSavedJellyfinApiKey, setHasSavedJellyfinApiKey] = useState(false);
   const [jellyfinConnected, setJellyfinConnected] = useState(false);
   const [jellyfinImport, setJellyfinImport] = useState({
     serverUrl: "",
     username: "",
-    password: "",
+    apiKey: "",
   });
   const [importingJellyfin, setImportingJellyfin] = useState(false);
   const [jellyfinImportError, setJellyfinImportError] = useState<string | null>(
@@ -108,12 +107,12 @@ export default function SettingsPage() {
           return;
         }
 
-        setHasSavedJellyfinPassword(data.hasPassword === true);
-        setJellyfinConnected(data.enabled === true);
+        setHasSavedJellyfinApiKey(data.hasApiKey === true);
+        setJellyfinConnected(data.enabled === true && data.hasApiKey === true);
         setJellyfinConfig({
           serverUrl: data.serverUrl || "",
           username: data.username || "",
-          password: "",
+          apiKey: "",
           enabled: data.enabled ?? true,
         });
       } catch {
@@ -368,8 +367,10 @@ export default function SettingsPage() {
         throw new Error(data.error || "Unable to save Jellyfin settings");
       }
 
-      setHasSavedJellyfinPassword(data.config?.hasPassword === true);
-      setJellyfinConnected(data.config?.enabled === true);
+      setHasSavedJellyfinApiKey(data.config?.hasApiKey === true);
+      setJellyfinConnected(
+        data.config?.enabled === true && data.config?.hasApiKey === true,
+      );
       setJellyfinStatus("Jellyfin scrobble sync saved successfully.");
     } catch (error) {
       setJellyfinStatus(
@@ -417,42 +418,54 @@ export default function SettingsPage() {
         throw new Error("Failed to read response");
       }
 
+      let buffer = "";
+      let importCompleted = false;
+      const processEvent = (event: string) => {
+        const dataLine = event
+          .split(/\r?\n/)
+          .find((line) => line.startsWith("data: "));
+        if (!dataLine) return;
+
+        const data = JSON.parse(dataLine.slice(6));
+        if (data.error) {
+          throw new Error(data.error);
+        }
+
+        if (data.status) {
+          setJellyfinImportProgress(data.status);
+        }
+
+        if (data.progress !== undefined) {
+          setJellyfinImportPercent(data.progress);
+        }
+
+        if (data.success) {
+          setJellyfinImportProgress(
+            `Successfully imported ${data.imported} entries`,
+          );
+          setJellyfinImportSuccess(true);
+          setJellyfinImportPercent(100);
+          importCompleted = true;
+        }
+      };
+
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        buffer += decoder.decode(value, { stream: !done });
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split("\n\n");
-
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            try {
-              const data = JSON.parse(line.slice(6));
-
-              if (data.error) {
-                throw new Error(data.error);
-              }
-
-              if (data.status) {
-                setJellyfinImportProgress(data.status);
-              }
-
-              if (data.progress !== undefined) {
-                setJellyfinImportPercent(data.progress);
-              }
-
-              if (data.success) {
-                setJellyfinImportProgress(
-                  `Successfully imported ${data.imported} entries`,
-                );
-                setJellyfinImportSuccess(true);
-                setJellyfinImportPercent(100);
-              }
-            } catch (e) {
-              // Ignore parse errors for incomplete chunks
-            }
-          }
+        let boundary = /\r?\n\r?\n/.exec(buffer);
+        while (boundary) {
+          processEvent(buffer.slice(0, boundary.index));
+          buffer = buffer.slice(boundary.index + boundary[0].length);
+          boundary = /\r?\n\r?\n/.exec(buffer);
         }
+
+        if (done) break;
+      }
+
+      if (buffer.trim()) processEvent(buffer);
+      if (!importCompleted) {
+        throw new Error("Import ended before it completed");
       }
     } catch (error) {
       setJellyfinImportError(
@@ -626,20 +639,24 @@ export default function SettingsPage() {
                 />
               </div>
               <div>
-                <label className="block text-zinc-300 mb-2">Password</label>
+                <label className="block text-zinc-300 mb-2">API key</label>
                 <input
                   type="password"
-                  value={jellyfinImport.password}
+                  autoComplete="off"
+                  value={jellyfinImport.apiKey}
                   onChange={(e) =>
                     setJellyfinImport((current) => ({
                       ...current,
-                      password: e.target.value,
+                      apiKey: e.target.value,
                     }))
                   }
-                  placeholder="Your Jellyfin password"
+                  placeholder="Jellyfin API key"
                   className="w-full px-4 py-2 bg-zinc-800 border border-zinc-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
                   required
                 />
+                <p className="mt-2 text-xs text-zinc-500">
+                  Create an API key in Jellyfin Dashboard &gt; API Keys.
+                </p>
               </div>
               {jellyfinImportError && (
                 <div className="text-red-400 text-sm">
@@ -866,31 +883,29 @@ export default function SettingsPage() {
 
               <div>
                 <label className="mb-2 block text-sm text-zinc-300">
-                  Jellyfin password
+                  Jellyfin API key
                 </label>
                 <input
                   type="password"
-                  autoComplete="current-password"
-                  value={jellyfinConfig.password}
+                  autoComplete="off"
+                  value={jellyfinConfig.apiKey}
                   onChange={(event) => {
                     setJellyfinConnected(false);
                     setJellyfinConfig((current) => ({
                       ...current,
-                      password: event.target.value,
+                      apiKey: event.target.value,
                     }));
                   }}
                   placeholder={
-                    hasSavedJellyfinPassword
+                    hasSavedJellyfinApiKey
                       ? "••••••••••••"
-                      : "Your Jellyfin password"
-                  }
-                  aria-describedby={
-                    hasSavedJellyfinPassword
-                      ? "jellyfin-password-help"
-                      : undefined
+                      : "Create an API key in Jellyfin Dashboard > API Keys"
                   }
                   className="w-full rounded border border-zinc-600 bg-zinc-800 px-4 py-2 text-white outline-none focus:border-violet-500"
                 />
+                <p className="mt-2 text-xs text-zinc-500">
+                  Create an API key in Jellyfin Dashboard &gt; API Keys.
+                </p>
               </div>
 
               <label className="flex items-center gap-3 text-sm text-zinc-300">

@@ -5,7 +5,6 @@ import {
   getJellyfinCurrentSession,
   getJellyfinTmdbId,
   getJellyfinMediaType,
-  authenticateJellyfin,
 } from "@/lib/jellyfin";
 import { getMediaDetails, getPosterUrl, searchMedia } from "@/lib/tmdb";
 
@@ -36,30 +35,14 @@ export async function GET(request: NextRequest) {
     if (!config || !config.enabled) {
       return NextResponse.json({ active: null }, { status: 200 });
     }
-
-    // Authenticate to get access token
-    let accessToken: string | null = null;
-    let jellyfinUserId: string | null = null;
-    try {
-      const auth = await authenticateJellyfin(
-        config.serverUrl,
-        config.username || "",
-        config.password || "",
-      );
-      accessToken = auth.accessToken;
-      jellyfinUserId = auth.userId;
-    } catch (error) {
-      console.error("Error authenticating with Jellyfin:", error);
-      return NextResponse.json({ active: null }, { status: 200 });
-    }
+    const accessToken = config.apiKey || "";
 
     const session = await getJellyfinCurrentSession({
       serverUrl: config.serverUrl,
       username: config.username || "",
-      password: config.password || "",
-      jellyfinUserId,
+      apiKey: config.apiKey || "",
+      jellyfinUserId: config.jellyfinUserId,
       enabled: config.enabled,
-      accessToken,
     }).catch(() => null);
 
     if (!session || !session.NowPlayingItem) {

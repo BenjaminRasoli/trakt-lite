@@ -7,7 +7,7 @@ export const JELLYFIN_CLIENT_AUTH =
 export type JellyfinConfig = {
   serverUrl: string;
   username: string;
-  password: string;
+  apiKey: string;
   jellyfinUserId?: string | null;
   enabled?: boolean;
   accessToken?: string;
@@ -30,34 +30,42 @@ function toNumber(value: unknown): number | null {
   return null;
 }
 
-export async function authenticateJellyfin(
+export async function authenticateJellyfinApiKey(
   serverUrl: string,
   username: string,
-  password: string,
+  apiKey: string,
 ): Promise<{ userId: string; accessToken: string }> {
-  const url = `${normalizeServerUrl(serverUrl)}/Users/AuthenticateByName`;
+  const normalizedUsername = username.trim().toLowerCase();
+  const normalizedApiKey = apiKey.trim();
+  if (!serverUrl.trim() || !normalizedUsername || !normalizedApiKey) {
+    throw new Error("Jellyfin server URL, username, and API key are required.");
+  }
+
+  const url = `${normalizeServerUrl(serverUrl)}/Users`;
   const response = await fetch(url, {
-    method: "POST",
     headers: {
-      "Authorization": JELLYFIN_CLIENT_AUTH,
-      "Content-Type": "application/json",
-      "Accept": "application/json",
+      ...buildJellyfinHeaders(normalizedApiKey),
     },
-    body: JSON.stringify({
-      Username: username,
-      Pw: password || "",
-    }),
   });
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(text || "Jellyfin authentication failed");
+    throw new Error(
+      text || `Jellyfin API key validation failed with status ${response.status}`,
+    );
   }
 
-  const data = await response.json();
+  const users = (await response.json()) as Array<{ Id: string; Name: string }>;
+  const matchingUser = users.find(
+    (user) => user.Name.trim().toLowerCase() === normalizedUsername,
+  );
+  if (!matchingUser) {
+    throw new Error("The Jellyfin username was not found on this server.");
+  }
+
   return {
-    userId: data.User.Id,
-    accessToken: data.AccessToken,
+    userId: matchingUser.Id,
+    accessToken: normalizedApiKey,
   };
 }
 
@@ -76,19 +84,11 @@ export async function jellyfinRequest<T>(
   init: RequestInit = {},
 ): Promise<T> {
   const serverUrl = normalizeServerUrl(config.serverUrl);
-  const username = config.username?.trim();
-  const password = config.password;
-
-  if (!serverUrl || !username) {
-    throw new Error("Jellyfin server URL and username are required.");
+  if (!serverUrl || !config.apiKey.trim()) {
+    throw new Error("Jellyfin server URL and API key are required.");
   }
 
-  // Authenticate if we don't have an access token
-  let accessToken = config.accessToken;
-  if (!accessToken) {
-    const auth = await authenticateJellyfin(serverUrl, username, password);
-    accessToken = auth.accessToken;
-  }
+  const accessToken = config.accessToken || config.apiKey.trim();
 
   const url = new URL(
     path.startsWith("/") ? path : `/${path}`,
@@ -119,10 +119,10 @@ export async function jellyfinRequest<T>(
 
 export async function validateJellyfinConnection(config: JellyfinConfig) {
   try {
-    const auth = await authenticateJellyfin(
+    const auth = await authenticateJellyfinApiKey(
       config.serverUrl,
       config.username,
-      config.password,
+      config.apiKey,
     );
     return Boolean(auth.accessToken);
   } catch {
