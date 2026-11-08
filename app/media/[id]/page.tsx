@@ -637,10 +637,10 @@ export default function MediaDetailsPage() {
                             .map((watch) => (
                               <div
                                 key={watch.id}
-                                className="flex sm:flex-row sm:items-center justify-between gap-2 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700/50"
+                                className="flex min-w-0 items-center justify-between gap-1 rounded-lg border border-zinc-700/50 bg-zinc-800/50 p-2 sm:gap-2 sm:p-3"
                               >
-                                <div className="flex items-center gap-2 flex-1 min-w-0">
-                                  <span className="text-zinc-300 text-sm break-words">
+                                <div className="flex min-w-0 items-center">
+                                  <span className="truncate whitespace-nowrap text-[11px] text-zinc-300 sm:text-sm">
                                     {watch.seasonNumber !== null &&
                                     watch.episodeNumber !== null
                                       ? `S${watch.seasonNumber} E${watch.episodeNumber}${watch.episodeName ? ` - ${watch.episodeName}` : ""} - `
@@ -661,7 +661,7 @@ export default function MediaDetailsPage() {
                                 </div>
                                 <button
                                   onClick={() => handleDeleteWatch(watch.id)}
-                                  className="px-3 py-1 cursor-pointer text-red-400 hover:text-red-300 text-sm whitespace-nowrap self-end sm:self-center"
+                                  className="shrink-0 cursor-pointer whitespace-nowrap px-1 py-1 text-xs text-red-400 hover:text-red-300 sm:px-3 sm:text-sm"
                                 >
                                   Remove
                                 </button>
@@ -684,10 +684,10 @@ export default function MediaDetailsPage() {
                           .map((watch) => (
                             <div
                               key={watch.id}
-                              className="flex sm:flex-row sm:items-center justify-between gap-2 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700/50"
+                              className="flex min-w-0 items-center justify-between gap-1 rounded-lg border border-zinc-700/50 bg-zinc-800/50 p-2 sm:gap-2 sm:p-3"
                             >
-                              <div className="flex items-center gap-2 flex-1 min-w-0">
-                                <span className="text-zinc-300 text-sm break-words">
+                              <div className="flex min-w-0 items-center">
+                                <span className="truncate whitespace-nowrap text-[11px] text-zinc-300 sm:text-sm">
                                   {watch.seasonNumber !== null &&
                                   watch.episodeNumber !== null
                                     ? `S${watch.seasonNumber} E${watch.episodeNumber}${watch.episodeName ? ` - ${watch.episodeName}` : ""} - `
@@ -709,7 +709,7 @@ export default function MediaDetailsPage() {
                               </div>
                               <button
                                 onClick={() => handleDeleteWatch(watch.id)}
-                                className="px-3 py-1 cursor-pointer text-red-400 hover:text-red-300 text-sm whitespace-nowrap self-end sm:self-center"
+                                className="shrink-0 cursor-pointer whitespace-nowrap px-1 py-1 text-xs text-red-400 hover:text-red-300 sm:px-3 sm:text-sm"
                               >
                                 Remove
                               </button>

@@ -2,11 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
-import {
-  useParams,
-  useRouter,
-  useSearchParams,
-} from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSupabase } from "@/components/supabase-provider";
 import {
   getMediaDetails,
@@ -15,6 +11,72 @@ import {
   getMediaTitle,
 } from "@/lib/tmdb";
 
+interface EpisodeNavigationTarget {
+  seasonNumber: number;
+  episodeNumber: number;
+}
+
+async function getAdjacentEpisodeTarget(
+  mediaId: number,
+  showSeasons: Array<{ season_number: number }>,
+  currentSeasonEpisodes: Array<{ episode_number: number }>,
+  seasonNumber: number,
+  episodeNumber: number,
+  direction: "previous" | "next",
+): Promise<EpisodeNavigationTarget | null> {
+  const sameSeasonEpisodes = currentSeasonEpisodes
+    .filter((item) =>
+      direction === "previous"
+        ? item.episode_number < episodeNumber
+        : item.episode_number > episodeNumber,
+    )
+    .sort((a, b) => a.episode_number - b.episode_number);
+  const sameSeasonEpisode =
+    direction === "previous"
+      ? sameSeasonEpisodes[sameSeasonEpisodes.length - 1]
+      : sameSeasonEpisodes[0];
+
+  if (sameSeasonEpisode) {
+    return {
+      seasonNumber,
+      episodeNumber: sameSeasonEpisode.episode_number,
+    };
+  }
+
+  const seasonNumbers = Array.from(
+    new Set(
+      showSeasons
+        .map((item) => item.season_number)
+        .filter((number) => Number.isInteger(number) && number > 0),
+    ),
+  ).sort((a, b) => a - b);
+  const adjacentSeasonNumber =
+    direction === "previous"
+      ? [...seasonNumbers].reverse().find((number) => number < seasonNumber)
+      : seasonNumbers.find((number) => number > seasonNumber);
+
+  if (adjacentSeasonNumber === undefined) return null;
+
+  const adjacentSeason = await getTVSeasonDetails(
+    mediaId,
+    adjacentSeasonNumber,
+  );
+  const adjacentEpisodes = [...(adjacentSeason?.episodes ?? [])].sort(
+    (a, b) => a.episode_number - b.episode_number,
+  );
+  const adjacentEpisode =
+    direction === "previous"
+      ? adjacentEpisodes[adjacentEpisodes.length - 1]
+      : adjacentEpisodes[0];
+
+  return adjacentEpisode
+    ? {
+        seasonNumber: adjacentSeasonNumber,
+        episodeNumber: adjacentEpisode.episode_number,
+      }
+    : null;
+}
+
 export default function EpisodePage() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -22,6 +84,10 @@ export default function EpisodePage() {
   const [show, setShow] = useState<any>(null);
   const [season, setSeason] = useState<any>(null);
   const [episode, setEpisode] = useState<any>(null);
+  const [previousEpisodeTarget, setPreviousEpisodeTarget] =
+    useState<EpisodeNavigationTarget | null>(null);
+  const [nextEpisodeTarget, setNextEpisodeTarget] =
+    useState<EpisodeNavigationTarget | null>(null);
   const [watchHistory, setWatchHistory] = useState<any[]>([]);
   const [watchDate, setWatchDate] = useState("");
   const [watchTime, setWatchTime] = useState("");
@@ -42,10 +108,19 @@ export default function EpisodePage() {
   const episodeNumber = Number(params.episode);
   const mediaType = (searchParams.get("type") as "movie" | "tv") || "tv";
 
-  const title = useMemo(() => show ? getMediaTitle(show) : "Unknown", [show]);
-  const posterUrl = useMemo(() => getPosterUrl(show?.poster_path, "w500"), [show?.poster_path]);
-  const stillUrl = useMemo(() => getPosterUrl(episode?.still_path, "original"), [episode?.still_path]);
-  const backdropUrl = useMemo(() => getPosterUrl(show?.backdrop_path, "original"), [show?.backdrop_path]);
+  const title = useMemo(() => (show ? getMediaTitle(show) : "Unknown"), [show]);
+  const posterUrl = useMemo(
+    () => getPosterUrl(show?.poster_path, "w500"),
+    [show?.poster_path],
+  );
+  const stillUrl = useMemo(
+    () => getPosterUrl(episode?.still_path, "original"),
+    [episode?.still_path],
+  );
+  const backdropUrl = useMemo(
+    () => getPosterUrl(show?.backdrop_path, "original"),
+    [show?.backdrop_path],
+  );
 
   const episodeHistory = useMemo(
     () =>
@@ -98,31 +173,75 @@ export default function EpisodePage() {
   useEffect(() => {
     if (!mediaId || !seasonNumber || !episodeNumber) return;
 
+    let isCurrent = true;
     const fetchEpisodeData = async () => {
+      setDataLoaded(false);
+      setPreviousEpisodeTarget(null);
+      setNextEpisodeTarget(null);
+
       try {
         const [series, seasonDetails] = await Promise.all([
           getMediaDetails(mediaId, mediaType),
           getTVSeasonDetails(mediaId, seasonNumber),
         ]);
+        if (!isCurrent) return;
 
         setShow(series);
         setSeason(seasonDetails);
 
         const episodeData = seasonDetails?.episodes?.find(
-          (ep: any) => ep.episode_number === episodeNumber,
+          (ep) => ep.episode_number === episodeNumber,
         );
         setEpisode(episodeData);
+        setDataLoaded(true);
+
+        if (episodeData) {
+          try {
+            const [previousTarget, nextTarget] = await Promise.all([
+              getAdjacentEpisodeTarget(
+                mediaId,
+                series?.seasons ?? [],
+                seasonDetails?.episodes ?? [],
+                seasonNumber,
+                episodeNumber,
+                "previous",
+              ),
+              getAdjacentEpisodeTarget(
+                mediaId,
+                series?.seasons ?? [],
+                seasonDetails?.episodes ?? [],
+                seasonNumber,
+                episodeNumber,
+                "next",
+              ),
+            ]);
+            if (!isCurrent) return;
+            setPreviousEpisodeTarget(previousTarget);
+            setNextEpisodeTarget(nextTarget);
+          } catch (error) {
+            if (isCurrent) {
+              console.error("Error loading episode navigation:", error);
+            }
+          }
+        }
       } catch (error) {
+        if (!isCurrent) return;
         console.error("Error loading episode data:", error);
         setShow(null);
         setSeason(null);
         setEpisode(null);
+        setPreviousEpisodeTarget(null);
+        setNextEpisodeTarget(null);
       } finally {
-        setDataLoaded(true);
+        if (isCurrent) setDataLoaded(true);
       }
     };
 
     void fetchEpisodeData();
+
+    return () => {
+      isCurrent = false;
+    };
   }, [mediaId, mediaType, seasonNumber, episodeNumber]);
 
   useEffect(() => {
@@ -289,8 +408,12 @@ export default function EpisodePage() {
     return (
       <div className="flex min-h-screen flex-1 items-center justify-center bg-black font-sans">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-white mb-4">Episode Not Found</h1>
-          <p className="text-zinc-400 mb-6">The episode you're looking for could not be loaded.</p>
+          <h1 className="text-2xl font-bold text-white mb-4">
+            Episode Not Found
+          </h1>
+          <p className="text-zinc-400 mb-6">
+            The episode you're looking for could not be loaded.
+          </p>
           <button
             onClick={() => router.push("/")}
             className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-100 shadow-lg shadow-violet-500/10 transition hover:border-violet-400 hover:bg-violet-500/20"
@@ -324,26 +447,66 @@ export default function EpisodePage() {
       <div className="relative z-10 min-h-screen">
         <main className="w-full max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
+            <div className="flex min-w-0 flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-3">
               <Link
                 href={`/media/${mediaId}/season/${seasonNumber}?type=tv`}
-                className="rounded-full border border-zinc-700 bg-zinc-900/60 px-3 py-1.5 text-sm text-zinc-200 transition hover:border-violet-500/60 hover:text-violet-200"
+                className="shrink-0 rounded-full border border-zinc-700 bg-zinc-900/60 px-2.5 py-1.5 text-xs text-zinc-200 transition hover:border-violet-500/60 hover:text-violet-200 sm:px-3 sm:text-sm"
               >
                 Back to season
               </Link>
-              <div>
+              <div className="min-w-0">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-300">
                   <span
                     onClick={handleTitleClick}
-                    className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
+                    className="block truncate hover:underline hover:text-violet-200 transition-colors cursor-pointer"
                   >
                     {title}
                   </span>
                 </p>
-                <h1 className="text-2xl sm:text-3xl font-bold text-white">
+                <h1 className="text-xl font-bold text-white sm:text-3xl">
                   Season {seasonNumber} Episode {episodeNumber}
                 </h1>
               </div>
+            </div>
+            <div className="flex w-full items-center gap-2 sm:w-auto">
+              <Link
+                href={
+                  previousEpisodeTarget
+                    ? `/media/${mediaId}/season/${previousEpisodeTarget.seasonNumber}/episode/${previousEpisodeTarget.episodeNumber}?type=tv`
+                    : "#"
+                }
+                aria-disabled={!previousEpisodeTarget}
+                onClick={(event) => {
+                  if (!previousEpisodeTarget) event.preventDefault();
+                }}
+                className={`inline-flex min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-full border px-2 py-1.5 text-[11px] font-medium transition sm:flex-none sm:px-3 sm:text-sm ${
+                  previousEpisodeTarget
+                    ? "border-violet-500/40 bg-violet-500/10 text-violet-100 hover:border-violet-400 hover:bg-violet-500/20"
+                    : "cursor-not-allowed border-zinc-700 bg-zinc-800 text-zinc-500"
+                }`}
+              >
+                <span className="sm:hidden">← Prev episode</span>
+                <span className="hidden sm:inline">← Previous episode</span>
+              </Link>
+              <Link
+                href={
+                  nextEpisodeTarget
+                    ? `/media/${mediaId}/season/${nextEpisodeTarget.seasonNumber}/episode/${nextEpisodeTarget.episodeNumber}?type=tv`
+                    : "#"
+                }
+                aria-disabled={!nextEpisodeTarget}
+                onClick={(event) => {
+                  if (!nextEpisodeTarget) event.preventDefault();
+                }}
+                className={`inline-flex min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-full border px-2 py-1.5 text-[11px] font-medium transition sm:flex-none sm:px-3 sm:text-sm ${
+                  nextEpisodeTarget
+                    ? "border-violet-500/40 bg-violet-500/10 text-violet-100 hover:border-violet-400 hover:bg-violet-500/20"
+                    : "cursor-not-allowed border-zinc-700 bg-zinc-800 text-zinc-500"
+                }`}
+              >
+                <span className="sm:hidden">Next episode →</span>
+                <span className="hidden sm:inline">Next episode →</span>
+              </Link>
             </div>
           </div>
 
@@ -428,10 +591,10 @@ export default function EpisodePage() {
                     {episodeHistory.map((watch) => (
                       <div
                         key={watch.id}
-                        className="flex sm:flex-row sm:items-center justify-between gap-2 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700/50"
+                        className="flex min-w-0 items-center justify-between gap-1 rounded-lg border border-zinc-700/50 bg-zinc-800/50 p-2 sm:gap-2 sm:p-3"
                       >
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <span className="text-zinc-300 text-sm break-words">
+                        <div className="flex min-w-0 items-center">
+                          <span className="whitespace-nowrap text-[11px] text-zinc-300 sm:text-sm">
                             Watched{" "}
                             {new Date(watch.watchedAt).toLocaleDateString(
                               "en-US",
@@ -448,7 +611,7 @@ export default function EpisodePage() {
                         </div>
                         <button
                           onClick={() => handleDeleteWatch(watch.id)}
-                          className="px-3 py-1 cursor-pointer text-red-400 hover:text-red-300 text-sm whitespace-nowrap self-end sm:self-center"
+                          className="shrink-0 cursor-pointer whitespace-nowrap px-1 py-1 text-xs text-red-400 hover:text-red-300 sm:px-3 sm:text-sm"
                         >
                           Remove
                         </button>
@@ -475,7 +638,7 @@ export default function EpisodePage() {
           }}
         >
           <div className="min-w-0 w-full max-w-md max-h-[90vh] overflow-x-hidden overflow-y-auto rounded-lg border border-zinc-700 bg-zinc-900 p-4 shadow-2xl sm:p-6">
-            <h3 className="text-lg font-semibold text-white mb-2">
+            <h3 className="mb-2 text-base font-semibold text-white sm:text-lg">
               Mark Episode as Watched
             </h3>
             <form onSubmit={handleAddWatch}>
@@ -489,7 +652,9 @@ export default function EpisodePage() {
                     onChange={(e) => setWatchOption(e.target.value as any)}
                     className="cursor-pointer"
                   />
-                  <span className="text-zinc-300">Just watched</span>
+                  <span className="min-w-0 text-sm text-zinc-300">
+                    Just watched
+                  </span>
                 </label>
                 <label className="flex items-center gap-3 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700/50 cursor-pointer hover:bg-zinc-800 transition-colors">
                   <input
@@ -500,7 +665,9 @@ export default function EpisodePage() {
                     onChange={(e) => setWatchOption(e.target.value as any)}
                     className="cursor-pointer"
                   />
-                  <span className="text-zinc-300">Release date</span>
+                  <span className="min-w-0 text-sm text-zinc-300">
+                    Release date
+                  </span>
                 </label>
                 <label className="flex items-center gap-3 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700/50 cursor-pointer hover:bg-zinc-800 transition-colors">
                   <input
@@ -511,7 +678,7 @@ export default function EpisodePage() {
                     onChange={(e) => setWatchOption(e.target.value as any)}
                     className="cursor-pointer"
                   />
-                  <span className="text-zinc-300">
+                  <span className="min-w-0 break-words text-sm text-zinc-300">
                     Unknown date (01-01-1990)
                   </span>
                 </label>
@@ -524,7 +691,9 @@ export default function EpisodePage() {
                     onChange={(e) => setWatchOption(e.target.value as any)}
                     className="cursor-pointer"
                   />
-                  <span className="text-zinc-300">Other date</span>
+                  <span className="min-w-0 text-sm text-zinc-300">
+                    Other date
+                  </span>
                 </label>
               </div>
 
@@ -538,7 +707,11 @@ export default function EpisodePage() {
                         value={watchDate}
                         onChange={(e) => setWatchDate(e.target.value)}
                         className="block w-full min-w-0 max-w-full appearance-none box-border rounded border border-zinc-600 bg-zinc-800 px-3 py-2 pr-11 text-base text-white focus:outline-none focus:ring-2 focus:ring-violet-500 [&::-webkit-calendar-picker-indicator]:opacity-0"
-                        style={{ colorScheme: "dark", width: "100%", minWidth: 0 }}
+                        style={{
+                          colorScheme: "dark",
+                          width: "100%",
+                          minWidth: 0,
+                        }}
                         required
                       />
                       <svg
@@ -565,7 +738,11 @@ export default function EpisodePage() {
                         value={watchTime}
                         onChange={(e) => setWatchTime(e.target.value)}
                         className="block w-full min-w-0 max-w-full appearance-none box-border rounded border border-zinc-600 bg-zinc-800 px-3 py-2 pr-11 text-base text-white focus:outline-none focus:ring-2 focus:ring-violet-500 [&::-webkit-calendar-picker-indicator]:opacity-0"
-                        style={{ colorScheme: "dark", width: "100%", minWidth: 0 }}
+                        style={{
+                          colorScheme: "dark",
+                          width: "100%",
+                          minWidth: 0,
+                        }}
                         required
                       />
                       <svg

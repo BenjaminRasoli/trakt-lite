@@ -39,8 +39,8 @@ export default function SeasonPage() {
 
   const title = useMemo(() => (show ? getMediaTitle(show) : "Unknown"), [show]);
   const posterUrl = useMemo(
-    () => getPosterUrl(show?.poster_path, "w500"),
-    [show?.poster_path],
+    () => getPosterUrl(season?.poster_path || show?.poster_path, "w500"),
+    [season?.poster_path, show?.poster_path],
   );
 
   const handleTitleClick = (e: React.MouseEvent) => {
@@ -317,29 +317,29 @@ export default function SeasonPage() {
     <div className="min-h-screen bg-black text-white">
       <main className="mx-auto w-full max-w-[1650px] px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-3">
             <Link
               href={`/media/${mediaId}?type=tv`}
-              className="rounded-full border border-zinc-700 bg-zinc-900/60 px-3 py-1.5 text-sm text-zinc-200 transition hover:border-violet-500/60 hover:text-violet-200"
+              className="shrink-0 rounded-full border border-zinc-700 bg-zinc-900/60 px-2.5 py-1.5 text-xs text-zinc-200 transition hover:border-violet-500/60 hover:text-violet-200 sm:px-3 sm:text-sm"
             >
               Back to show
             </Link>
-            <div>
+            <div className="min-w-0">
               <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-300">
                 <span
                   onClick={handleTitleClick}
-                  className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
+                  className="block truncate hover:underline hover:text-violet-200 transition-colors cursor-pointer"
                 >
                   {title}
                 </span>
               </p>
-              <h1 className="text-3xl font-bold text-white">
+              <h1 className="text-2xl font-bold text-white sm:text-3xl">
                 Season {seasonNumber}
               </h1>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex w-full items-center gap-2 sm:w-auto">
             <Link
               href={
                 seasonNumber > 1
@@ -347,13 +347,17 @@ export default function SeasonPage() {
                   : "#"
               }
               aria-disabled={seasonNumber <= 1}
-              className={`inline-flex items-center justify-center rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+              onClick={(event) => {
+                if (seasonNumber <= 1) event.preventDefault();
+              }}
+              className={`inline-flex min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-full border px-2 py-1.5 text-[11px] font-medium transition sm:flex-none sm:px-3 sm:text-sm ${
                 seasonNumber > 1
                   ? "border-violet-500/40 bg-violet-500/10 text-violet-100 hover:border-violet-400 hover:bg-violet-500/20"
-                  : "pointer-events-none cursor-not-allowed border-zinc-700 bg-zinc-800 text-zinc-500"
+                  : "cursor-not-allowed border-zinc-700 bg-zinc-800 text-zinc-500"
               }`}
             >
-              ← Previous season
+              <span className="sm:hidden">← Prev season</span>
+              <span className="hidden sm:inline">← Previous season</span>
             </Link>
             <Link
               href={
@@ -365,22 +369,31 @@ export default function SeasonPage() {
                 !show?.number_of_seasons ||
                 seasonNumber >= show.number_of_seasons
               }
-              className={`inline-flex items-center justify-center rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+              onClick={(event) => {
+                if (
+                  !show?.number_of_seasons ||
+                  seasonNumber >= show.number_of_seasons
+                ) {
+                  event.preventDefault();
+                }
+              }}
+              className={`inline-flex min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-full border px-2 py-1.5 text-[11px] font-medium transition sm:flex-none sm:px-3 sm:text-sm ${
                 show?.number_of_seasons && seasonNumber < show.number_of_seasons
                   ? "border-violet-500/40 bg-violet-500/10 text-violet-100 hover:border-violet-400 hover:bg-violet-500/20"
-                  : "pointer-events-none cursor-not-allowed border-zinc-700 bg-zinc-800 text-zinc-500"
+                  : "cursor-not-allowed border-zinc-700 bg-zinc-800 text-zinc-500"
               }`}
             >
-              Next season →
+              <span className="sm:hidden">Next season →</span>
+              <span className="hidden sm:inline">Next season →</span>
             </Link>
           </div>
         </div>
 
-        <div className="mb-8 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4 md:flex md:items-center md:gap-5">
+        <div className="mb-8 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4 md:flex md:items-start md:gap-5">
           <img
             src={posterUrl}
-            alt={title}
-            className="h-28 w-20 rounded-lg object-cover shadow-xl shadow-violet-500/10"
+            alt={`${title} ${season.name || `Season ${seasonNumber}`}`}
+            className="h-28 w-20 rounded-lg object-cover pb-2"
             onError={(e) => {
               e.currentTarget.src = "/placeholder-poster.svg";
             }}
@@ -500,9 +513,9 @@ export default function SeasonPage() {
                           {episodeHistory.map((watch) => (
                             <div
                               key={watch.id}
-                              className="flex items-center justify-between gap-2 p-2 bg-zinc-700/30 rounded-lg"
+                              className="flex min-w-0 flex-wrap items-start justify-between gap-2 p-2 bg-zinc-700/30 rounded-lg sm:flex-nowrap sm:items-center"
                             >
-                              <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-[10px] font-medium uppercase tracking-[0.15em] text-emerald-300">
+                              <span className="min-w-0 break-words rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-[9px] font-medium uppercase tracking-[0.1em] text-emerald-300 sm:text-[10px] sm:tracking-[0.15em]">
                                 Watched{" "}
                                 {new Date(watch.watchedAt).toLocaleDateString(
                                   "en-US",
@@ -515,7 +528,7 @@ export default function SeasonPage() {
                               </span>
                               <button
                                 onClick={() => handleDeleteWatch(watch.id)}
-                                className="px-2 py-1 cursor-pointer text-red-400 hover:text-red-300 text-xs whitespace-nowrap"
+                                className="shrink-0 px-2 py-1 cursor-pointer text-red-400 hover:text-red-300 text-xs whitespace-nowrap"
                               >
                                 Remove
                               </button>
@@ -546,7 +559,7 @@ export default function SeasonPage() {
           }}
         >
           <div className="max-h-[90vh] min-w-0 w-full max-w-md overflow-x-hidden overflow-y-auto rounded-lg border border-zinc-700 bg-zinc-900 p-4 sm:p-6">
-            <h2 className="mb-4 text-2xl font-bold text-white">
+            <h2 className="mb-4 text-lg font-bold text-white sm:text-2xl">
               Mark Episode as Watched
             </h2>
 
@@ -560,7 +573,7 @@ export default function SeasonPage() {
                   onChange={(e) => setWatchOption(e.target.value as any)}
                   className="cursor-pointer"
                 />
-                <span className="text-zinc-300">Just watched</span>
+                <span className="min-w-0 text-sm text-zinc-300">Just watched</span>
               </label>
               <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-zinc-700/50 bg-zinc-800/50 p-3 transition hover:bg-zinc-800">
                 <input
@@ -571,7 +584,7 @@ export default function SeasonPage() {
                   onChange={(e) => setWatchOption(e.target.value as any)}
                   className="cursor-pointer"
                 />
-                <span className="text-zinc-300">Release date</span>
+                <span className="min-w-0 text-sm text-zinc-300">Release date</span>
               </label>
               <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-zinc-700/50 bg-zinc-800/50 p-3 transition hover:bg-zinc-800">
                 <input
@@ -582,7 +595,7 @@ export default function SeasonPage() {
                   onChange={(e) => setWatchOption(e.target.value as any)}
                   className="cursor-pointer"
                 />
-                <span className="text-zinc-300">Unknown date (01-01-1990)</span>
+                <span className="min-w-0 break-words text-sm text-zinc-300">Unknown date (01-01-1990)</span>
               </label>
               <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-zinc-700/50 bg-zinc-800/50 p-3 transition hover:bg-zinc-800">
                 <input
@@ -593,7 +606,7 @@ export default function SeasonPage() {
                   onChange={(e) => setWatchOption(e.target.value as any)}
                   className="cursor-pointer"
                 />
-                <span className="text-zinc-300">Other date</span>
+                <span className="min-w-0 text-sm text-zinc-300">Other date</span>
               </label>
             </div>
 

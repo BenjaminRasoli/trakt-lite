@@ -19,6 +19,7 @@ export interface TMDBMedia {
   runtime?: number;
   number_of_seasons?: number;
   number_of_episodes?: number;
+  seasons?: Array<{ season_number: number }>;
   status?: string;
 }
 

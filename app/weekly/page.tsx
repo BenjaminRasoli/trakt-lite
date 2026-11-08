@@ -41,6 +41,7 @@ interface WatchedItem {
   seasonNumber: number | null;
   episodeNumber: number | null;
   episodeName: string | null;
+  seasonPosterPath?: string | null;
   watchedAt: Date;
 }
 
@@ -132,6 +133,31 @@ async function getRuntimeMinutes(
     task.load(),
   );
   return new Map(runtimeGroups.flatMap((group) => Array.from(group)));
+}
+
+async function getSeasonPosterPaths(
+  items: WatchedItem[],
+): Promise<Map<string, string | null>> {
+  const seasonKeys = Array.from(
+    new Set(
+      items.flatMap((item) =>
+        item.seasonNumber === null
+          ? []
+          : [`${item.media.tmdbId}:${item.seasonNumber}`],
+      ),
+    ),
+  );
+  const seasonPosters = await mapWithConcurrency(
+    seasonKeys,
+    5,
+    async (key) => {
+      const [tmdbId, seasonNumber] = key.split(":").map(Number);
+      const details = await getTVSeasonDetails(tmdbId, seasonNumber);
+      return [key, details?.poster_path ?? null] as const;
+    },
+  );
+
+  return new Map(seasonPosters);
 }
 
 function WeeklyPageContent() {
@@ -266,8 +292,9 @@ function WeeklyPageContent() {
           (item: WatchedItem) => item.seasonNumber === null,
         ).length;
 
-        const thisWeekRuntimeByItemId = await getRuntimeMinutes(thisWeek);
-        const lastWeekRuntimeByItemId = await getRuntimeMinutes(lastWeek);
+        const weeklyItems = [...thisWeek, ...lastWeek];
+        const runtimeByItemId = await getRuntimeMinutes(weeklyItems);
+        const seasonPosterPaths = await getSeasonPosterPaths(weeklyItems);
         const getTotalRuntimeMinutes = (
           watchedItems: WatchedItem[],
           runtimeMap: Map<string, number | null>,
@@ -283,27 +310,27 @@ function WeeklyPageContent() {
         };
         const thisWeekRuntimeMinutes = getTotalRuntimeMinutes(
           thisWeek,
-          thisWeekRuntimeByItemId,
+          runtimeByItemId,
         );
         const lastWeekRuntimeMinutes = getTotalRuntimeMinutes(
           lastWeek,
-          lastWeekRuntimeByItemId,
+          runtimeByItemId,
         );
         const thisWeekEpisodeRuntimeMinutes = getTotalRuntimeMinutes(
           thisWeek.filter((item) => item.seasonNumber !== null),
-          thisWeekRuntimeByItemId,
+          runtimeByItemId,
         );
         const lastWeekEpisodeRuntimeMinutes = getTotalRuntimeMinutes(
           lastWeek.filter((item) => item.seasonNumber !== null),
-          lastWeekRuntimeByItemId,
+          runtimeByItemId,
         );
         const thisWeekMovieRuntimeMinutes = getTotalRuntimeMinutes(
           thisWeek.filter((item) => item.seasonNumber === null),
-          thisWeekRuntimeByItemId,
+          runtimeByItemId,
         );
         const lastWeekMovieRuntimeMinutes = getTotalRuntimeMinutes(
           lastWeek.filter((item) => item.seasonNumber === null),
-          lastWeekRuntimeByItemId,
+          runtimeByItemId,
         );
 
         const calculateChange = (current: number | null, previous: number | null) => {
@@ -312,8 +339,17 @@ function WeeklyPageContent() {
           return Math.round(((current - previous) / previous) * 100);
         };
 
-        setThisWeekItems(thisWeek);
-        setLastWeekItems(lastWeek);
+        const addSeasonPoster = (item: WatchedItem): WatchedItem => ({
+          ...item,
+          seasonPosterPath:
+            item.seasonNumber === null
+              ? null
+              : seasonPosterPaths.get(
+                  `${item.media.tmdbId}:${item.seasonNumber}`,
+                ) ?? null,
+        });
+        setThisWeekItems(thisWeek.map(addSeasonPoster));
+        setLastWeekItems(lastWeek.map(addSeasonPoster));
         setStats({
           thisWeekCount: thisWeek.length,
           lastWeekCount: lastWeek.length,
@@ -600,7 +636,9 @@ function WeeklyPageContent() {
                       >
                         <div className="relative aspect-[2/3] overflow-hidden">
                           <img
-                            src={getPosterUrl(item.media.posterPath || null)}
+                            src={getPosterUrl(
+                              item.seasonPosterPath || item.media.posterPath || null,
+                            )}
                             alt={item.media.title}
                             className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                             onError={(e) => {
@@ -688,7 +726,9 @@ function WeeklyPageContent() {
                       >
                         <div className="relative aspect-[2/3] overflow-hidden">
                           <img
-                            src={getPosterUrl(item.media.posterPath || null)}
+                            src={getPosterUrl(
+                              item.seasonPosterPath || item.media.posterPath || null,
+                            )}
                             alt={item.media.title}
                             className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                             onError={(e) => {
