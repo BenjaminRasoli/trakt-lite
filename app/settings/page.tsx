@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getRandomBackdropUrl, getTrendingMedia } from "@/lib/tmdb";
 
+type AccountAction = "reset" | "delete";
+
 export default function SettingsPage() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -43,6 +45,11 @@ export default function SettingsPage() {
   const [liveSession, setLiveSession] = useState<any>(null);
   const [loadingLiveSession, setLoadingLiveSession] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [accountAction, setAccountAction] = useState<AccountAction | null>(null);
+  const [accountConfirmation, setAccountConfirmation] = useState("");
+  const [accountBusy, setAccountBusy] = useState(false);
+  const [accountError, setAccountError] = useState<string | null>(null);
+  const [accountSuccess, setAccountSuccess] = useState<string | null>(null);
   const lastActiveSessionRef = useRef<any>(null);
   const lastActiveAtRef = useRef<number>(0);
   const initialLiveCheckRef = useRef(false);
@@ -483,6 +490,65 @@ export default function SettingsPage() {
     }
   };
 
+  const handleAccountAction = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!accountAction) return;
+
+    const confirmation = accountAction === "reset" ? "RESET" : "DELETE";
+    if (accountConfirmation.trim() !== confirmation) return;
+
+    setAccountBusy(true);
+    setAccountError(null);
+    setAccountSuccess(null);
+
+    try {
+      const response = await fetch("/api/settings/account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: accountAction, confirmation }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Unable to complete account action.");
+      }
+
+      if (accountAction === "reset") {
+        setAccountAction(null);
+        setAccountConfirmation("");
+        setAccountSuccess("Your account data has been erased. You can start fresh.");
+        router.refresh();
+        return;
+      }
+
+      try {
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+          console.error("Account deleted, but sign-out failed:", error);
+          setAccountError(
+            "Your account was deleted, but this browser session could not be signed out. Please close this tab.",
+          );
+        }
+      } catch (error) {
+        console.error("Account deleted, but sign-out failed:", error);
+        setAccountError(
+          "Your account was deleted, but this browser session could not be signed out. Please close this tab.",
+        );
+      } finally {
+        router.replace("/auth");
+        router.refresh();
+      }
+    } catch (error) {
+      setAccountError(
+        error instanceof Error
+          ? error.message
+          : "Unable to complete account action.",
+      );
+    } finally {
+      setAccountBusy(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen flex-1 flex-col items-center justify-center bg-black font-sans">
@@ -831,7 +897,10 @@ export default function SettingsPage() {
               either manually or after playback completion, sync into this app
               as watched history. To set it up, create a webhook in Jellyfin
               with the URL{" "}
-              <code>https://traktlite.vercel.app/api/jellyfin/webhook</code> and
+              <code className="break-all">
+                https://traktlite.vercel.app/api/jellyfin/webhook
+              </code>{" "}
+              and
               send <code>UserDataSaved</code> events.
             </p>
 
@@ -950,6 +1019,134 @@ export default function SettingsPage() {
               </button>
             </form>
           </div>
+
+          <section className="rounded-lg border border-red-500/50 bg-zinc-950/90 p-6 shadow-xl shadow-black/30 backdrop-blur-md">
+            <h2 className="mb-2 text-xl font-bold text-red-200">Danger zone</h2>
+            <p className="mb-6 text-sm leading-relaxed text-zinc-200">
+              These actions are permanent. Erase your account data to keep your
+              sign-in and start over, or delete your account completely.
+            </p>
+
+            <div className="space-y-5">
+              <div className="flex flex-col gap-4 rounded-lg border border-red-500/30 bg-zinc-900/90 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="font-semibold text-white">Erase all account data</h3>
+                  <p className="mt-1 text-sm leading-relaxed text-zinc-300">
+                    Deletes your history, ratings, watchlist, Jellyfin
+                    connection, profile details, and cached data. Your sign-in
+                    account will remain.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAccountAction("reset");
+                    setAccountConfirmation("");
+                    setAccountError(null);
+                    setAccountSuccess(null);
+                  }}
+                  disabled={accountBusy}
+                  className="shrink-0 cursor-pointer rounded-full border border-orange-400/70 px-5 py-2.5 text-sm font-semibold text-orange-100 transition hover:bg-orange-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Erase all data
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-4 rounded-lg border border-red-500/30 bg-zinc-900/90 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="font-semibold text-white">Delete account</h3>
+                  <p className="mt-1 text-sm leading-relaxed text-zinc-300">
+                    Permanently erases your account data and deletes your
+                    sign-in account.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAccountAction("delete");
+                    setAccountConfirmation("");
+                    setAccountError(null);
+                    setAccountSuccess(null);
+                  }}
+                  disabled={accountBusy}
+                  className="shrink-0 cursor-pointer rounded-full border border-red-400/70 px-5 py-2.5 text-sm font-semibold text-red-100 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Delete account
+                </button>
+              </div>
+            </div>
+
+            {accountSuccess && (
+              <p className="mt-4 text-sm text-green-300" role="status">
+                {accountSuccess}
+              </p>
+            )}
+            {accountError && (
+              <p className="mt-4 text-sm text-red-300" role="alert">
+                {accountError}
+              </p>
+            )}
+
+            {accountAction && (
+              <form
+                onSubmit={handleAccountAction}
+                className="mt-5 space-y-3 rounded-lg border border-red-500/40 bg-zinc-900/90 p-4"
+              >
+                <label
+                  htmlFor="account-confirmation"
+                  className="block text-sm text-zinc-300"
+                >
+                  Type{" "}
+                  <span className="font-bold text-white">
+                    {accountAction === "reset" ? "RESET" : "DELETE"}
+                  </span>{" "}
+                  to confirm{" "}
+                  {accountAction === "reset"
+                    ? "erasing all account data"
+                    : "permanently deleting your account"}
+                  .
+                </label>
+                <input
+                  id="account-confirmation"
+                  value={accountConfirmation}
+                  onChange={(event) =>
+                    setAccountConfirmation(event.target.value)
+                  }
+                  autoComplete="off"
+                  className="w-full rounded border border-zinc-500 bg-zinc-800 px-4 py-2 text-white outline-none focus:border-red-400"
+                />
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="submit"
+                    disabled={
+                      accountBusy ||
+                      accountConfirmation.trim() !==
+                        (accountAction === "reset" ? "RESET" : "DELETE")
+                    }
+                    className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-red-700 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {accountBusy
+                      ? "Processing..."
+                      : accountAction === "reset"
+                        ? "Erase my data"
+                        : "Permanently delete account"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAccountAction(null);
+                      setAccountConfirmation("");
+                      setAccountError(null);
+                    }}
+                    disabled={accountBusy}
+                    className="cursor-pointer rounded-full border border-zinc-600 px-5 py-2.5 text-sm font-semibold text-zinc-200 transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
+          </section>
         </div>
       </main>
     </div>

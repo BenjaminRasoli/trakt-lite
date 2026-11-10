@@ -842,13 +842,13 @@ export default function ProfilePage() {
                   Year breakdown
                 </h4>
                 <div className="mt-4 overflow-x-auto pb-1">
-                  <div className="flex min-w-[640px] items-end gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3 pt-5">
-                    {stats.yearBreakdown.length === 0 ? (
-                      <div className="w-full rounded-2xl border border-dashed border-zinc-700 bg-zinc-950/40 p-4 text-sm text-zinc-400">
-                        No watch activity yet.
-                      </div>
-                    ) : (
-                      stats.yearBreakdown.map(([year, count]) => {
+                  {stats.yearBreakdown.length === 0 ? (
+                    <div className="flex min-h-24 w-full items-center justify-center rounded-2xl border border-dashed border-zinc-700 bg-zinc-950/40 p-4 text-center text-sm text-zinc-400">
+                      No watch activity yet.
+                    </div>
+                  ) : (
+                    <div className="flex min-w-[640px] items-end gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3 pt-5">
+                      {stats.yearBreakdown.map(([year, count]) => {
                         const maxCount = Math.max(
                           ...stats.yearBreakdown.map(([, value]) => value),
                           1,
@@ -875,9 +875,9 @@ export default function ProfilePage() {
                             </div>
                           </div>
                         );
-                      })
-                    )}
-                  </div>
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -891,13 +891,13 @@ export default function ProfilePage() {
                 Top titles
               </h4>
               <div className="mt-4 overflow-x-auto pb-1">
-                <div className="flex min-w-[800px] items-end gap-4 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3 pt-5">
-                  {stats.titleBreakdown.length === 0 ? (
-                    <div className="w-full rounded-2xl border border-dashed border-zinc-700 bg-zinc-950/40 p-4 text-sm text-zinc-400">
-                      No titles yet.
-                    </div>
-                  ) : (
-                    stats.titleBreakdown.map(([title, count], index) => {
+                {stats.titleBreakdown.length === 0 ? (
+                  <div className="flex min-h-24 w-full items-center justify-center rounded-2xl border border-dashed border-zinc-700 bg-zinc-950/40 p-4 text-center text-sm text-zinc-400">
+                    No titles yet.
+                  </div>
+                ) : (
+                  <div className="flex min-w-[800px] items-end gap-4 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3 pt-5">
+                    {stats.titleBreakdown.map(([title, count], index) => {
                       const maxCount = Math.max(
                         ...stats.titleBreakdown.map(([, value]) => value),
                         1,
@@ -927,9 +927,9 @@ export default function ProfilePage() {
                           </div>
                         </div>
                       );
-                    })
-                  )}
-                </div>
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -942,13 +942,13 @@ export default function ProfilePage() {
                 </h4>
               </div>
               <div className="overflow-x-auto pb-1">
-                <div className="flex min-w-[640px] items-end gap-2.5 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3 pt-5">
-                  {stats.dayOfWeekStats.length === 0 ? (
-                    <div className="w-full rounded-2xl border border-dashed border-zinc-700 bg-zinc-950/40 p-4 text-sm text-zinc-400">
-                      No data yet.
-                    </div>
-                  ) : (
-                    stats.dayOfWeekStats.map(([day, count]) => {
+                {stats.dayOfWeekStats.length === 0 ? (
+                  <div className="flex min-h-24 w-full items-center justify-center rounded-2xl border border-dashed border-zinc-700 bg-zinc-950/40 p-4 text-center text-sm text-zinc-400">
+                    No data yet.
+                  </div>
+                ) : (
+                  <div className="flex min-w-[640px] items-end gap-2.5 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3 pt-5">
+                    {stats.dayOfWeekStats.map(([day, count]) => {
                       const dayNames = [
                         "Monday",
                         "Tuesday",
@@ -984,9 +984,9 @@ export default function ProfilePage() {
                           </div>
                         </div>
                       );
-                    })
-                  )}
-                </div>
+                    })}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -997,14 +997,14 @@ export default function ProfilePage() {
                 </h4>
               </div>
               <div className="overflow-x-auto pb-1">
-                <div className="min-w-[960px] rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3 pt-5">
-                  <div className="flex h-[220px] w-full items-end gap-1.5">
-                    {stats.hourOfDayStats.length === 0 ? (
-                      <div className="w-full rounded-2xl border border-dashed border-zinc-700 bg-zinc-950/40 p-4 text-sm text-zinc-400">
-                        No data yet.
-                      </div>
-                    ) : (
-                      stats.hourOfDayStats.map(([hour, count]) => {
+                {stats.hourOfDayStats.length === 0 ? (
+                  <div className="flex min-h-24 w-full items-center justify-center rounded-2xl border border-dashed border-zinc-700 bg-zinc-950/40 p-4 text-center text-sm text-zinc-400">
+                    No data yet.
+                  </div>
+                ) : (
+                  <div className="min-w-[960px] rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3 pt-5">
+                    <div className="flex h-[220px] w-full items-end gap-1.5">
+                      {stats.hourOfDayStats.map(([hour, count]) => {
                         const maxCount = Math.max(
                           ...stats.hourOfDayStats.map(([, c]) => c),
                           1,
@@ -1032,10 +1032,10 @@ export default function ProfilePage() {
                             </div>
                           </div>
                         );
-                      })
-                    )}
+                      })}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </div>

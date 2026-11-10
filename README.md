@@ -14,6 +14,7 @@ Link: [https://TraktLite.vercel.app/](https://traktlite.vercel.app/)
 - **Detailed Episode Pages**: View episode details, mark as watched, and manage watch dates
 - **Season Management**: Browse episodes by season with watch state indicators
 - **Jellyfin Integration**: Live session tracking for what you're currently watching
+- **Account Management**: Erase all account data or permanently delete your account
 - **Responsive Design**: Beautiful dark theme UI that works on all devices
 - **TMDB Integration**: Rich media data from The Movie Database
 
@@ -61,6 +62,7 @@ DATABASE_URL="postgresql://user:password@localhost:5432/trakt_lite"
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL="your-supabase-project-url"
 NEXT_PUBLIC_SUPABASE_ANON_KEY="your-supabase-anon-key"
+# Required for permanent account deletion (not needed to erase account data)
 SUPABASE_SERVICE_ROLE_KEY="your-supabase-service-role-key"
 
 # TMDB API
@@ -93,4 +95,3 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
-
