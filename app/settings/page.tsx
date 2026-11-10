@@ -277,8 +277,12 @@ export default function SettingsPage() {
                   data.watchlistImported > 0
                     ? ` and ${data.watchlistImported} watchlist items`
                     : "";
+                const ratingsMsg =
+                  data.ratingsImported > 0
+                    ? ` and ${data.ratingsImported} ratings`
+                    : "";
                 setImportProgress(
-                  `Successfully imported ${data.imported} entries${watchlistMsg}`,
+                  `Successfully imported ${data.imported} entries${ratingsMsg}${watchlistMsg}`,
                 );
                 setImportSuccess(true);
                 setImportPercent(100);
@@ -518,8 +522,9 @@ export default function SettingsPage() {
               Import Watch Data
             </h2>
             <p className="text-zinc-400 mb-4">
-              Import your watch history from a Trakt export file. This will
-              replace all existing data.
+              Import your watch history and ratings from a Trakt export file.
+              Existing watch history is replaced; imported ratings are added or
+              updated.
             </p>
             <form onSubmit={handleImport} className="space-y-4">
               <div>
@@ -577,7 +582,8 @@ export default function SettingsPage() {
               Export Watch Data
             </h2>
             <p className="text-zinc-400 mb-4">
-              Export all your watch history in Trakt format as a .zip file.
+              Export your watch history and ratings in Trakt format as a .zip
+              file.
             </p>
             <button
               onClick={handleExport}

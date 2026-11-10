@@ -27,15 +27,15 @@ function parseTarget(
     return { error: "Media type must be movie or tv" };
   }
   if (
-    hasSeason !== hasEpisode ||
     (hasSeason &&
-      (!Number.isSafeInteger(seasonNumber) ||
+      (!Number.isSafeInteger(seasonNumber) || seasonNumber! < 0)) ||
+    (hasEpisode &&
+      (!hasSeason ||
         !Number.isSafeInteger(episodeNumber) ||
-        seasonNumber! < 0 ||
         episodeNumber! <= 0)) ||
-    (mediaType !== "tv" && hasSeason)
+    (mediaType !== "tv" && (hasSeason || hasEpisode))
   ) {
-    return { error: "Valid season and episode numbers are required for an episode rating" };
+    return { error: "Valid season and episode numbers are required for TV ratings" };
   }
 
   return {
@@ -45,9 +45,11 @@ function parseTarget(
       seasonNumber,
       episodeNumber,
       subjectKey:
-        seasonNumber === null
-          ? "media"
-          : `episode:${seasonNumber}:${episodeNumber}`,
+        episodeNumber !== null
+          ? `episode:${seasonNumber}:${episodeNumber}`
+          : seasonNumber !== null
+            ? `season:${seasonNumber}`
+            : "media",
     },
   };
 }
@@ -64,11 +66,16 @@ async function getEligibleMedia(userId: string, target: RatingTarget) {
     where: {
       userId,
       mediaId: media.id,
-      ...(target.seasonNumber !== null
+      ...(target.episodeNumber !== null
         ? {
             seasonNumber: target.seasonNumber,
             episodeNumber: target.episodeNumber,
           }
+        : target.seasonNumber !== null
+          ? {
+              seasonNumber: target.seasonNumber,
+              episodeNumber: { not: null },
+            }
         : target.mediaType === "tv"
           ? {
               seasonNumber: { not: null },
@@ -108,8 +115,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const media = await getEligibleMedia(user.id, parsed.target);
-    if (!media) {
+    const media = await prisma.media.findUnique({
+      where: { tmdbId: parsed.target.tmdbId },
+      select: { id: true, mediaType: true },
+    });
+    if (!media || media.mediaType !== parsed.target.mediaType) {
       return NextResponse.json({ eligible: false, rating: null });
     }
 
@@ -123,8 +133,16 @@ export async function GET(request: NextRequest) {
       },
       select: { score: true, updatedAt: true },
     });
+    if (rating) {
+      return NextResponse.json({ eligible: true, rating });
+    }
 
-    return NextResponse.json({ eligible: true, rating });
+    const eligibleMedia = await getEligibleMedia(user.id, parsed.target);
+
+    return NextResponse.json({
+      eligible: Boolean(eligibleMedia),
+      rating: null,
+    });
   } catch (error) {
     console.error("Error fetching user rating:", error);
     return NextResponse.json(

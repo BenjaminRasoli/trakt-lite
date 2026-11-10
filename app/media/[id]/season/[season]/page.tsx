@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSupabase } from "@/components/supabase-provider";
+import UserRating from "@/components/user-rating";
 import {
   getMediaDetails,
   getPosterUrl,
@@ -414,6 +415,15 @@ export default function SeasonPage() {
             <p className="mt-2 max-w-2xl text-sm text-zinc-300">
               {season.overview || "No season overview is available yet."}
             </p>
+            <UserRating
+              tmdbId={mediaId}
+              mediaType="tv"
+              title={`${title} - Season ${seasonNumber}`}
+              seasonNumber={seasonNumber}
+              watched={watchHistory.some(
+                (watch) => watch.seasonNumber === seasonNumber,
+              )}
+            />
           </div>
         </div>
 

@@ -13,14 +13,7 @@ import {
 import type { TMDBMedia } from "@/lib/tmdb";
 
 type Recommendation = TMDBMedia & {
-  recommendationReason: string;
   recommendationScore: number;
-};
-
-type RecommendationSeed = {
-  tmdbId: number;
-  title: string;
-  mediaType: "movie" | "tv";
 };
 
 const INITIAL_RESULT_COUNT = 18;
@@ -44,8 +37,7 @@ export default function RecommendationsPage() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
-  const [basedOn, setBasedOn] = useState<RecommendationSeed[]>([]);
-  const [hasWatchHistory, setHasWatchHistory] = useState(true);
+  const [hasRatings, setHasRatings] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
@@ -130,8 +122,7 @@ export default function RecommendationsPage() {
           ? (data.recommendations as Recommendation[])
           : [];
         setRecommendations(results);
-        setBasedOn(Array.isArray(data.basedOn) ? data.basedOn : []);
-        setHasWatchHistory(data.hasWatchHistory === true);
+        setHasRatings(data.hasRatings === true);
         setPageBackdrop(getRandomBackdropUrl(results));
         setVisibleCount(INITIAL_RESULT_COUNT);
       } catch (fetchError) {
@@ -261,47 +252,28 @@ export default function RecommendationsPage() {
             Picked for you
           </h1>
           <p className="text-xl text-zinc-400">
-            Recommendations shaped by the movies and shows you watch
+            Recommendations shaped by your ratings
           </p>
         </div>
 
-        {!loading && !error && !hasWatchHistory ? (
+        {!loading && !error && !hasRatings ? (
           <div className="rounded-2xl border border-zinc-700/60 bg-zinc-900/70 px-6 py-12 text-center">
             <h2 className="mb-3 text-xl font-semibold text-white">
-              Your recommendations start with your watch history
+              Your recommendations start with your ratings
             </h2>
             <p className="mx-auto mb-6 max-w-xl text-sm leading-relaxed text-zinc-400">
-              Log a few movies or episodes and we’ll use them to find titles
-              that match what you enjoy.
+              Rate movies or episodes you’ve watched and we’ll use your
+              favorites to find more titles you’re likely to enjoy.
             </p>
             <Link
-              href="/new"
+              href="/history"
               className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-5 py-2.5 text-sm font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
             >
-              Explore new titles
+              Rate watched titles
             </Link>
           </div>
         ) : (
           <>
-            {basedOn.length > 0 && !loading && (
-              <div className="mb-6">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                  Based on your recent watches
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {basedOn.slice(0, 6).map((seed) => (
-                    <Link
-                      key={`${seed.mediaType}-${seed.tmdbId}`}
-                      href={`/media/${seed.tmdbId}?type=${seed.mediaType}`}
-                      className="rounded-full border border-zinc-700/70 bg-zinc-900/80 px-3 py-1.5 text-xs text-zinc-300 transition hover:border-violet-500/60 hover:text-violet-200"
-                    >
-                      {seed.title}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
-
             <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex w-fit items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900/80 p-1">
                 {MEDIA_FILTERS.map(({ value, label, icon }) => (
@@ -475,7 +447,6 @@ export default function RecommendationsPage() {
                     <MediaCard
                       key={`${getMediaType(media)}-${media.id}`}
                       media={media}
-                      subtitle={media.recommendationReason}
                     />
                   ))}
                 </div>
@@ -495,15 +466,15 @@ export default function RecommendationsPage() {
                   {filteredRecommendations.length === 0 &&
                   recommendations.length > 0
                     ? "No recommendations match this filter."
-                    : "We couldn’t find recommendations from your recent watches yet."}
+                    : "We couldn’t find recommendations from your ratings yet."}
                 </p>
                 {filteredRecommendations.length === 0 &&
                   recommendations.length === 0 && (
                     <Link
-                      href="/new"
+                      href="/history"
                       className="mt-5 inline-flex cursor-pointer items-center justify-center rounded-full border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
                     >
-                      Explore new titles
+                      Rate more watched titles
                     </Link>
                   )}
               </div>

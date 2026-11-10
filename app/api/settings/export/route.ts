@@ -1,9 +1,21 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import JSZip from "jszip";
 
-export async function GET(request: NextRequest) {
+type WatchedShowExport = {
+  last_updated_at: string;
+  last_watched_at: string;
+  show: {
+    ids: { tmdb: number };
+    title: string;
+    year: number | null;
+  };
+  plays: number;
+  total_count: number;
+};
+
+export async function GET() {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -20,13 +32,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const watchHistory = await prisma.watchHistory.findMany({
-      where: { userId: dbUser.id },
-      include: {
-        media: true,
-      },
-      orderBy: { watchedAt: 'desc' },
-    });
+    const [watchHistory, ratings] = await Promise.all([
+      prisma.watchHistory.findMany({
+        where: { userId: dbUser.id },
+        include: {
+          media: true,
+        },
+        orderBy: { watchedAt: "desc" },
+      }),
+      prisma.userRating.findMany({
+        where: { userId: dbUser.id },
+        include: {
+          media: true,
+        },
+        orderBy: { updatedAt: "desc" },
+      }),
+    ]);
 
     const zip = new JSZip();
 
@@ -120,10 +141,100 @@ export async function GET(request: NextRequest) {
           });
         }
         return acc;
-      }, [] as any[]);
+      }, [] as WatchedShowExport[]);
 
     zip.file("watched-movies.json", JSON.stringify(watchedMovies, null, 2));
     zip.file("watched-shows.json", JSON.stringify(watchedShows, null, 2));
+
+    const toTraktRatingEntry = (rating: (typeof ratings)[number]) => {
+      const baseEntry = {
+        rated_at: rating.updatedAt.toISOString(),
+        rating: rating.score,
+      };
+      const mediaEntry = {
+        ids: { tmdb: rating.media.tmdbId },
+        title: rating.media.title,
+        year: rating.media.releaseDate?.getFullYear() || null,
+      };
+
+      if (rating.media.mediaType === "movie") {
+        return { ...baseEntry, movie: mediaEntry };
+      }
+      if (rating.seasonNumber !== null && rating.episodeNumber !== null) {
+        return {
+          ...baseEntry,
+          episode: {
+            season: rating.seasonNumber,
+            number: rating.episodeNumber,
+          },
+          show: mediaEntry,
+        };
+      }
+      if (rating.seasonNumber !== null) {
+        return {
+          ...baseEntry,
+          season: { number: rating.seasonNumber },
+          show: mediaEntry,
+        };
+      }
+      return { ...baseEntry, show: mediaEntry };
+    };
+
+    zip.file(
+      "ratings-movies.json",
+      JSON.stringify(
+        ratings
+          .filter((rating) => rating.media.mediaType === "movie")
+          .map(toTraktRatingEntry),
+        null,
+        2,
+      ),
+    );
+    zip.file(
+      "ratings-shows.json",
+      JSON.stringify(
+        ratings
+          .filter(
+            (rating) =>
+              rating.media.mediaType === "tv" &&
+              rating.seasonNumber === null &&
+              rating.episodeNumber === null,
+          )
+          .map(toTraktRatingEntry),
+        null,
+        2,
+      ),
+    );
+    zip.file(
+      "ratings-episodes.json",
+      JSON.stringify(
+        ratings
+          .filter(
+            (rating) =>
+              rating.media.mediaType === "tv" &&
+              rating.seasonNumber !== null &&
+              rating.episodeNumber !== null,
+          )
+          .map(toTraktRatingEntry),
+        null,
+        2,
+      ),
+    );
+    zip.file(
+      "ratings-seasons.json",
+      JSON.stringify(
+        ratings
+          .filter(
+            (rating) =>
+              rating.media.mediaType === "tv" &&
+              rating.seasonNumber !== null &&
+              rating.episodeNumber === null,
+          )
+          .map(toTraktRatingEntry),
+        null,
+        2,
+      ),
+    );
 
     const emptyFiles = [
       "user-settings.json",
@@ -154,10 +265,6 @@ export async function GET(request: NextRequest) {
       "notes-activities.json",
       "notes-collection_items.json",
       "notes-ratings.json",
-      "ratings-movies.json",
-      "ratings-shows.json",
-      "ratings-seasons.json",
-      "ratings-episodes.json",
       "watched-playback.json",
       "collection-movies.json",
       "collection-shows.json",

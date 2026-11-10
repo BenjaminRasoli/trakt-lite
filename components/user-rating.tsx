@@ -47,8 +47,10 @@ export default function UserRating({
       tmdbId: String(tmdbId),
       mediaType,
     });
-    if (seasonNumber !== undefined && episodeNumber !== undefined) {
+    if (seasonNumber !== undefined) {
       params.set("seasonNumber", String(seasonNumber));
+    }
+    if (episodeNumber !== undefined) {
       params.set("episodeNumber", String(episodeNumber));
     }
     return params;
@@ -59,13 +61,11 @@ export default function UserRating({
     ratingResult?.key === targetKey ? ratingResult : null;
   const currentRequestError =
     requestError?.key === targetKey ? requestError.message : null;
-  const loading = watched && !currentResult && !currentRequestError;
-  const eligible = watched && currentResult?.eligible === true;
+  const loading = !currentResult && !currentRequestError;
+  const eligible = currentResult?.eligible === true;
   const savedRating = eligible ? currentResult?.rating ?? null : null;
 
   useEffect(() => {
-    if (!watched) return;
-
     const controller = new AbortController();
 
     const loadRating = async () => {
@@ -165,9 +165,8 @@ export default function UserRating({
         body: JSON.stringify({
           tmdbId,
           mediaType,
-          ...(seasonNumber !== undefined && episodeNumber !== undefined
-            ? { seasonNumber, episodeNumber }
-            : {}),
+          ...(seasonNumber !== undefined ? { seasonNumber } : {}),
+          ...(episodeNumber !== undefined ? { episodeNumber } : {}),
           score,
         }),
       });
