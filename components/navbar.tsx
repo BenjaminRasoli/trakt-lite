@@ -191,7 +191,7 @@ function ProfileLink({
                 |
               </span>
               <span
-                className={`flex min-w-0 -mt-3 truncate pb-2 pt-4 font-medium ${
+                className={`flex min-w-0 items-center font-medium leading-none ${
                   prestigeTier === null
                     ? "text-violet-50/80"
                     : "text-violet-200/50"
@@ -200,13 +200,12 @@ function ProfileLink({
               >
                 {prestigeTier !== null ? (
                   <>
-                    <span className="prestige-starlight relative -mx-1 inline-block px-1">
-                      <span
-                        aria-hidden="true"
-                        className="absolute -inset-x-4 -inset-y-1 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(139,92,246,0.18)_0%,rgba(139,92,246,0.06)_48%,transparent_80%)] opacity-70"
-                      />
-                      <span className="relative bg-gradient-to-r from-violet-100 via-fuchsia-200 to-violet-300 bg-clip-text font-semibold text-transparent drop-shadow-[0_0_5px_rgba(167,139,250,0.85)]">
-                        {summary.rank.slice(0, prestigeGlowLength)}
+                    <span className="prestige-starlight relative inline-block min-w-0 max-w-full">
+                      <span className="relative block min-w-0 truncate">
+                        <span className="bg-gradient-to-r from-violet-100 via-fuchsia-200 to-violet-300 bg-clip-text font-semibold text-transparent drop-shadow-[0_0_5px_rgba(167,139,250,0.85)]">
+                          {summary.rank.slice(0, prestigeGlowLength)}
+                        </span>
+                        {summary.rank.slice(prestigeGlowLength)}
                       </span>
                       <span
                         className="prestige-star"
@@ -221,10 +220,9 @@ function ProfileLink({
                         ✦
                       </span>
                     </span>
-                    {summary.rank.slice(prestigeGlowLength)}
                   </>
                 ) : (
-                  summary.rank
+                  <span className="block min-w-0 truncate">{summary.rank}</span>
                 )}
               </span>
             </>
@@ -240,9 +238,7 @@ export default function Navbar() {
   const [achievementSummary, setAchievementSummary] =
     useState<AchievementSummary | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
   const supabase = useSupabase();
-  const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
@@ -302,48 +298,6 @@ export default function Navbar() {
     };
   }, [user]);
 
-  useEffect(() => {
-    document.body.style.overflow = showSignOutConfirm ? "hidden" : "";
-
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [showSignOutConfirm]);
-
-  useEffect(() => {
-    if (!showSignOutConfirm) return;
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setShowSignOutConfirm(false);
-      }
-    };
-
-    const handleClickOutside = (event: MouseEvent) => {
-      const modal = document.getElementById("sign-out-modal");
-      if (modal && !modal.contains(event.target as Node)) {
-        setShowSignOutConfirm(false);
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [showSignOutConfirm]);
-
-  const handleSignOut = async () => {
-    setShowSignOutConfirm(true);
-  };
-
-  const confirmSignOut = async () => {
-    await supabase.auth.signOut();
-    router.push("/auth");
-    setShowSignOutConfirm(false);
-  };
-
   const username =
     user?.user_metadata?.username || user?.email?.split("@")[0] || "User";
   const capitalizedUsername =
@@ -363,7 +317,7 @@ export default function Navbar() {
       <nav className="sticky top-0 z-40 border-b border-zinc-700/50 bg-zinc-950/85 backdrop-blur-md">
         <div className="mx-auto max-w-[1650px] px-3 min-[1050px]:px-6 lg:px-8">
           <div className="flex flex-col gap-3 py-3 min-[1500px]:h-16 min-[1500px]:flex-row min-[1500px]:items-center min-[1500px]:justify-between min-[1500px]:py-0">
-            <div className="flex w-full items-center justify-between gap-3 min-[1500px]:w-auto min-[1500px]:justify-start min-[1500px]:gap-6">
+            <div className="flex w-full items-center justify-between gap-3 max-[380px]:flex-wrap min-[1500px]:w-auto min-[1500px]:justify-start min-[1500px]:gap-6">
               <Link
                 href="/"
                 className="text-xl font-bold text-white transition-colors hover:text-violet-400 lg:text-2xl min-[1050px]:text-2xl"
@@ -404,7 +358,7 @@ export default function Navbar() {
                   })}
                 </div>
               )}
-              <div className="flex items-center gap-4 min-[1500px]:hidden">
+              <div className="flex shrink-0 items-center gap-4 max-[380px]:ml-auto min-[1500px]:hidden">
                 {loading ? (
                   <div className="flex items-center gap-2 text-violet-300">
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-violet-300" />
@@ -420,12 +374,6 @@ export default function Navbar() {
                       summary={achievementSummary}
                       compact
                     />
-                    <button
-                      onClick={handleSignOut}
-                      className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
-                    >
-                      Sign Out
-                    </button>
                   </>
                 ) : (
                   <Link
@@ -453,12 +401,6 @@ export default function Navbar() {
                     avatarUrl={avatarUrl}
                     summary={achievementSummary}
                   />
-                  <button
-                    onClick={handleSignOut}
-                    className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
-                  >
-                    Sign Out
-                  </button>
                 </>
               ) : (
                 <Link
@@ -515,36 +457,6 @@ export default function Navbar() {
           )}
         </div>
       </nav>
-
-      {showSignOutConfirm && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm">
-          <div
-            id="sign-out-modal"
-            className="bg-zinc-900 border border-zinc-700 rounded-lg p-6 max-w-sm w-full mx-4 shadow-2xl"
-          >
-            <h3 className="text-lg font-semibold text-white mb-2">
-              Are you sure?
-            </h3>
-            <p className="text-zinc-300 mb-6">
-              Do you really want to sign out?
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setShowSignOutConfirm(false)}
-                className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-medium text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmSignOut}
-                className="px-4 py-2 rounded-lg bg-violet-600 text-white hover:bg-violet-700 transition cursor-pointer"
-              >
-                Sign Out
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }

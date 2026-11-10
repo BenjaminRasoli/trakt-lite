@@ -50,11 +50,46 @@ export default function SettingsPage() {
   const [accountBusy, setAccountBusy] = useState(false);
   const [accountError, setAccountError] = useState<string | null>(null);
   const [accountSuccess, setAccountSuccess] = useState<string | null>(null);
+  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState<string | null>(null);
   const lastActiveSessionRef = useRef<any>(null);
   const lastActiveAtRef = useRef<number>(0);
   const initialLiveCheckRef = useRef(false);
   const supabase = useSupabase();
   const router = useRouter();
+
+  useEffect(() => {
+    document.body.style.overflow = showSignOutConfirm ? "hidden" : "";
+
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showSignOutConfirm]);
+
+  useEffect(() => {
+    if (!showSignOutConfirm) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !signingOut) {
+        setShowSignOutConfirm(false);
+      }
+    };
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const modal = document.getElementById("sign-out-modal");
+      if (modal && !modal.contains(event.target as Node) && !signingOut) {
+        setShowSignOutConfirm(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showSignOutConfirm, signingOut]);
 
   useEffect(() => {
     let isMounted = true;
@@ -549,6 +584,26 @@ export default function SettingsPage() {
     }
   };
 
+  const confirmSignOut = async () => {
+    setSigningOut(true);
+    setSignOutError(null);
+
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+
+      router.replace("/auth");
+      router.refresh();
+    } catch (error) {
+      console.error("Error signing out:", error);
+      setSignOutError(
+        error instanceof Error ? error.message : "Unable to sign out.",
+      );
+    } finally {
+      setSigningOut(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen flex-1 flex-col items-center justify-center bg-black font-sans">
@@ -580,7 +635,19 @@ export default function SettingsPage() {
       </div>
 
       <main className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1">
-        <h1 className="text-3xl font-bold text-white mb-8">Settings</h1>
+        <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-3xl font-bold text-white">Settings</h1>
+          <button
+            type="button"
+            onClick={() => {
+              setSignOutError(null);
+              setShowSignOutConfirm(true);
+            }}
+            className="inline-flex cursor-pointer items-center justify-center rounded-full border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
+          >
+            Sign out
+          </button>
+        </div>
 
         <div className="space-y-8">
           <div className="bg-zinc-900 rounded-lg p-6 border border-zinc-700/50">
@@ -1149,6 +1216,47 @@ export default function SettingsPage() {
           </section>
         </div>
       </main>
+      {showSignOutConfirm && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div
+            id="sign-out-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="sign-out-title"
+            className="mx-4 w-full max-w-sm rounded-lg border border-zinc-700 bg-zinc-900 p-6 shadow-2xl"
+          >
+            <h2 id="sign-out-title" className="mb-2 text-lg font-semibold text-white">
+              Are you sure?
+            </h2>
+            <p className="mb-6 text-zinc-300">
+              Do you really want to sign out?
+            </p>
+            {signOutError && (
+              <p className="mb-4 text-sm text-red-300" role="alert">
+                {signOutError}
+              </p>
+            )}
+            <div className="flex flex-wrap justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowSignOutConfirm(false)}
+                disabled={signingOut}
+                className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-medium text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmSignOut}
+                disabled={signingOut}
+                className="cursor-pointer rounded-lg bg-violet-600 px-4 py-2 text-sm text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {signingOut ? "Signing out..." : "Sign out"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
