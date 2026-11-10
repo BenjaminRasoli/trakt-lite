@@ -5,27 +5,60 @@ import Link from "next/link";
 import type { User } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 import { useSupabase } from "@/components/supabase-provider";
+import { getRandomBackdropUrl, getTrendingMedia } from "@/lib/tmdb";
 import type {
   AchievementApiResponse,
   AchievementSummary,
 } from "@/lib/achievements";
 
-const categories = ["All", "Watching", "Movies", "TV", "Discovery", "Ratings"] as const;
+const categories = [
+  "All",
+  "Watching",
+  "Movies",
+  "TV",
+  "Discovery",
+  "Ratings",
+] as const;
+const categoryIcons: Record<(typeof categories)[number], string> = {
+  All: "✨",
+  Watching: "🎬",
+  Movies: "🍿",
+  TV: "📺",
+  Discovery: "🧭",
+  Ratings: "⭐",
+};
+const badgeStatuses = ["All badges", "Unlocked", "Locked"] as const;
 
 export default function AchievementsPage() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [pageBackdrop, setPageBackdrop] = useState("");
   const [summary, setSummary] = useState<AchievementSummary | null>(null);
   const [loadingAchievements, setLoadingAchievements] = useState(true);
   const [syncingGenres, setSyncingGenres] = useState(false);
   const [genreSyncError, setGenreSyncError] = useState("");
   const [error, setError] = useState("");
   const [category, setCategory] = useState<(typeof categories)[number]>("All");
+  const [badgeStatus, setBadgeStatus] =
+    useState<(typeof badgeStatuses)[number]>("All badges");
   const supabase = useSupabase();
   const router = useRouter();
 
   useEffect(() => {
     let isMounted = true;
+
+    const fetchBackdrop = async () => {
+      try {
+        const trendingMedia = await getTrendingMedia();
+        if (isMounted) {
+          setPageBackdrop(getRandomBackdropUrl(trendingMedia));
+        }
+      } catch (backdropError) {
+        console.error("Error loading achievements backdrop:", backdropError);
+      }
+    };
+
+    void fetchBackdrop();
 
     const loadUser = async () => {
       const {
@@ -135,9 +168,12 @@ export default function AchievementsPage() {
   const visibleBadges = useMemo(
     () =>
       summary?.badges.filter(
-        (badge) => category === "All" || badge.category === category,
+        (badge) =>
+          (category === "All" || badge.category === category) &&
+          (badgeStatus === "All badges" ||
+            (badgeStatus === "Unlocked" ? badge.earned : !badge.earned)),
       ) ?? [],
-    [category, summary],
+    [badgeStatus, category, summary],
   );
 
   if (authLoading || loadingAchievements) {
@@ -156,9 +192,17 @@ export default function AchievementsPage() {
   if (!user) return null;
 
   return (
-    <main className="relative flex min-h-screen flex-1 flex-col overflow-hidden bg-black px-4 py-8 text-white sm:px-6 lg:px-8">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-violet-950/40 via-black to-black" />
-      <div className="relative mx-auto w-full max-w-[1400px] flex-1">
+    <div className="relative flex min-h-screen flex-1 flex-col overflow-hidden bg-black text-white">
+      <div className="pointer-events-none fixed inset-0 z-0 bg-gradient-to-b from-black/70 via-black/40 to-black/80">
+        {pageBackdrop && (
+          <div
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-35"
+            style={{ backgroundImage: `url(${pageBackdrop})` }}
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/55 to-black/80" />
+      </div>
+      <main className="relative z-10 mx-auto w-full max-w-[1400px] flex-1 px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-violet-300">
@@ -251,102 +295,146 @@ export default function AchievementsPage() {
                     Earn XP once per badge as you keep watching and rating.
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2" aria-label="Filter badges">
-                  {categories.map((item) => (
-                    <button
-                      key={item}
-                      type="button"
-                      onClick={() => setCategory(item)}
-                      aria-pressed={category === item}
-                      className={`cursor-pointer rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                        category === item
-                          ? "border-violet-400/60 bg-violet-500/20 text-violet-100"
-                          : "border-zinc-700 bg-zinc-900/70 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200"
-                      }`}
-                    >
-                      {item}
-                    </button>
-                  ))}
+                <div className="flex flex-col gap-3">
+                  <div
+                    className="flex flex-wrap gap-2"
+                    role="group"
+                    aria-label="Filter badges by category"
+                  >
+                    {categories.map((item) => (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => setCategory(item)}
+                        aria-pressed={category === item}
+                        className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                          category === item
+                            ? "border-violet-400/60 bg-violet-500/20 text-violet-100"
+                            : "border-zinc-700 bg-zinc-900/70 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200"
+                        }`}
+                      >
+                        <span aria-hidden="true">{categoryIcons[item]}</span>
+                        {item}
+                      </button>
+                    ))}
+                  </div>
+                  <div
+                    className="flex flex-wrap items-center gap-2"
+                    role="group"
+                    aria-label="Filter badges by unlock status"
+                  >
+                    <span className="mr-1 text-xs font-medium text-zinc-500">
+                      Filter
+                    </span>
+                    {badgeStatuses.map((status) => (
+                      <button
+                        key={status}
+                        type="button"
+                        onClick={() => setBadgeStatus(status)}
+                        aria-pressed={badgeStatus === status}
+                        className={`cursor-pointer rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                          badgeStatus === status
+                            ? "border-violet-400/60 bg-violet-500/20 text-violet-100"
+                            : "border-zinc-700 bg-zinc-900/70 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200"
+                        }`}
+                      >
+                        {status}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {visibleBadges.map((badge) => (
-                  <article
-                    key={badge.id}
-                    className={`rounded-2xl border p-4 transition ${
-                      badge.earned
-                        ? "border-violet-500/30 bg-gradient-to-br from-violet-950/50 to-zinc-900/90"
-                        : "border-zinc-800 bg-zinc-900/70"
-                    }`}
-                  >
-                    <div className="flex items-start gap-4">
-                      <div
-                        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-2xl ${
-                          badge.earned
-                            ? "bg-violet-500/20"
-                            : "bg-zinc-800 grayscale"
-                        }`}
-                        aria-hidden="true"
-                      >
-                        {badge.icon}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <p className="text-xs font-semibold uppercase tracking-wider text-violet-300">
-                              {badge.category}
-                            </p>
-                            <h3 className="mt-1 font-bold text-white">
-                              {badge.title}
-                            </h3>
+              {visibleBadges.length === 0 ? (
+                <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-8 text-center">
+                  <p className="text-sm font-semibold text-zinc-200">
+                    No {badgeStatus.toLowerCase()} badges in this category yet.
+                  </p>
+                  <p className="mt-1 text-sm text-zinc-500">
+                    Try another category or status filter.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {visibleBadges.map((badge) => (
+                    <article
+                      key={badge.id}
+                      className={`rounded-2xl border p-4 transition ${
+                        badge.earned
+                          ? "border-violet-500/30 bg-gradient-to-br from-violet-950/50 to-zinc-900/90"
+                          : "border-zinc-800 bg-zinc-900/70"
+                      }`}
+                    >
+                      <div className="flex items-start gap-4">
+                        <div
+                          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-2xl ${
+                            badge.earned
+                              ? "bg-violet-500/20"
+                              : "bg-zinc-800 grayscale"
+                          }`}
+                          aria-hidden="true"
+                        >
+                          {badge.icon}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className="text-xs font-semibold uppercase tracking-wider text-violet-300">
+                                {badge.category}
+                              </p>
+                              <h3 className="mt-1 font-bold text-white">
+                                {badge.title}
+                              </h3>
+                            </div>
+                            <span
+                              className={`shrink-0 rounded-full px-2 py-1 text-xs font-bold ${
+                                badge.earned
+                                  ? "bg-violet-500/20 text-violet-200"
+                                  : "bg-zinc-800 text-zinc-400"
+                              }`}
+                            >
+                              +{badge.xp} XP
+                            </span>
                           </div>
-                          <span
-                            className={`shrink-0 rounded-full px-2 py-1 text-xs font-bold ${
-                              badge.earned
-                                ? "bg-violet-500/20 text-violet-200"
-                                : "bg-zinc-800 text-zinc-400"
-                            }`}
-                          >
-                            +{badge.xp} XP
-                          </span>
-                        </div>
-                        <p className="mt-2 text-sm text-zinc-400">
-                          {badge.description}
-                        </p>
-                        <div className="mt-4 flex items-center justify-between text-xs">
-                          <span
-                            className={
-                              badge.earned
-                                ? "font-semibold text-emerald-300"
-                                : "text-zinc-500"
-                            }
-                          >
-                            {badge.earned ? "Unlocked" : "In progress"}
-                          </span>
-                          <span className="text-zinc-400">
-                            {badge.progress} / {badge.target}
-                          </span>
-                        </div>
-                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-800">
-                          <div
-                            className={`h-full rounded-full transition-all ${
-                              badge.earned ? "bg-emerald-400" : "bg-violet-500"
-                            }`}
-                            style={{
-                              width: `${(badge.progress / badge.target) * 100}%`,
-                            }}
-                          />
+                          <p className="mt-2 text-sm text-zinc-400">
+                            {badge.description}
+                          </p>
+                          <div className="mt-4 flex items-center justify-between text-xs">
+                            <span
+                              className={
+                                badge.earned
+                                  ? "font-semibold text-emerald-300"
+                                  : "text-zinc-500"
+                              }
+                            >
+                              {badge.earned ? "Unlocked" : "In progress"}
+                            </span>
+                            <span className="text-zinc-400">
+                              {badge.progress} / {badge.target}
+                            </span>
+                          </div>
+                          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-800">
+                            <div
+                              className={`h-full rounded-full transition-all ${
+                                badge.earned
+                                  ? "bg-emerald-400"
+                                  : "bg-violet-500"
+                              }`}
+                              style={{
+                                width: `${(badge.progress / badge.target) * 100}%`,
+                              }}
+                            />
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </article>
-                ))}
-              </div>
+                    </article>
+                  ))}
+                </div>
+              )}
             </section>
           </>
         ) : null}
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }
