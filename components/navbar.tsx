@@ -207,6 +207,7 @@ export default function Navbar() {
                     { href: "/weekly", label: "Weekly" },
                     { href: "/watchlist", label: "Watchlist" },
                     { href: "/history", label: "History" },
+                    { href: "/ratings", label: "Ratings" },
                     { href: "/profile", label: "Profile" },
                     { href: "/settings", label: "Settings" },
                   ].map(({ href, label }) => {
@@ -344,6 +345,7 @@ export default function Navbar() {
                 { href: "/weekly", label: "Weekly" },
                 { href: "/watchlist", label: "Watchlist" },
                 { href: "/history", label: "History" },
+                { href: "/ratings", label: "Ratings" },
                 { href: "/profile", label: "Profile" },
                 { href: "/settings", label: "Settings" },
               ].map(({ href, label }) => {

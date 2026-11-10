@@ -116,6 +116,7 @@ export interface TMDBEpisode {
 }
 
 export interface TMDBSeasonDetails {
+  name?: string | null;
   poster_path?: string | null;
   episodes?: TMDBEpisode[];
 }

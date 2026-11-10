@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
+import { addSeasonPosterPaths, getTVSeasonDetails } from "@/lib/tmdb";
 
 type RatingTarget = {
   tmdbId: number;
@@ -105,6 +106,101 @@ async function getUser() {
 
 export async function GET(request: NextRequest) {
   try {
+    if (!request.nextUrl.searchParams.has("tmdbId")) {
+      const user = await getUser();
+      if (!user) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+
+      const ratings = await prisma.userRating.findMany({
+        where: { userId: user.id },
+        orderBy: { updatedAt: "desc" },
+        include: {
+          media: {
+            select: {
+              tmdbId: true,
+              title: true,
+              mediaType: true,
+              posterPath: true,
+            },
+          },
+        },
+      });
+
+      const ratingsWithSeasonPosters = await addSeasonPosterPaths(
+        ratings.map((rating) => ({
+          ...rating,
+          tmdbId: rating.media.tmdbId,
+        })),
+      );
+      const seasons = new Map<
+        string,
+        { tmdbId: number; seasonNumber: number }
+      >();
+
+      for (const rating of ratingsWithSeasonPosters) {
+        if (rating.media.mediaType !== "tv" || rating.seasonNumber === null) {
+          continue;
+        }
+
+        const key = `${rating.tmdbId}:${rating.seasonNumber}`;
+        seasons.set(key, {
+          tmdbId: rating.tmdbId,
+          seasonNumber: rating.seasonNumber,
+        });
+      }
+
+      const seasonDetails = new Map<
+        string,
+        Awaited<ReturnType<typeof getTVSeasonDetails>>
+      >();
+      const seasonsToFetch = [...seasons.entries()];
+      let nextSeasonIndex = 0;
+
+      await Promise.all(
+        Array.from(
+          { length: Math.min(4, seasonsToFetch.length) },
+          async () => {
+            while (nextSeasonIndex < seasonsToFetch.length) {
+              const [key, season] = seasonsToFetch[nextSeasonIndex++];
+              seasonDetails.set(
+                key,
+                await getTVSeasonDetails(season.tmdbId, season.seasonNumber),
+              );
+            }
+          },
+        ),
+      );
+
+      return NextResponse.json({
+        items: ratingsWithSeasonPosters.map((rating) => {
+          const key = `${rating.tmdbId}:${rating.seasonNumber}`;
+          const details =
+            rating.seasonNumber === null ? null : seasonDetails.get(key);
+          const episodeName =
+            rating.episodeNumber === null
+              ? null
+              : details?.episodes?.find(
+                  (episode) =>
+                    episode.episode_number === rating.episodeNumber,
+                )?.name ?? null;
+
+          return {
+            id: rating.id,
+            subjectKey: rating.subjectKey,
+            seasonNumber: rating.seasonNumber,
+            episodeNumber: rating.episodeNumber,
+            score: rating.score,
+            updatedAt: rating.updatedAt,
+            seasonPosterPath: rating.seasonPosterPath,
+            seasonName: details?.name ?? null,
+            episodeName,
+            media: rating.media,
+          };
+        }),
+      });
+    }
+
     const parsed = parseTarget(request.nextUrl.searchParams);
     if ("error" in parsed) {
       return NextResponse.json({ error: parsed.error }, { status: 400 });
