@@ -59,16 +59,6 @@ body {
   }
 }
 
-@keyframes prestige-rank-glow {
-  0%,
-  100% {
-    filter: drop-shadow(0 0 1px rgba(139, 92, 246, 0.15));
-  }
-  50% {
-    filter: drop-shadow(0 0 5px rgba(168, 85, 247, 0.7));
-  }
-}
-
 .prestige-starlight::before,
 .prestige-starlight::after {
   position: absolute;
@@ -94,22 +84,9 @@ body {
   animation-delay: 1.4s;
 }
 
-.prestige-starlight .prestige-star {
-  position: absolute;
-  top: -0.7em;
-  color: #d8b4fe;
-  font-size: 0.6em;
-  line-height: 1;
-  opacity: 0;
-  pointer-events: none;
-  text-shadow: 0 0 5px rgba(192, 132, 252, 0.95);
-  animation: prestige-starlight 2.8s ease-out infinite;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .prestige-starlight::before,
-  .prestige-starlight::after,
-  .prestige-starlight .prestige-star {
+  .prestige-starlight::after {
     animation: none;
   }
 }

@@ -113,15 +113,19 @@ function ProfileLink({
 }) {
   const prestigeTier = summary ? getPrestigeTier(summary.level) : null;
   const isMaxLevel = summary?.level === MAX_LEVEL;
-  const prestigeGlowLength =
-    summary && prestigeTier !== null
-      ? isMaxLevel
-        ? summary.rank.length
-        : Math.ceil((summary.rank.length * prestigeTier) / 5)
-      : 0;
   const levelLabel = summary
     ? `Level ${summary.level} · ${summary.rank}${prestigeTier ? ` · Prestige ${prestigeTier}` : ""}`
     : "Loading level";
+
+  const levelLine = summary
+    ? `LVL\u00A0${summary.level}\u00A0|\u00A0${summary.rank}`
+    : "";
+  const glowLength =
+    summary && prestigeTier !== null
+      ? isMaxLevel
+        ? levelLine.length
+        : Math.ceil((levelLine.length * prestigeTier) / 5)
+      : 0;
 
   return (
     <Link
@@ -146,8 +150,14 @@ function ProfileLink({
       </span>
       <span className="flex min-w-0 flex-col justify-center gap-0.5">
         <span
-          className={`max-w-28 truncate font-semibold leading-tight text-white ${
-            compact ? "text-xs min-[420px]:max-w-36" : "max-w-40 text-sm"
+          className={`font-semibold leading-tight ${
+            compact
+              ? "max-w-28 text-xs min-[420px]:max-w-36"
+              : "max-w-40 text-sm"
+          } ${
+            isMaxLevel
+              ? "-mx-2 overflow-x-clip overflow-y-visible text-ellipsis whitespace-nowrap bg-gradient-to-r from-violet-200 via-fuchsia-200 to-violet-300 bg-clip-text px-2 text-transparent drop-shadow-[0_0_5px_rgba(167,139,250,0.85)]"
+              : "truncate text-white"
           }`}
           title={username}
         >
@@ -164,66 +174,40 @@ function ProfileLink({
           <span aria-hidden="true" className="text-sm leading-none">
             {summary ? getLevelIcon(summary.level) : "✦"}
           </span>
-          <span
-            className={
-              isMaxLevel
-                ? "bg-gradient-to-r from-violet-200 via-fuchsia-200 to-violet-300 bg-clip-text text-transparent drop-shadow-[0_0_5px_rgba(167,139,250,0.85)]"
-                : prestigeTier !== null
-                  ? "text-violet-200"
-                  : ""
-            }
-          >
-            {summary ? `LVL ${summary.level}` : "…"}
-          </span>
-          {prestigeTier !== null && (
-            <span className="rounded-full bg-violet-300/15 px-1 py-0.5 text-[8px] leading-none text-violet-100">
-              P{prestigeTier}
+          {!summary ? (
+            <span>…</span>
+          ) : prestigeTier !== null ? (
+            <span
+              className={`-mx-2 block min-w-0 overflow-x-clip overflow-y-visible text-ellipsis whitespace-nowrap px-2 leading-none ${
+                compact ? "max-w-32 min-[420px]:max-w-44" : "max-w-52"
+              }`}
+              title={levelLabel}
+            >
+              <span className="prestige-starlight relative inline-block">
+                <span className="bg-gradient-to-r from-violet-100 via-fuchsia-200 to-violet-300 bg-clip-text font-semibold text-transparent drop-shadow-[0_0_5px_rgba(167,139,250,0.85)]">
+                  {levelLine.slice(0, glowLength)}
+                </span>
+              </span>
+              <span className="font-medium text-violet-200/50">
+                {levelLine.slice(glowLength)}
+              </span>
             </span>
-          )}
-          {summary && (
+          ) : (
             <>
-              <span
-                aria-hidden="true"
-                className={
-                  prestigeTier !== null ? "text-violet-300/60" : "text-zinc-500"
-                }
-              >
+              <span className="flex items-center gap-10">
+                <span>LVL</span>
+                <span>{summary.level}</span>
+              </span>
+              <span aria-hidden="true" className="text-zinc-500">
                 |
               </span>
               <span
-                className={`flex min-w-0 items-center font-medium leading-none ${
-                  prestigeTier === null
-                    ? "text-violet-50/80"
-                    : "text-violet-200/50"
-                } ${compact ? "max-w-12 min-[420px]:max-w-20" : "max-w-24"}`}
+                className={`flex min-w-0 items-center font-medium leading-none text-violet-50/80 ${
+                  compact ? "max-w-12 min-[420px]:max-w-20" : "max-w-24"
+                }`}
                 title={summary.rank}
               >
-                {prestigeTier !== null ? (
-                  <>
-                    <span className="prestige-starlight relative inline-block min-w-0 max-w-full">
-                      <span className="relative block min-w-0 truncate">
-                        <span className="bg-gradient-to-r from-violet-100 via-fuchsia-200 to-violet-300 bg-clip-text font-semibold text-transparent drop-shadow-[0_0_5px_rgba(167,139,250,0.85)]">
-                          {summary.rank.slice(0, prestigeGlowLength)}
-                        </span>
-                        {summary.rank.slice(prestigeGlowLength)}
-                      </span>
-                      <span
-                        className="prestige-star"
-                        style={{ left: "30%", animationDelay: "0.6s" }}
-                      >
-                        ✦
-                      </span>
-                      <span
-                        className="prestige-star"
-                        style={{ left: "68%", animationDelay: "1.5s" }}
-                      >
-                        ✦
-                      </span>
-                    </span>
-                  </>
-                ) : (
-                  <span className="block min-w-0 truncate">{summary.rank}</span>
-                )}
+                <span className="block min-w-0 truncate">{summary.rank}</span>
               </span>
             </>
           )}
