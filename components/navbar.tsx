@@ -5,6 +5,13 @@ import Link from "next/link";
 import NextImage from "next/image";
 import { useSupabase } from "./supabase-provider";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import type { User } from "@supabase/supabase-js";
+import {
+  getLevelIcon,
+  getPrestigeTier,
+  MAX_LEVEL,
+  type AchievementSummary,
+} from "@/lib/achievements";
 
 function GlobalSearch() {
   const searchParams = useSearchParams();
@@ -93,8 +100,145 @@ function GlobalSearchForm({ initialQuery }: { initialQuery: string }) {
   );
 }
 
+function ProfileLink({
+  username,
+  avatarUrl,
+  summary,
+  compact = false,
+}: {
+  username: string;
+  avatarUrl: string;
+  summary: AchievementSummary | null;
+  compact?: boolean;
+}) {
+  const prestigeTier = summary ? getPrestigeTier(summary.level) : null;
+  const isMaxLevel = summary?.level === MAX_LEVEL;
+  const prestigeGlowLength =
+    summary && prestigeTier !== null
+      ? isMaxLevel
+        ? summary.rank.length
+        : Math.ceil((summary.rank.length * prestigeTier) / 5)
+      : 0;
+  const levelLabel = summary
+    ? `Level ${summary.level} · ${summary.rank}${prestigeTier ? ` · Prestige ${prestigeTier}` : ""}`
+    : "Loading level";
+
+  return (
+    <Link
+      href="/profile"
+      className={`flex min-w-0 items-center ${compact ? "gap-2" : "gap-2.5"}`}
+      aria-label={`Profile: ${username}, ${levelLabel}`}
+    >
+      <span className="relative h-11 w-11 shrink-0 rounded-full bg-gradient-to-br from-violet-400 via-fuchsia-400 to-indigo-500 p-[2px]">
+        {avatarUrl ? (
+          <NextImage
+            src={avatarUrl}
+            alt=""
+            width={44}
+            height={44}
+            className="h-full w-full rounded-full border-2 border-zinc-950 object-cover"
+          />
+        ) : (
+          <span className="flex h-full w-full items-center justify-center rounded-full border-2 border-zinc-950 bg-gradient-to-br from-violet-600 to-indigo-700 text-sm font-bold text-white">
+            {username.slice(0, 2).toUpperCase()}
+          </span>
+        )}
+      </span>
+      <span className="flex min-w-0 flex-col justify-center gap-0.5">
+        <span
+          className={`max-w-28 truncate font-semibold leading-tight text-white ${
+            compact ? "text-xs min-[420px]:max-w-36" : "max-w-40 text-sm"
+          }`}
+          title={username}
+        >
+          {username}
+        </span>
+        <span
+          className={`flex min-w-0 items-center gap-1 whitespace-nowrap text-[10px] font-semibold leading-none text-violet-100 ${
+            prestigeTier !== null
+              ? "rounded-md bg-violet-500/10 px-1.5 py-1 text-violet-100 ring-1 ring-inset ring-violet-400/30"
+              : ""
+          }`}
+          title={`${levelLabel} · ${summary?.xp ?? 0} XP`}
+        >
+          <span aria-hidden="true" className="text-sm leading-none">
+            {summary ? getLevelIcon(summary.level) : "✦"}
+          </span>
+          <span
+            className={
+              isMaxLevel
+                ? "bg-gradient-to-r from-violet-200 via-fuchsia-200 to-violet-300 bg-clip-text text-transparent drop-shadow-[0_0_5px_rgba(167,139,250,0.85)]"
+                : prestigeTier !== null
+                  ? "text-violet-200"
+                  : ""
+            }
+          >
+            {summary ? `LVL ${summary.level}` : "…"}
+          </span>
+          {prestigeTier !== null && (
+            <span className="rounded-full bg-violet-300/15 px-1 py-0.5 text-[8px] leading-none text-violet-100">
+              P{prestigeTier}
+            </span>
+          )}
+          {summary && (
+            <>
+              <span
+                aria-hidden="true"
+                className={
+                  prestigeTier !== null ? "text-violet-300/60" : "text-zinc-500"
+                }
+              >
+                |
+              </span>
+              <span
+                className={`flex min-w-0 -mt-3 truncate pb-2 pt-4 font-medium ${
+                  prestigeTier === null
+                    ? "text-violet-50/80"
+                    : "text-violet-200/50"
+                } ${compact ? "max-w-12 min-[420px]:max-w-20" : "max-w-24"}`}
+                title={summary.rank}
+              >
+                {prestigeTier !== null ? (
+                  <>
+                    <span className="prestige-starlight relative -mx-1 inline-block px-1">
+                      <span
+                        aria-hidden="true"
+                        className="absolute -inset-x-4 -inset-y-1 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(139,92,246,0.18)_0%,rgba(139,92,246,0.06)_48%,transparent_80%)] opacity-70"
+                      />
+                      <span className="relative bg-gradient-to-r from-violet-100 via-fuchsia-200 to-violet-300 bg-clip-text font-semibold text-transparent drop-shadow-[0_0_5px_rgba(167,139,250,0.85)]">
+                        {summary.rank.slice(0, prestigeGlowLength)}
+                      </span>
+                      <span
+                        className="prestige-star"
+                        style={{ left: "30%", animationDelay: "0.6s" }}
+                      >
+                        ✦
+                      </span>
+                      <span
+                        className="prestige-star"
+                        style={{ left: "68%", animationDelay: "1.5s" }}
+                      >
+                        ✦
+                      </span>
+                    </span>
+                    {summary.rank.slice(prestigeGlowLength)}
+                  </>
+                ) : (
+                  summary.rank
+                )}
+              </span>
+            </>
+          )}
+        </span>
+      </span>
+    </Link>
+  );
+}
+
 export default function Navbar() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [achievementSummary, setAchievementSummary] =
+    useState<AchievementSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
   const supabase = useSupabase();
@@ -102,12 +246,13 @@ export default function Navbar() {
   const pathname = usePathname();
 
   useEffect(() => {
-    const updateUser = (nextUser: any) => {
-      setUser((currentUser: any) => {
+    const updateUser = (nextUser: User | null) => {
+      setUser((currentUser) => {
         if (!nextUser) return null;
         if (currentUser?.id === nextUser.id) return currentUser;
         return nextUser;
       });
+      if (!nextUser) setAchievementSummary(null);
     };
 
     const getUser = async () => {
@@ -128,6 +273,34 @@ export default function Navbar() {
 
     return () => subscription.unsubscribe();
   }, [supabase]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    let isMounted = true;
+
+    const loadAchievementLevel = async () => {
+      try {
+        const response = await fetch("/api/achievements?skipGenreSync=true");
+        if (!response.ok) {
+          throw new Error(
+            `Failed to load achievement level (${response.status})`,
+          );
+        }
+
+        const summary: AchievementSummary = await response.json();
+        if (isMounted) setAchievementSummary(summary);
+      } catch (error) {
+        console.error("Error loading navbar achievement level:", error);
+      }
+    };
+
+    void loadAchievementLevel();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
 
   useEffect(() => {
     document.body.style.overflow = showSignOutConfirm ? "hidden" : "";
@@ -189,8 +362,8 @@ export default function Navbar() {
     <>
       <nav className="sticky top-0 z-40 border-b border-zinc-700/50 bg-zinc-950/85 backdrop-blur-md">
         <div className="mx-auto max-w-[1650px] px-3 min-[1050px]:px-6 lg:px-8">
-          <div className="flex flex-col gap-3 py-3 lg:flex-row lg:items-center lg:justify-between lg:py-0 lg:h-16 min-[1050px]:flex-row min-[1050px]:items-center min-[1050px]:justify-between min-[1050px]:py-0 min-[1050px]:h-16">
-            <div className="flex items-center justify-between lg:justify-start gap-3 lg:gap-8 w-full lg:w-auto min-[1050px]:justify-start min-[1050px]:gap-8 min-[1050px]:w-auto">
+          <div className="flex flex-col gap-3 py-3 min-[1500px]:h-16 min-[1500px]:flex-row min-[1500px]:items-center min-[1500px]:justify-between min-[1500px]:py-0">
+            <div className="flex w-full items-center justify-between gap-3 min-[1500px]:w-auto min-[1500px]:justify-start min-[1500px]:gap-6">
               <Link
                 href="/"
                 className="text-xl font-bold text-white transition-colors hover:text-violet-400 lg:text-2xl min-[1050px]:text-2xl"
@@ -198,7 +371,7 @@ export default function Navbar() {
                 Trakt <span className="text-violet-400">Lite</span>
               </Link>
               {user && (
-                <div className="hidden lg:flex flex-wrap items-center gap-4 min-[1050px]:flex">
+                <div className="hidden flex-wrap items-center gap-3 min-[1500px]:flex">
                   {[
                     { href: "/new", label: "New" },
                     { href: "/recommendations", label: "For You" },
@@ -219,7 +392,7 @@ export default function Navbar() {
                         key={href}
                         href={href}
                         className={[
-                          "text-sm font-medium transition-colors lg:text-base min-[1050px]:text-base",
+                          "whitespace-nowrap text-sm font-medium transition-colors",
                           isActive
                             ? "text-violet-400"
                             : "text-zinc-300 hover:text-violet-400",
@@ -231,7 +404,7 @@ export default function Navbar() {
                   })}
                 </div>
               )}
-              <div className="flex items-center gap-2 lg:hidden min-[1050px]:hidden">
+              <div className="flex items-center gap-4 min-[1500px]:hidden">
                 {loading ? (
                   <div className="flex items-center gap-2 text-violet-300">
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-violet-300" />
@@ -241,24 +414,12 @@ export default function Navbar() {
                   </div>
                 ) : user ? (
                   <>
-                    <Link
-                      href="/profile"
-                      className="flex items-center gap-2"
-                    >
-                      {avatarUrl ? (
-                        <NextImage
-                          src={avatarUrl}
-                          alt={capitalizedUsername}
-                          width={32}
-                          height={32}
-                          className="h-8 w-8 rounded-full border border-violet-500/50 object-cover shadow-lg shadow-violet-500/20"
-                        />
-                      ) : (
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full border border-violet-500/50 bg-gradient-to-br from-violet-500 to-indigo-600 text-xs font-bold text-white shadow-lg shadow-violet-500/20">
-                          {capitalizedUsername.slice(0, 2).toUpperCase()}
-                        </div>
-                      )}
-                    </Link>
+                    <ProfileLink
+                      username={capitalizedUsername}
+                      avatarUrl={avatarUrl}
+                      summary={achievementSummary}
+                      compact
+                    />
                     <button
                       onClick={handleSignOut}
                       className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
@@ -277,7 +438,7 @@ export default function Navbar() {
               </div>
             </div>
 
-            <div className="hidden lg:flex flex-wrap items-center justify-end gap-2 lg:gap-4 min-[1050px]:flex min-[1050px]:justify-end min-[1050px]:gap-4">
+            <div className="hidden flex-wrap items-center justify-end gap-4 min-[1500px]:flex">
               {loading ? (
                 <div className="flex items-center gap-2 text-violet-300">
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-violet-300" />
@@ -287,32 +448,14 @@ export default function Navbar() {
                 </div>
               ) : user ? (
                 <>
-                  <Link
-                    href="/profile"
-                    className="flex items-center gap-2 lg:gap-3 min-[1050px]:gap-3"
-                  >
-                    {avatarUrl ? (
-                      <NextImage
-                        src={avatarUrl}
-                        alt={capitalizedUsername}
-                        width={32}
-                        height={32}
-                        className="h-8 w-8 rounded-full border border-violet-500/50 object-cover shadow-lg shadow-violet-500/20 lg:h-9 lg:w-9 min-[1050px]:h-9 min-[1050px]:w-9"
-                      />
-                    ) : (
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full border border-violet-500/50 bg-gradient-to-br from-violet-500 to-indigo-600 text-xs font-bold text-white shadow-lg shadow-violet-500/20 lg:h-9 lg:w-9 lg:text-sm min-[1050px]:h-9 min-[1050px]:w-9 min-[1050px]:text-sm">
-                        {capitalizedUsername.slice(0, 2).toUpperCase()}
-                      </div>
-                    )}
-                    <div className="hidden lg:block max-w-[150px] truncate text-xs text-zinc-300 lg:max-w-none lg:text-sm min-[1050px]:block min-[1050px]:max-w-none min-[1050px]:text-sm">
-                      <span className="font-semibold text-violet-400">
-                        {capitalizedUsername}
-                      </span>
-                    </div>
-                  </Link>
+                  <ProfileLink
+                    username={capitalizedUsername}
+                    avatarUrl={avatarUrl}
+                    summary={achievementSummary}
+                  />
                   <button
                     onClick={handleSignOut}
-                    className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20 lg:px-4 lg:py-2 lg:text-sm min-[1050px]:px-4 min-[1050px]:py-2 min-[1050px]:text-sm"
+                    className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
                   >
                     Sign Out
                   </button>
@@ -337,7 +480,7 @@ export default function Navbar() {
             </Suspense>
           )}
           {user && (
-            <div className="flex flex-wrap items-start gap-3 lg:hidden pb-2 min-[1050px]:hidden">
+            <div className="flex flex-wrap items-start gap-3 pb-2 min-[1500px]:hidden">
               {[
                 { href: "/new", label: "New" },
                 { href: "/recommendations", label: "For You" },

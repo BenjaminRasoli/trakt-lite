@@ -124,7 +124,10 @@ export async function GET(request: NextRequest) {
         }),
       ]);
 
-    const genreSync = await syncMissingGenres(dbUser.id, cursor);
+    const genreSync =
+      request.nextUrl.searchParams.get("skipGenreSync") === "true"
+        ? { cursor: null, failed: 0, httpStatuses: [] }
+        : await syncMissingGenres(dbUser.id, cursor);
     const mediaWithGenres = await prisma.media.findMany({
       where: { watchHistory: { some: { userId: dbUser.id } } },
       select: {

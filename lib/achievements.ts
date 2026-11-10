@@ -515,7 +515,78 @@ const rankNames = [
   "Hall of Fame",
   "Cinema Immortal",
   "Trakt Titan",
+  "Silver Screen Virtuoso",
+  "Story Weaver",
+  "Star Chaser",
+  "Cult Classic",
+  "Reel Virtuoso",
+  "Dream Director",
+  "Genre Sage",
+  "Midnight Icon",
+  "Golden Reel",
+  "Frame Master",
+  "Screen Sovereign",
+  "Story Architect",
+  "Cinema Luminary",
+  "Masterpiece Maker",
+  "The Final Cut",
 ];
+
+const levelIcons = [
+  "🎟️",
+  "🎞️",
+  "🍿",
+  "🎬",
+  "📺",
+  "🎥",
+  "✨",
+  "🌟",
+  "🏅",
+  "🏆",
+  "👑",
+  "💎",
+  "⚡",
+  "🌠",
+  "🎖️",
+  "🚀",
+  "🪄",
+  "🧿",
+  "🛡️",
+  "🔥",
+  "🌈",
+  "🦄",
+  "🐉",
+  "🦁",
+  "🐺",
+  "🦅",
+  "🦋",
+  "🐬",
+  "🦊",
+  "🐼",
+  "🦖",
+  "🪐",
+  "🌙",
+  "☄️",
+  "🔮",
+];
+
+export const MAX_LEVEL = rankNames.length;
+
+export function getLevelIcon(level: number): string {
+  const normalizedLevel = Math.max(1, Math.floor(level));
+  if (normalizedLevel <= levelIcons.length) {
+    return levelIcons[normalizedLevel - 1];
+  }
+
+  const prestigeEmblems = ["👑", "💎", "🌟", "🏆"];
+  const prestige = Math.floor((normalizedLevel - levelIcons.length - 1) / 5);
+  return prestigeEmblems[prestige % prestigeEmblems.length];
+}
+
+export function getPrestigeTier(level: number): number | null {
+  if (level < 21) return null;
+  return Math.floor((level - 21) / 5) + 1;
+}
 
 export function getAchievementSummary(
   stats: AchievementStats,
@@ -533,8 +604,9 @@ export function getAchievementSummary(
     (total, badge) => total + (badge.earned ? badge.xp : 0),
     0,
   );
-  const level = Math.floor(xp / 100) + 1;
-  const progressInLevel = xp % 100;
+  const level = Math.min(Math.floor(xp / 100) + 1, MAX_LEVEL);
+  const isAtMaxLevel = level === MAX_LEVEL;
+  const progressInLevel = isAtMaxLevel ? 100 : xp % 100;
 
   return {
     badges,
@@ -542,9 +614,9 @@ export function getAchievementSummary(
     totalBadges: badges.length,
     xp,
     level,
-    rank: rankNames[Math.min(level - 1, rankNames.length - 1)],
+    rank: rankNames[level - 1] ?? `Prestige ${level - 20}`,
     progressInLevel,
-    xpForNextLevel: 100 - progressInLevel,
+    xpForNextLevel: isAtMaxLevel ? 0 : 100 - progressInLevel,
     progressPercent: progressInLevel,
   };
 }

@@ -10,6 +10,7 @@ import type {
   AchievementApiResponse,
   AchievementSummary,
 } from "@/lib/achievements";
+import { getPrestigeTier, MAX_LEVEL } from "@/lib/achievements";
 
 const categories = [
   "All",
@@ -250,16 +251,24 @@ export default function AchievementsPage() {
                 <div className="w-full max-w-md">
                   <div className="mb-2 flex items-center justify-between text-sm">
                     <span className="font-semibold text-zinc-200">
-                      Progress to level {summary.level + 1}
+                      {summary.level >= MAX_LEVEL
+                        ? "Maximum level reached"
+                        : `Progress to level ${summary.level + 1}`}
                     </span>
                     <span className="text-zinc-400">
-                      {summary.progressInLevel} / 100 XP
+                      {summary.level >= MAX_LEVEL
+                        ? "MAX"
+                        : `${summary.progressInLevel} / 100 XP`}
                     </span>
                   </div>
                   <div
                     className="h-3 overflow-hidden rounded-full bg-zinc-800"
                     role="progressbar"
-                    aria-label="Progress to next level"
+                    aria-label={
+                      summary.level >= MAX_LEVEL
+                        ? "Maximum level reached"
+                        : "Progress to next level"
+                    }
                     aria-valuemin={0}
                     aria-valuemax={100}
                     aria-valuenow={summary.progressPercent}
@@ -270,10 +279,35 @@ export default function AchievementsPage() {
                     />
                   </div>
                   <p className="mt-2 text-right text-xs text-zinc-500">
-                    {summary.xpForNextLevel} XP to your next level
+                    {summary.level >= MAX_LEVEL
+                      ? "You have reached the level cap."
+                      : `${summary.xpForNextLevel} XP to your next level`}
                   </p>
                 </div>
               </div>
+            </section>
+            <section
+              aria-label="Level and prestige guide"
+              className="mt-4 flex flex-col gap-2 rounded-2xl border border-violet-500/20 bg-zinc-900/70 p-4 text-sm sm:flex-row sm:items-center sm:justify-between"
+            >
+              <p className="text-zinc-300">
+                <span className="font-semibold text-violet-200">
+                  {MAX_LEVEL} levels available
+                </span>{" "}
+                · Every 100 XP advances you one level, up to level {MAX_LEVEL}.
+              </p>
+              <p className="text-zinc-400">
+                Prestige starts at{" "}
+                <span className="font-semibold text-amber-200">
+                  Level 21 ({(21 - 1) * 100} XP)
+                </span>
+                . It adds a prestige tier every 5 levels; it does not reset your
+                level or XP. You are{" "}
+                {getPrestigeTier(summary.level) === null
+                  ? "not prestige yet"
+                  : `Prestige ${getPrestigeTier(summary.level)}`}
+                .
+              </p>
             </section>
             {(syncingGenres || genreSyncError) && (
               <p
