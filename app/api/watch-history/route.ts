@@ -7,6 +7,7 @@ import {
   addNextUpEpisodeInfo,
   getMediaDetails,
 } from "@/lib/tmdb";
+import { getDroppedNextUpShows } from "@/lib/dropped-next-up-shows";
 
 const mediaCache = new Map<string, any>();
 const CACHE_TTL = 5 * 60 * 1000;
@@ -157,24 +158,35 @@ function normalizeDate(dateInput: string | Date | null | undefined): string | nu
 }
 
 async function getNextUpQueue(userId: string, limit = 6) {
+  const { tmdbIds: droppedTmdbIds, available: droppedShowStorageAvailable } =
+    await getDroppedNextUpShows(userId);
+
   try {
     const cachedNextUp = await prisma.nextUpCache.findMany({
-      where: { userId },
+      where: {
+        userId,
+        ...(droppedTmdbIds.size > 0
+          ? { tmdbId: { notIn: [...droppedTmdbIds] } }
+          : {}),
+      },
       orderBy: { lastWatchedAt: "desc" },
       take: limit,
     });
 
     if (cachedNextUp.length > 0) {
-      return cachedNextUp.map((item: any) => ({
-        tmdbId: item.tmdbId,
-        title: item.title,
-        posterPath: item.posterPath,
-        backdropPath: item.backdropPath,
-        seasonNumber: item.seasonNumber,
-        episodeNumber: item.episodeNumber,
-        episodeTitle: item.episodeTitle,
-        overview: item.overview,
-      }));
+      return {
+        items: cachedNextUp.map((item: any) => ({
+          tmdbId: item.tmdbId,
+          title: item.title,
+          posterPath: item.posterPath,
+          backdropPath: item.backdropPath,
+          seasonNumber: item.seasonNumber,
+          episodeNumber: item.episodeNumber,
+          episodeTitle: item.episodeTitle,
+          overview: item.overview,
+        })),
+        droppedShowStorageAvailable,
+      };
     }
   } catch (error) {
     console.error("Error reading from nextUpCache, falling back to computation:", error);
@@ -329,7 +341,13 @@ async function getNextUpQueue(userId: string, limit = 6) {
     },
   );
 
-  return computedShows.filter(Boolean).slice(0, limit) as typeof nextUp;
+  return {
+    items: computedShows
+      .filter((item): item is NonNullable<typeof item> => Boolean(item))
+      .filter((item) => !droppedTmdbIds.has(item.tmdbId))
+      .slice(0, limit) as typeof nextUp,
+    droppedShowStorageAvailable,
+  };
 }
 
 async function getUpcomingEpisodesQueue(userId: string, limit = 6) {
@@ -746,10 +764,11 @@ export async function GET(request: NextRequest) {
           ? parsedNextUpLimit
           : 12;
 
-      const nextUp =
+      const nextUpResult =
         nextUpParam === "true"
           ? await getNextUpQueue(dbUser.id, safeNextUpLimit)
-          : [];
+          : { items: [], droppedShowStorageAvailable: true };
+      const nextUp = nextUpResult.items;
 
       const upcoming =
         upcomingParam === "true"
@@ -850,6 +869,9 @@ export async function GET(request: NextRequest) {
         items: itemsWithPosters,
         hasMore,
         nextUp: typedNextUp,
+        nextUpWarning: nextUpResult.droppedShowStorageAvailable
+          ? null
+          : "Next Up is showing, but dropped shows cannot be remembered until the database migration is applied.",
         upcoming: typedUpcoming,
       });
     }
@@ -1013,15 +1035,40 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const watchEntry = await prisma.watchHistory.create({
-      data: {
-        userId: dbUser.id,
-        mediaId: media.id,
-        seasonNumber: mediaType === "tv" ? seasonNumber : null,
-        episodeNumber: mediaType === "tv" ? episodeNumber : null,
-        episodeName: mediaType === "tv" ? episodeName || null : null,
-        watchedAt: new Date(watchedAt),
-      },
+    const droppedShowState =
+      mediaType === "tv" ? await getDroppedNextUpShows(dbUser.id) : null;
+
+    const watchEntry = await prisma.$transaction(async (transaction) => {
+      const entry = await transaction.watchHistory.create({
+        data: {
+          userId: dbUser.id,
+          mediaId: media.id,
+          seasonNumber: mediaType === "tv" ? seasonNumber : null,
+          episodeNumber: mediaType === "tv" ? episodeNumber : null,
+          episodeName: mediaType === "tv" ? episodeName || null : null,
+          watchedAt: new Date(watchedAt),
+        },
+      });
+
+      if (mediaType === "tv") {
+        await Promise.all([
+          transaction.nextUpCache.deleteMany({
+            where: { userId: dbUser.id },
+          }),
+          ...(droppedShowState?.available
+            ? [
+                transaction.droppedNextUpShow.deleteMany({
+                  where: {
+                    userId: dbUser.id,
+                    tmdbId: media.tmdbId,
+                  },
+                }),
+              ]
+            : []),
+        ]);
+      }
+
+      return entry;
     });
 
     return NextResponse.json(watchEntry);

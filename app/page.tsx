@@ -16,6 +16,7 @@ import EpisodeTypeBadge from "@/components/episode-type-badge";
 import NextUpEpisodeInfo, {
   isSpecialEpisodeType,
 } from "@/components/next-up-episode-info";
+import DropNextUpShowModal from "@/components/drop-next-up-show-modal";
 import {
   getPosterUrl,
   getRandomBackdropUrl,
@@ -165,6 +166,13 @@ function HomeContent() {
   const [showSearchSort, setShowSearchSort] = useState(false);
   const [recentHistory, setRecentHistory] = useState<any[]>([]);
   const [nextUp, setNextUp] = useState<any[]>([]);
+  const [nextUpWarning, setNextUpWarning] = useState<string | null>(null);
+  const [showToDrop, setShowToDrop] = useState<{
+    tmdbId: number;
+    title: string;
+  } | null>(null);
+  const [droppingShow, setDroppingShow] = useState(false);
+  const [dropShowError, setDropShowError] = useState<string | null>(null);
   const [upcoming, setUpcoming] = useState<any[]>([]);
   const [liveSession, setLiveSession] = useState<any>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -197,6 +205,50 @@ function HomeContent() {
     e.preventDefault();
     e.stopPropagation();
     router.push(`/media/${tmdbId}?type=tv`);
+  };
+
+  const handleConfirmDropShow = async () => {
+    if (!showToDrop) return;
+
+    setDroppingShow(true);
+    setDropShowError(null);
+
+    try {
+      const response = await fetch(
+        `/api/next-up?tmdbId=${showToDrop.tmdbId}`,
+        { method: "DELETE" },
+      );
+      const data = await response.json();
+
+      if (response.status === 401) {
+        router.push("/auth");
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to drop show from Next Up.");
+      }
+
+      setNextUp((current) =>
+        current.filter((item) => item.tmdbId !== showToDrop.tmdbId),
+      );
+      setShowToDrop(null);
+    } catch (error) {
+      console.error("Error dropping show from Next Up:", error);
+      setDropShowError(
+        error instanceof Error
+          ? error.message
+          : "Failed to drop show from Next Up.",
+      );
+    } finally {
+      setDroppingShow(false);
+    }
+  };
+
+  const handleCancelDropShow = () => {
+    if (droppingShow) return;
+    setShowToDrop(null);
+    setDropShowError(null);
   };
 
   useEffect(() => {
@@ -408,11 +460,17 @@ function HomeContent() {
             : [];
 
           setNextUp(nextUpItems);
+          setNextUpWarning(
+            typeof responseData.nextUpWarning === "string"
+              ? responseData.nextUpWarning
+              : null,
+          );
           setUpcoming(upcomingItems);
           setRecentHistory(data.slice(0, 6));
         } else {
           setRecentHistory([]);
           setNextUp([]);
+          setNextUpWarning(null);
           setUpcoming([]);
         }
 
@@ -429,6 +487,7 @@ function HomeContent() {
         console.error("Error fetching recent history:", error);
         setRecentHistory([]);
         setNextUp([]);
+        setNextUpWarning(null);
         setUpcoming([]);
       } finally {
         setHistoryLoading(false);
@@ -907,7 +966,8 @@ function HomeContent() {
               </section>
             )}
 
-            {!historyLoading && visibleNextUp.length > 0 && (
+            {!historyLoading &&
+              (visibleNextUp.length > 0 || nextUpWarning) && (
               <section className="mb-8">
                 <div className="mb-4 flex items-center justify-between gap-4">
                   <div>
@@ -925,55 +985,97 @@ function HomeContent() {
                   </Link>
                 </div>
 
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
-                  {visibleNextUp.map((item) => (
-                    <Link
-                      key={`${item.tmdbId}-${item.seasonNumber}-${item.episodeNumber}`}
-                      href={`/media/${item.tmdbId}/season/${item.seasonNumber}/episode/${item.episodeNumber}?type=tv`}
-                      className="group flex h-full w-full flex-col overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:border-violet-500/50"
-                    >
-                      <div className="relative aspect-[2/3] overflow-hidden">
-                        {isSpecialEpisodeType(item.episodeType) && (
-                          <EpisodeTypeBadge episodeType={item.episodeType} />
-                        )}
-                        <img
-                          src={getPosterUrl(
-                            item.seasonPosterPath || item.posterPath || null,
-                          )}
-                          alt={item.episodeTitle}
-                          className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                          onError={(e) => {
-                            e.currentTarget.src = "/placeholder-poster.svg";
-                          }}
-                        />
-                      </div>
+                {visibleNextUp.length > 0 && (
+                  <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+                    {visibleNextUp.map((item) => (
+                      <div
+                        key={`${item.tmdbId}-${item.seasonNumber}-${item.episodeNumber}`}
+                        className="group flex h-full w-full flex-col overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:border-violet-500/50"
+                      >
+                        <Link
+                          href={`/media/${item.tmdbId}/season/${item.seasonNumber}/episode/${item.episodeNumber}?type=tv`}
+                          className="flex flex-1 flex-col"
+                        >
+                          <div className="relative aspect-[2/3] overflow-hidden">
+                            {isSpecialEpisodeType(item.episodeType) && (
+                              <EpisodeTypeBadge episodeType={item.episodeType} />
+                            )}
+                            <img
+                              src={getPosterUrl(
+                                item.seasonPosterPath || item.posterPath || null,
+                              )}
+                              alt={item.episodeTitle}
+                              className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                              onError={(e) => {
+                                e.currentTarget.src = "/placeholder-poster.svg";
+                              }}
+                            />
+                          </div>
 
-                      <div className="flex flex-1 flex-col gap-1 border-t border-zinc-800 px-2 py-2">
-                        <div className="h-4 text-[10px] font-medium uppercase leading-4 text-violet-300">
-                          S{item.seasonNumber} E{item.episodeNumber}
-                        </div>
-                        <div className="h-4 truncate text-xs font-semibold leading-4 text-white">
-                          <span
-                            onClick={(e) =>
-                              handleTitleClick(e, item.tmdbId, "tv")
-                            }
-                            className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
+                          <div className="flex flex-1 flex-col gap-1 border-t border-zinc-800 px-2 py-2">
+                            <div className="h-4 text-[10px] font-medium uppercase leading-4 text-violet-300">
+                              S{item.seasonNumber} E{item.episodeNumber}
+                            </div>
+                            <div className="h-4 truncate text-xs font-semibold leading-4 text-white">
+                              <span
+                                onClick={(e) =>
+                                  handleTitleClick(e, item.tmdbId, "tv")
+                                }
+                                className="cursor-pointer transition-colors hover:text-violet-200 hover:underline"
+                              >
+                                {item.title}
+                              </span>
+                            </div>
+                            <div className="h-4 truncate text-[10px] leading-4 text-zinc-400">
+                              {item.episodeTitle}
+                            </div>
+                            <NextUpEpisodeInfo
+                              episodeRuntimeMinutes={item.episodeRuntimeMinutes}
+                              remainingEpisodeCount={item.remainingEpisodeCount}
+                              remainingRuntimeMinutes={item.remainingRuntimeMinutes}
+                            />
+                          </div>
+                        </Link>
+                        <div className="flex justify-end px-2 pb-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDropShowError(null);
+                              setShowToDrop({
+                                tmdbId: item.tmdbId,
+                                title: item.title,
+                              });
+                            }}
+                            aria-label={`Drop ${item.title} from Next Up`}
+                            title="Drop show from Next Up"
+                            className="inline-flex cursor-pointer items-center gap-1 rounded px-1.5 py-1 text-[10px] text-zinc-500 opacity-70 transition hover:bg-red-500/10 hover:text-red-300 group-hover:opacity-100"
                           >
-                            {item.title}
-                          </span>
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="12"
+                              height="12"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              aria-hidden="true"
+                            >
+                              <path d="M18 6 6 18M6 6l12 12" />
+                            </svg>
+                            Drop show
+                          </button>
                         </div>
-                        <div className="h-4 truncate text-[10px] leading-4 text-zinc-400">
-                          {item.episodeTitle}
-                        </div>
-                        <NextUpEpisodeInfo
-                          episodeRuntimeMinutes={item.episodeRuntimeMinutes}
-                          remainingEpisodeCount={item.remainingEpisodeCount}
-                          remainingRuntimeMinutes={item.remainingRuntimeMinutes}
-                        />
                       </div>
-                    </Link>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
+                {nextUpWarning && (
+                  <p role="status" className="mt-3 text-xs text-amber-300">
+                    {nextUpWarning}
+                  </p>
+                )}
               </section>
             )}
 
@@ -1188,6 +1290,13 @@ function HomeContent() {
           </>
         )}
       </main>
+      <DropNextUpShowModal
+        showTitle={showToDrop?.title ?? null}
+        loading={droppingShow}
+        error={dropShowError}
+        onCancel={handleCancelDropShow}
+        onConfirm={handleConfirmDropShow}
+      />
     </div>
   );
 }

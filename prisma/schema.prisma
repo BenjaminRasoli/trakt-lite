@@ -23,6 +23,7 @@ model User {
   watchHistory  WatchHistory[]
   jellyfinConnection JellyfinConnection?
   watchlist     Watchlist[]
+  droppedNextUpShows DroppedNextUpShow[]
 }
 
 model JellyfinConnection {
@@ -104,6 +105,16 @@ model NextUpCache {
 
   @@unique([userId, tmdbId])
   @@index([userId, lastWatchedAt])
+}
+
+model DroppedNextUpShow {
+  userId    String
+  tmdbId    Int
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, tmdbId])
 }
 
 model UpcomingEpisodesCache {

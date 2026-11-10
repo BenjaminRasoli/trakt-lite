@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useCallback, useEffect, useState, Suspense } from "react";
 import type { User } from "@supabase/supabase-js";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -10,6 +10,9 @@ import {
   getRandomBackdropUrl,
   getTrendingMedia,
 } from "@/lib/tmdb";
+import WatchlistButton from "@/components/watchlist-button";
+import WatchlistRemoveModal from "@/components/watchlist-remove-modal";
+import { notifyWatchlistChanged } from "@/components/watchlist-state";
 
 interface WatchlistItem {
   id: string;
@@ -33,9 +36,9 @@ function WatchlistPageContent() {
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
   const [watchlistLoading, setWatchlistLoading] = useState(true);
   const [pageBackdrop, setPageBackdrop] = useState("");
-  const [isFilterChanging, setIsFilterChanging] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<number | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<WatchlistItem | null>(null);
+  const [isRemoving, setIsRemoving] = useState(false);
+  const [removeError, setRemoveError] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = useSupabase();
@@ -57,65 +60,65 @@ function WatchlistPageContent() {
     router.push(`/media/${tmdbId}?type=${mediaType}`);
   };
 
-  const handleRemoveFromWatchlist = (
-    e: React.MouseEvent,
-    tmdbId: number,
-  ) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setItemToDelete(tmdbId);
-    setShowDeleteConfirm(true);
+  const handleRemoveFromWatchlist = (item: WatchlistItem) => {
+    setItemToDelete(item);
+    setRemoveError(null);
   };
 
   const confirmDeleteWatchlist = async () => {
-    if (!itemToDelete) return;
+    if (!itemToDelete || isRemoving) return;
 
+    setIsRemoving(true);
+    setRemoveError(null);
     try {
-      const response = await fetch(`/api/watchlist?tmdbId=${itemToDelete}`, {
-        method: "DELETE",
-      });
+      const response = await fetch(
+        `/api/watchlist?tmdbId=${itemToDelete.media.tmdbId}`,
+        {
+          method: "DELETE",
+        },
+      );
+      const data = await response.json();
 
-      if (response.ok) {
-        setWatchlist((current) =>
-          current.filter((item) => item.media.tmdbId !== itemToDelete),
-        );
-      }
-    } catch (error) {
-      console.error("Error removing from watchlist:", error);
-    } finally {
-      setShowDeleteConfirm(false);
-      setItemToDelete(null);
-    }
-  };
-
-  const fetchWatchlist = async () => {
-    if (!user) return;
-
-    setIsFilterChanging(true);
-
-    try {
-      const response = await fetch("/api/watchlist");
-
-      if (!response.ok) {
-        setWatchlist([]);
+      if (response.status === 401) {
+        router.push("/auth");
         return;
       }
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to remove from watchlist.");
+      }
 
-      const data = await response.json();
-      setWatchlist(Array.isArray(data.watchlist) ? data.watchlist : []);
+      setWatchlist((current) =>
+        current.filter(
+          (item) => item.media.tmdbId !== itemToDelete.media.tmdbId,
+        ),
+      );
+      notifyWatchlistChanged();
+      setItemToDelete(null);
     } catch (error) {
-      console.error("Error fetching watchlist:", error);
-      setWatchlist([]);
+      console.error("Error removing from watchlist:", error);
+      setRemoveError(
+        error instanceof Error
+          ? error.message
+          : "Failed to remove from watchlist.",
+      );
     } finally {
-      setWatchlistLoading(false);
-      setIsFilterChanging(false);
+      setIsRemoving(false);
     }
   };
+
+  const cancelDeleteWatchlist = useCallback(() => {
+    if (isRemoving) return;
+    setItemToDelete(null);
+    setRemoveError(null);
+  }, [isRemoving]);
 
   useEffect(() => {
     let isMounted = true;
 
     const updateUser = (nextUser: User | null) => {
+      if (!nextUser) {
+        setWatchlist([]);
+      }
       setUser((currentUser) => {
         if (!nextUser) return null;
         if (currentUser?.id === nextUser.id) return currentUser;
@@ -156,35 +159,33 @@ function WatchlistPageContent() {
   }, [supabase]);
 
   useEffect(() => {
-    if (user) {
-      void fetchWatchlist();
-    } else {
-      setWatchlist([]);
-    }
-  }, [user, filter]);
+    if (!user) return;
 
-  useEffect(() => {
-    if (!showDeleteConfirm) return;
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setShowDeleteConfirm(false);
-        setItemToDelete(null);
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [showDeleteConfirm]);
-
-  useEffect(() => {
-    const isAnyModalOpen = showDeleteConfirm;
-    document.body.style.overflow = isAnyModalOpen ? "hidden" : "";
+    let isMounted = true;
+    fetch("/api/watchlist")
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to fetch watchlist.");
+        }
+        return Array.isArray(data.watchlist) ? data.watchlist : [];
+      })
+      .then((data: WatchlistItem[]) => {
+        if (isMounted) setWatchlist(data);
+      })
+      .catch((error: unknown) => {
+        if (!isMounted) return;
+        console.error("Error fetching watchlist:", error);
+        setWatchlist([]);
+      })
+      .finally(() => {
+        if (isMounted) setWatchlistLoading(false);
+      });
 
     return () => {
-      document.body.style.overflow = "";
+      isMounted = false;
     };
-  }, [showDeleteConfirm]);
+  }, [user, filter]);
 
   if (loading || (watchlistLoading && watchlist.length === 0)) {
     return (
@@ -371,6 +372,9 @@ function WatchlistPageContent() {
                           e.currentTarget.src = "/placeholder-poster.svg";
                         }}
                       />
+                      <div className="absolute left-1 top-1 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-violet-400 backdrop-blur-sm">
+                        {item.media.mediaType}
+                      </div>
                     </div>
 
                     <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
@@ -397,34 +401,14 @@ function WatchlistPageContent() {
                           {item.media.title}
                         </span>
                       </div>
-                      <div className="text-[10px] text-zinc-400 capitalize">
-                        {item.media.mediaType}
-                      </div>
                     </div>
                   </Link>
 
-                  <button
-                    onClick={(e) =>
-                      handleRemoveFromWatchlist(e, item.media.tmdbId)
-                    }
-                    className="absolute top-2 right-2 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm opacity-60 transition-opacity hover:bg-red-500/80 hover:opacity-100 group-hover:opacity-100"
-                    title="Remove from watchlist"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <line x1="18" y1="6" x2="6" y2="18" />
-                      <line x1="6" y1="6" x2="18" y2="18" />
-                    </svg>
-                  </button>
+                  <WatchlistButton
+                    isInWatchlist
+                    itemTitle={item.media.title}
+                    onClick={() => handleRemoveFromWatchlist(item)}
+                  />
                 </div>
               );
             })}
@@ -432,43 +416,13 @@ function WatchlistPageContent() {
         )}
       </main>
 
-      {showDeleteConfirm && (
-        <div
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-4"
-          onClick={(event) => {
-            if (event.target === event.currentTarget) {
-              setShowDeleteConfirm(false);
-              setItemToDelete(null);
-            }
-          }}
-        >
-          <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="text-xl font-bold text-white mb-2">
-              Remove from Watchlist
-            </h3>
-            <p className="text-zinc-300 mb-6">
-              Are you sure you want to remove this item from your watchlist?
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => {
-                  setShowDeleteConfirm(false);
-                  setItemToDelete(null);
-                }}
-                className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-medium text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDeleteWatchlist}
-                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition cursor-pointer"
-              >
-                Remove
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <WatchlistRemoveModal
+        itemTitle={itemToDelete?.media.title ?? null}
+        loading={isRemoving}
+        error={removeError}
+        onCancel={cancelDeleteWatchlist}
+        onConfirm={confirmDeleteWatchlist}
+      />
     </div>
   );
 }

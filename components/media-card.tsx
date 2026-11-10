@@ -1,3 +1,6 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
 import {
   getPosterUrl,
   getMediaTitle,
@@ -7,6 +10,13 @@ import {
 import type { TMDBMedia } from "@/lib/tmdb";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useSupabase } from "@/components/supabase-provider";
+import WatchlistButton from "@/components/watchlist-button";
+import WatchlistRemoveModal from "@/components/watchlist-remove-modal";
+import {
+  getWatchlistIds,
+  notifyWatchlistChanged,
+} from "@/components/watchlist-state";
 
 interface MediaCardProps {
   media: TMDBMedia;
@@ -37,6 +47,11 @@ const GENRE_MAP: Record<number, string> = {
 
 export default function MediaCard({ media, subtitle }: MediaCardProps) {
   const router = useRouter();
+  const supabase = useSupabase();
+  const [watchlistLoading, setWatchlistLoading] = useState(false);
+  const [isInWatchlist, setIsInWatchlist] = useState(false);
+  const [watchlistError, setWatchlistError] = useState<string | null>(null);
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
   const title = getMediaTitle(media);
   const date = getMediaDate(media);
   const mediaType = getMediaType(media);
@@ -52,66 +67,213 @@ export default function MediaCard({ media, subtitle }: MediaCardProps) {
 
   const typeToUse = media.media_type || mediaType;
 
-  const handleTitleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    router.push(`/media/${media.id}?type=${typeToUse}`);
+  useEffect(() => {
+    let isMounted = true;
+    let currentUserId: string | null = null;
+
+    const syncWatchlist = async (userId: string | null) => {
+      currentUserId = userId;
+      if (!userId) {
+        setIsInWatchlist(false);
+        return;
+      }
+
+      try {
+        const ids = await getWatchlistIds(userId);
+        if (isMounted) setIsInWatchlist(ids.has(media.id));
+      } catch (error) {
+        console.error("Error checking media card watchlist:", error);
+      }
+    };
+
+    const getUser = async () => {
+      const {
+        data: { user },
+        error,
+      } = await supabase.auth.getUser();
+      if (error) throw error;
+      if (isMounted) void syncWatchlist(user?.id ?? null);
+    };
+
+    const handleWatchlistUpdate = () => {
+      if (!currentUserId) return;
+      void getWatchlistIds(currentUserId)
+        .then((ids) => {
+          if (isMounted) setIsInWatchlist(ids.has(media.id));
+        })
+        .catch((error: unknown) => {
+          console.error("Error refreshing media card watchlist:", error);
+        });
+    };
+
+    void getUser().catch((error: unknown) => {
+        console.error("Error checking current user for media card:", error);
+    });
+    const {
+        data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+        void syncWatchlist(session?.user.id ?? null);
+    });
+    window.addEventListener("watchlist-updated", handleWatchlistUpdate);
+
+    return () => {
+        isMounted = false;
+        subscription.unsubscribe();
+        window.removeEventListener("watchlist-updated", handleWatchlistUpdate);
+    };
+  }, [media.id, supabase]);
+
+  const handleWatchlistButtonClick = async () => {
+    if (isInWatchlist) {
+      setWatchlistError(null);
+      setShowRemoveConfirm(true);
+      return;
+    }
+
+    setWatchlistLoading(true);
+    setWatchlistError(null);
+
+    try {
+      const response = await fetch("/api/watchlist", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          tmdbId: media.id,
+          mediaType: typeToUse,
+        }),
+      });
+
+      if (response.status === 401) {
+        router.push("/auth");
+        return;
+      }
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to add to watchlist.");
+      }
+
+      setIsInWatchlist(true);
+      notifyWatchlistChanged();
+    } catch (error) {
+      console.error("Error adding media card to watchlist:", error);
+      setWatchlistError(
+        error instanceof Error ? error.message : "Failed to add to watchlist.",
+      );
+    } finally {
+      setWatchlistLoading(false);
+    }
   };
 
+  const handleConfirmRemove = async () => {
+    setWatchlistLoading(true);
+    setWatchlistError(null);
+
+    try {
+      const response = await fetch(`/api/watchlist?tmdbId=${media.id}`, {
+        method: "DELETE",
+      });
+      const data = await response.json();
+      if (response.status === 401) {
+        router.push("/auth");
+        return;
+      }
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to remove from watchlist.");
+      }
+
+      setIsInWatchlist(false);
+      setShowRemoveConfirm(false);
+      notifyWatchlistChanged();
+    } catch (error) {
+      console.error("Error removing media card from watchlist:", error);
+      setWatchlistError(
+        error instanceof Error
+          ? error.message
+          : "Failed to remove from watchlist.",
+      );
+    } finally {
+      setWatchlistLoading(false);
+    }
+  };
+
+  const cancelRemoveConfirm = useCallback(() => {
+    if (watchlistLoading) return;
+    setShowRemoveConfirm(false);
+    setWatchlistError(null);
+  }, [watchlistLoading]);
+
   return (
-    <Link
-      href={`/media/${media.id}?type=${typeToUse}`}
-      className="block bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 rounded-lg border border-zinc-700/50 backdrop-blur-sm overflow-hidden hover:border-violet-500/50 transition-all hover:shadow-lg hover:shadow-violet-500/10"
-    >
-      <div className="relative aspect-[2/3]">
-        <img
-          src={posterUrl}
-          alt={title}
-          className="w-full h-full object-cover"
-          onError={(e) => {
-            e.currentTarget.src = "/placeholder-poster.svg";
-          }}
-        />
-        <div className="absolute top-1 left-1 bg-black/70 backdrop-blur-sm px-1.5 py-0.5 rounded text-[10px] font-semibold text-violet-400 uppercase">
-          {mediaType}
-        </div>
-      </div>
+    <>
+      <div className="relative overflow-hidden rounded-lg border border-zinc-700/50 bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 backdrop-blur-sm transition-all hover:border-violet-500/50 hover:shadow-lg hover:shadow-violet-500/10">
+        <Link href={`/media/${media.id}?type=${typeToUse}`} className="block">
+          <div className="relative aspect-[2/3]">
+            <img
+              src={posterUrl}
+              alt={title}
+              className="h-full w-full object-cover"
+              onError={(e) => {
+                e.currentTarget.src = "/placeholder-poster.svg";
+              }}
+            />
+            <div className="absolute left-1 top-1 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-violet-400 backdrop-blur-sm">
+              {mediaType}
+            </div>
+          </div>
 
-      <div className="p-3">
-        <h3 className="text-sm font-bold text-white mb-1.5 line-clamp-1">
-          <span
-            onClick={handleTitleClick}
-            className="hover:underline hover:text-violet-200 transition-colors cursor-pointer"
-          >
-            {title}
-          </span>
-        </h3>
+          <div className="p-3">
+            <h3 className="mb-1.5 line-clamp-1 text-sm font-bold text-white transition-colors hover:text-violet-200 hover:underline">
+              {title}
+            </h3>
 
-        {subtitle && (
-          <p className="mb-1.5 break-words text-xs leading-relaxed text-zinc-400">
-            {subtitle}
+            {subtitle && (
+              <p className="mb-1.5 break-words text-xs leading-relaxed text-zinc-400">
+                {subtitle}
+              </p>
+            )}
+
+            <div className="mb-1.5 flex flex-col items-start gap-1.5 md:flex-row md:items-center">
+              <div className="flex items-center gap-0.5">
+                <span className="text-xs text-yellow-400">★</span>
+                <span className="text-xs text-zinc-300">{rating}</span>
+              </div>
+              <span className="hidden text-xs text-zinc-500 md:block">•</span>
+              <span className="text-xs text-zinc-400">{date}</span>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5">
+              {genres.slice(0, 2).map((genre, index) => (
+                <span
+                  key={`${genre}-${index}`}
+                  className="rounded bg-zinc-700/50 px-1.5 py-0.5 text-[10px] text-zinc-300"
+                >
+                  {genre}
+                </span>
+              ))}
+            </div>
+          </div>
+        </Link>
+        {watchlistError && !showRemoveConfirm && (
+          <p role="alert" className="px-3 pb-3 text-center text-xs text-red-300">
+            {watchlistError}
           </p>
         )}
-
-        <div className="flex md:flex-row md:items-center flex-col items-start gap-1.5 mb-1.5">
-          <div className="flex items-center gap-0.5">
-            <span className="text-yellow-400 text-xs">★</span>
-            <span className="text-zinc-300 text-xs">{rating}</span>
-          </div>
-          <span className="text-zinc-500 text-xs hidden md:block">•</span>
-          <span className="text-zinc-400 text-xs">{date}</span>
-        </div>
-
-        <div className="flex flex-wrap gap-1.5">
-          {genres.slice(0, 2).map((genre, index) => (
-            <span
-              key={`${genre}-${index}`}
-              className="px-1.5 py-0.5 bg-zinc-700/50 text-zinc-300 text-[10px] rounded"
-            >
-              {genre}
-            </span>
-          ))}
-        </div>
+        <WatchlistButton
+          isInWatchlist={isInWatchlist}
+          loading={watchlistLoading}
+          itemTitle={title}
+          onClick={handleWatchlistButtonClick}
+        />
       </div>
-    </Link>
+      <WatchlistRemoveModal
+        itemTitle={showRemoveConfirm ? title : null}
+        loading={watchlistLoading}
+        error={watchlistError}
+        onCancel={cancelRemoveConfirm}
+        onConfirm={handleConfirmRemove}
+      />
+    </>
   );
 }

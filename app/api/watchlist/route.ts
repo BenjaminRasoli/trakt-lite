@@ -17,9 +17,7 @@ async function hydrateMissingMediaMetadata(media: {
   overview: string | null;
   releaseDate: Date | null;
 }) {
-  if (!media.tmdbId || (media.posterPath && media.releaseDate)) {
-    return media;
-  }
+  if (!media.tmdbId) return media;
 
   const cacheKey = `${media.tmdbId}:${media.mediaType}`;
   const now = Date.now();
@@ -119,6 +117,17 @@ export async function GET(request: NextRequest) {
           email: user.email!,
           username: user.user_metadata?.username || user.email?.split("@")[0],
         },
+      });
+    }
+
+    if (request.nextUrl.searchParams.get("idsOnly") === "true") {
+      const watchlist = await prisma.watchlist.findMany({
+        where: { userId: dbUser.id },
+        select: { media: { select: { tmdbId: true } } },
+      });
+
+      return NextResponse.json({
+        tmdbIds: watchlist.map((item) => item.media.tmdbId),
       });
     }
 
@@ -294,8 +303,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Add to watchlist
-    const watchlistItem = await prisma.watchlist.create({
-      data: {
+    const watchlistItem = await prisma.watchlist.upsert({
+      where: {
+        userId_mediaId: {
+          userId: dbUser.id,
+          mediaId: media.id,
+        },
+      },
+      update: {},
+      create: {
         userId: dbUser.id,
         mediaId: media.id,
       },

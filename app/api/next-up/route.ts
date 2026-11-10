@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { addNextUpEpisodeInfo, getTVSeasonDetails } from "@/lib/tmdb";
+import {
+  getDroppedNextUpShows,
+  isMissingDroppedNextUpTable,
+} from "@/lib/dropped-next-up-shows";
 
 function isReleasedEpisode(
   episode:
@@ -202,8 +206,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    const {
+      tmdbIds: droppedTmdbIds,
+      available: droppedShowStorageAvailable,
+    } = await getDroppedNextUpShows(dbUser.id);
     const cachedNextUp = await prisma.nextUpCache.findMany({
-      where: { userId: dbUser.id },
+      where: {
+        userId: dbUser.id,
+        ...(droppedTmdbIds.size > 0
+          ? { tmdbId: { notIn: [...droppedTmdbIds] } }
+          : {}),
+      },
       orderBy: { lastWatchedAt: "desc" },
       take: 20,
     });
@@ -211,7 +224,7 @@ export async function GET(request: NextRequest) {
     let nextUpItems: any[] = [];
 
     if (cachedNextUp.length > 0) {
-      nextUpItems = cachedNextUp.map((item: any) => ({
+      nextUpItems = cachedNextUp.filter((item) => !droppedTmdbIds.has(item.tmdbId)).map((item: any) => ({
         tmdbId: item.tmdbId,
         title: item.title,
         posterPath: item.posterPath,
@@ -223,7 +236,7 @@ export async function GET(request: NextRequest) {
     } else {
       // Compute on the fly if cache is empty
       const computedNextUp = await computeNextUpForUser(dbUser.id);
-      nextUpItems = computedNextUp.map((item: any) => ({
+      nextUpItems = computedNextUp.filter((item: any) => !droppedTmdbIds.has(item.tmdbId)).map((item: any) => ({
         tmdbId: item.tmdbId,
         title: item.title,
         posterPath: item.posterPath,
@@ -236,11 +249,76 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       nextUp: await addNextUpEpisodeInfo(nextUpItems),
+      warning: droppedShowStorageAvailable
+        ? null
+        : "Dropped shows cannot be remembered until the database migration is applied.",
     });
   } catch (error) {
     console.error("Error fetching next up:", error);
     return NextResponse.json(
       { error: "Failed to fetch next up" },
+      { status: 500 },
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const tmdbIdParam = request.nextUrl.searchParams.get("tmdbId");
+    const tmdbId = Number(tmdbIdParam);
+    if (!tmdbIdParam || !Number.isSafeInteger(tmdbId) || tmdbId <= 0) {
+      return NextResponse.json({ error: "A valid tmdbId is required" }, { status: 400 });
+    }
+
+    const dbUser = await prisma.user.findUnique({
+      where: { email: user.email! },
+    });
+    if (!dbUser) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    await prisma.$transaction([
+      prisma.droppedNextUpShow.upsert({
+        where: {
+          userId_tmdbId: {
+            userId: dbUser.id,
+            tmdbId,
+          },
+        },
+        create: {
+          userId: dbUser.id,
+          tmdbId,
+        },
+        update: {},
+      }),
+      prisma.nextUpCache.deleteMany({
+        where: { userId: dbUser.id, tmdbId },
+      }),
+    ]);
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error dropping Next Up show:", error);
+    if (isMissingDroppedNextUpTable(error)) {
+      return NextResponse.json(
+        {
+          error:
+            "Dropping shows is unavailable until the database migration is applied.",
+        },
+        { status: 503 },
+      );
+    }
+    return NextResponse.json(
+      { error: "Failed to drop show from Next Up" },
       { status: 500 },
     );
   }
