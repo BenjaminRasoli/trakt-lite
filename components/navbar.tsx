@@ -208,6 +208,7 @@ export default function Navbar() {
                     { href: "/watchlist", label: "Watchlist" },
                     { href: "/history", label: "History" },
                     { href: "/ratings", label: "Ratings" },
+                    { href: "/achievements", label: "Achievements" },
                     { href: "/profile", label: "Profile" },
                     { href: "/settings", label: "Settings" },
                   ].map(({ href, label }) => {
@@ -346,6 +347,7 @@ export default function Navbar() {
                 { href: "/watchlist", label: "Watchlist" },
                 { href: "/history", label: "History" },
                 { href: "/ratings", label: "Ratings" },
+                { href: "/achievements", label: "Achievements" },
                 { href: "/profile", label: "Profile" },
                 { href: "/settings", label: "Settings" },
               ].map(({ href, label }) => {

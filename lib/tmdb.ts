@@ -35,6 +35,21 @@ export interface TMDBGenre {
   name: string;
 }
 
+function normalizeMediaGenres(media: TMDBMedia): TMDBMedia {
+  return {
+    ...media,
+    genre_ids:
+      Array.isArray(media.genre_ids) && media.genre_ids.length > 0
+        ? media.genre_ids
+        : (media.genres ?? []).map((genre) => genre.id),
+  };
+}
+
+export type MediaDetailsLookup =
+  | { status: "found"; media: TMDBMedia }
+  | { status: "not-found" }
+  | { status: "unavailable"; httpStatus?: number };
+
 export interface TMDBActor {
   id: number;
   name: string;
@@ -541,52 +556,44 @@ export async function getGenres(): Promise<TMDBGenre[]> {
 export async function getMovieDetails(
   movieId: number,
 ): Promise<TMDBMedia | null> {
-  if (!TMDB_API_KEY) {
-    console.error("TMDB API key is not configured");
-    return null;
-  }
-
-  try {
-    const response = await fetch(
-      `${TMDB_BASE_URL}/movie/${movieId}?api_key=${TMDB_API_KEY}`,
-    );
-    if (!response.ok) {
-      if (response.status !== 404) {
-        console.error(`TMDB movie details request failed (${response.status})`);
-      }
-      return null;
-    }
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error("Error fetching movie details:", error);
-    return null;
-  }
+  const result = await lookupMediaDetails(movieId, "movie");
+  return result.status === "found" ? result.media : null;
 }
 
 export async function getTVShowDetails(
   tvId: number,
 ): Promise<TMDBMedia | null> {
+  const result = await lookupMediaDetails(tvId, "tv");
+  return result.status === "found" ? result.media : null;
+}
+
+export async function lookupMediaDetails(
+  mediaId: number,
+  mediaType: "movie" | "tv",
+): Promise<MediaDetailsLookup> {
   if (!TMDB_API_KEY) {
     console.error("TMDB API key is not configured");
-    return null;
+    return { status: "unavailable" };
   }
 
   try {
     const response = await fetch(
-      `${TMDB_BASE_URL}/tv/${tvId}?api_key=${TMDB_API_KEY}`,
+      `${TMDB_BASE_URL}/${mediaType}/${mediaId}?api_key=${TMDB_API_KEY}`,
     );
     if (!response.ok) {
-      if (response.status !== 404) {
-        console.error(`TMDB TV show details request failed (${response.status})`);
+      if (response.status === 404) {
+        return { status: "not-found" };
       }
-      return null;
+      console.error(
+        `TMDB ${mediaType} details request failed (${response.status})`,
+      );
+      return { status: "unavailable", httpStatus: response.status };
     }
-    const data = await response.json();
-    return data;
+    const data: TMDBMedia = await response.json();
+    return { status: "found", media: normalizeMediaGenres(data) };
   } catch (error) {
-    console.error("Error fetching TV show details:", error);
-    return null;
+    console.error(`Error fetching TMDB ${mediaType} details:`, error);
+    return { status: "unavailable" };
   }
 }
 
@@ -594,11 +601,8 @@ export async function getMediaDetails(
   mediaId: number,
   mediaType: "movie" | "tv",
 ): Promise<TMDBMedia | null> {
-  if (mediaType === "movie") {
-    return getMovieDetails(mediaId);
-  } else {
-    return getTVShowDetails(mediaId);
-  }
+  const result = await lookupMediaDetails(mediaId, mediaType);
+  return result.status === "found" ? result.media : null;
 }
 
 export async function getMovieCredits(

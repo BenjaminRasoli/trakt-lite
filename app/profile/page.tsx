@@ -11,6 +11,10 @@ import {
   getRandomBackdropUrl,
   getTrendingMedia,
 } from "@/lib/tmdb";
+import type {
+  AchievementApiResponse,
+  AchievementSummary,
+} from "@/lib/achievements";
 
 type WatchHistoryEntry = {
   watchedAt: string;
@@ -43,6 +47,10 @@ export default function ProfilePage() {
   });
   const [loadingRuntime, setLoadingRuntime] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [achievementSummary, setAchievementSummary] =
+    useState<AchievementSummary | null>(null);
+  const [loadingAchievements, setLoadingAchievements] = useState(false);
+  const [achievementError, setAchievementError] = useState("");
   const [viewFilter, setViewFilter] = useState<"all" | "year">("all");
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -188,6 +196,50 @@ export default function ProfilePage() {
     };
 
     void fetchHistory();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    let isMounted = true;
+
+    const fetchAchievements = async () => {
+      setLoadingAchievements(true);
+      setAchievementError("");
+      try {
+        const response = await fetch("/api/achievements");
+        if (!response.ok) {
+          throw new Error(`Failed to load achievements (${response.status})`);
+        }
+
+        const summary: AchievementApiResponse = await response.json();
+        if (isMounted) setAchievementSummary(summary);
+        if (isMounted && summary.genreSync.failed > 0) {
+          const statuses = summary.genreSync.httpStatuses;
+          setAchievementError(
+            statuses.length > 0
+              ? `TMDB genre lookups failed (HTTP ${statuses.join(", ")}). Check your TMDB API key or try again later.`
+              : "TMDB could not load some genre data. Visit Achievements to retry.",
+          );
+        }
+      } catch (error) {
+        console.error("Error fetching profile achievements:", error);
+        if (isMounted) {
+          setAchievementSummary(null);
+          setAchievementError(
+            "Level details are unavailable. Visit Achievements to try again.",
+          );
+        }
+      } finally {
+        if (isMounted) setLoadingAchievements(false);
+      }
+    };
+
+    void fetchAchievements();
+
+    return () => {
+      isMounted = false;
+    };
   }, [user]);
 
   useEffect(() => {
@@ -670,9 +722,21 @@ export default function ProfilePage() {
                 <h2 className="text-2xl font-bold text-white sm:text-3xl">
                   {displayName}
                 </h2>
-                <span className="rounded-full border border-violet-500/40 bg-violet-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.25em] text-violet-200">
-                  Member
-                </span>
+                <Link
+                  href="/achievements"
+                  className="rounded-full border border-violet-500/40 bg-violet-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-violet-200 transition hover:border-violet-400 hover:bg-violet-500/20"
+                >
+                  {loadingAchievements
+                    ? "Loading level..."
+                    : achievementSummary
+                      ? `Level ${achievementSummary.level} · ${achievementSummary.rank}`
+                      : "Achievements"}
+                </Link>
+                {achievementError && (
+                  <p role="status" className="w-full text-xs text-amber-200">
+                    {achievementError}
+                  </p>
+                )}
               </div>
               <p className="text-zinc-300">{email}</p>
               <div className="flex flex-wrap gap-4 text-sm text-zinc-400">
