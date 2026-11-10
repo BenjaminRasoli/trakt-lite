@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSupabase } from "@/components/supabase-provider";
+import UserRating from "@/components/user-rating";
 import {
   getMediaDetails,
   getPosterUrl,
@@ -563,6 +564,15 @@ export default function EpisodePage() {
                   </span>
                 )}
               </div>
+
+              <UserRating
+                tmdbId={mediaId}
+                mediaType="tv"
+                title={`${title} - ${episode.name || `Episode ${episodeNumber}`}`}
+                seasonNumber={seasonNumber}
+                episodeNumber={episodeNumber}
+                watched={episodeHistory.length > 0}
+              />
 
               {episode.overview && (
                 <div className="mb-6">

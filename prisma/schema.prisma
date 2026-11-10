@@ -24,6 +24,7 @@ model User {
   jellyfinConnection JellyfinConnection?
   watchlist     Watchlist[]
   droppedNextUpShows DroppedNextUpShow[]
+  ratings       UserRating[]
 }
 
 model JellyfinConnection {
@@ -55,6 +56,7 @@ model Media {
   updatedAt   DateTime       @updatedAt
   watchHistory WatchHistory[]
   watchlist   Watchlist[]
+  ratings     UserRating[]
 }
 
 model WatchHistory {
@@ -73,6 +75,25 @@ model WatchHistory {
 
   @@index([userId, watchedAt])
   @@index([userId, mediaId])
+}
+
+model UserRating {
+  id            String   @id @default(cuid())
+  userId        String
+  mediaId       Int
+  subjectKey    String   @default("media")
+  seasonNumber  Int?
+  episodeNumber Int?
+  score         Float
+  review        String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  media Media @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, mediaId, subjectKey])
+  @@index([userId, updatedAt])
 }
 
 model Watchlist {

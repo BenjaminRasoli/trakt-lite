@@ -18,6 +18,7 @@ import {
 } from "@/lib/tmdb";
 import type { TMDBMedia, TMDBActor, TMDBReview } from "@/lib/tmdb";
 import MediaCard from "@/components/media-card";
+import UserRating from "@/components/user-rating";
 
 export default function MediaDetailsPage() {
   const [user, setUser] = useState<any>(null);
@@ -538,6 +539,21 @@ export default function MediaDetailsPage() {
                   </span>
                 )}
               </div>
+
+              <UserRating
+                tmdbId={Number(mediaId)}
+                mediaType={mediaType}
+                title={title}
+                watched={
+                  mediaType === "tv"
+                    ? watchHistory.some(
+                        (watch) =>
+                          watch.seasonNumber !== null &&
+                          watch.episodeNumber !== null,
+                      )
+                    : watchHistory.length > 0
+                }
+              />
 
               {genres.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-6">
