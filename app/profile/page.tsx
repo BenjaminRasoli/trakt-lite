@@ -15,6 +15,7 @@ import type {
   AchievementApiResponse,
   AchievementSummary,
 } from "@/lib/achievements";
+import { MAX_LEVEL } from "@/lib/achievements";
 
 type WatchHistoryEntry = {
   watchedAt: string;
@@ -72,6 +73,16 @@ export default function ProfilePage() {
 
   const supabase = useSupabase();
   const router = useRouter();
+  const profileLevelLine = achievementSummary
+    ? `LVL\u00A0${achievementSummary.level}\u00A0|\u00A0${achievementSummary.rank}`
+    : "";
+  const profileLevelGlowLength =
+    achievementSummary && achievementSummary.level >= 20 && MAX_LEVEL > 20
+      ? Math.ceil(
+          (profileLevelLine.length * (achievementSummary.level - 19)) /
+            (MAX_LEVEL - 19),
+        )
+      : 0;
 
   useEffect(() => {
     let isMounted = true;
@@ -620,7 +631,10 @@ export default function ProfilePage() {
               </button>
             </div>
             {viewFilter === "year" && stats.availableYears.length > 0 && (
-              <div className="relative w-fit self-start sm:self-auto" id="year-dropdown">
+              <div
+                className="relative w-fit self-start sm:self-auto"
+                id="year-dropdown"
+              >
                 <button
                   onClick={() => setShowYearDropdown(!showYearDropdown)}
                   className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
@@ -724,13 +738,46 @@ export default function ProfilePage() {
                 </h2>
                 <Link
                   href="/achievements"
-                  className="rounded-full border border-violet-500/40 bg-violet-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-violet-200 transition hover:border-violet-400 hover:bg-violet-500/20"
+                  className={`flex w-fit min-w-0 items-center gap-1 whitespace-nowrap text-[10px] font-semibold leading-none transition ${
+                    achievementSummary && achievementSummary.level >= 20
+                      ? "rounded-md bg-violet-500/10 px-1.5 py-1 text-violet-100 ring-1 ring-inset ring-violet-400/30 hover:bg-violet-500/20"
+                      : "text-violet-100"
+                  }`}
                 >
-                  {loadingAchievements
-                    ? "Loading level..."
-                    : achievementSummary
-                      ? `Level ${achievementSummary.level} · ${achievementSummary.rank}`
-                      : "Achievements"}
+                  {loadingAchievements ? (
+                    "Loading level..."
+                  ) : achievementSummary ? (
+                    <span
+                      className="block min-w-0 whitespace-nowrap leading-none"
+                      title={profileLevelLine}
+                    >
+                      {achievementSummary.level >= 20 ? (
+                        <span className="level-starlight relative inline-block">
+                          <span className="bg-gradient-to-r from-violet-100 via-fuchsia-200 to-violet-300 bg-clip-text font-semibold text-transparent drop-shadow-[0_0_5px_rgba(167,139,250,0.85)]">
+                            {profileLevelLine.slice(
+                              0,
+                              profileLevelGlowLength,
+                            )}
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="bg-gradient-to-r from-violet-100 via-fuchsia-200 to-violet-300 bg-clip-text font-semibold text-transparent drop-shadow-[0_0_5px_rgba(167,139,250,0.85)]">
+                          {profileLevelLine.slice(0, profileLevelGlowLength)}
+                        </span>
+                      )}
+                      <span
+                        className={
+                          achievementSummary.level >= 20
+                            ? "font-medium text-violet-200/50"
+                            : "font-medium text-violet-100"
+                        }
+                      >
+                        {profileLevelLine.slice(profileLevelGlowLength)}
+                      </span>
+                    </span>
+                  ) : (
+                    "Achievements"
+                  )}
                 </Link>
                 {achievementError && (
                   <p role="status" className="w-full text-xs text-amber-200">
