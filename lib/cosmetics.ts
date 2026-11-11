@@ -60,6 +60,14 @@ export const cosmetics: Cosmetic[] = [
     value: "fx-badge-glow",
   },
   {
+    id: "shine-halo",
+    slot: "badgeShine",
+    name: "Halo Glow",
+    description: "Unlocked badges pulse with a soft halo.",
+    unlockLevel: 30,
+    value: "fx-badge-halo",
+  },
+  {
     id: "shine-frame",
     slot: "badgeShine",
     name: "Gilded Frame",
@@ -192,17 +200,17 @@ export const cosmetics: Cosmetic[] = [
     id: "color-teal",
     slot: "nameColor",
     name: "Teal Wave",
-    description: "A calm, deep teal.",
+    description: "A deep teal current that flows through your name.",
     unlockLevel: 40,
-    value: "#2dd4b6",
+    value: "fx-color-teal",
   },
   {
     id: "color-blush",
     slot: "nameColor",
     name: "Blush Hour",
-    description: "A rosy pink for golden hour.",
+    description: "A rosy dusk gradient for golden hour.",
     unlockLevel: 41,
-    value: "#fb7185",
+    value: "fx-color-blush",
   },
   {
     id: "color-royal",
@@ -355,7 +363,7 @@ export const cosmetics: Cosmetic[] = [
     name: "Ocean Gradient",
     description: "A deep blue-to-teal gradient ring.",
     unlockLevel: 35,
-    value: "linear-gradient(135deg, #1e3a8a, #06b6d4)",
+    value: "fx-ring-ocean",
   },
   {
     id: "ring-rainbow",
@@ -371,7 +379,7 @@ export const cosmetics: Cosmetic[] = [
     name: "Ember Band",
     description: "A burning orange ring.",
     unlockLevel: 39,
-    value: "#f97316",
+    value: "fx-ring-ember",
   },
   {
     id: "ring-pearl",
@@ -379,7 +387,7 @@ export const cosmetics: Cosmetic[] = [
     name: "Pearl Band",
     description: "A soft, lustrous pearl ring.",
     unlockLevel: 40,
-    value: "linear-gradient(135deg, #f5f5f4, #d6d3d1)",
+    value: "fx-ring-pearl",
   },
   {
     id: "ring-forge",
@@ -387,7 +395,7 @@ export const cosmetics: Cosmetic[] = [
     name: "Forge Gradient",
     description: "A molten ember-to-gold gradient ring.",
     unlockLevel: 41,
-    value: "linear-gradient(135deg, #dc2626, #f59e0b)",
+    value: "fx-ring-forge fx-ring-sheen",
   },
   {
     id: "ring-midnight",
@@ -395,7 +403,15 @@ export const cosmetics: Cosmetic[] = [
     name: "Midnight Band",
     description: "A deep indigo ring for night owls.",
     unlockLevel: 42,
-    value: "#6366f1",
+    value: "fx-ring-midnight fx-ring-sheen",
+  },
+  {
+    id: "ring-halo",
+    slot: "avatarRing",
+    name: "Prism Halo",
+    description: "The classic ring with a moving shine.",
+    unlockLevel: 42,
+    value: "fx-ring-halo fx-ring-sheen",
   },
   {
     id: "ring-gilded",
@@ -427,7 +443,7 @@ export const cosmetics: Cosmetic[] = [
     name: "Plasma Ring",
     description: "A spinning ring of pure neon plasma.",
     unlockLevel: 40,
-    value: "fx-ring-plasma",
+    value: "fx-ring-plasma fx-ring-sheen",
   },
 
   {
@@ -647,6 +663,14 @@ export const cosmetics: Cosmetic[] = [
     description: "Colors spiral through the spectrum at high speed.",
     unlockLevel: 42,
     value: "fx-vortex",
+  },
+  {
+    id: "uname-singularity",
+    slot: "usernameEffect",
+    name: "Singularity Name",
+    description: "A white-hot serpent of light tears through your name.",
+    unlockLevel: 42,
+    value: "fx-singularity",
   },
 ];
 

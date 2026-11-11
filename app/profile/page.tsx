@@ -17,6 +17,7 @@ import type {
 } from "@/lib/achievements";
 import { getRankName } from "@/lib/achievements";
 import { parseActiveRankNameLevel, resolveCosmetics } from "@/lib/cosmetics";
+import FxStars, { STAR_FX } from "@/components/fx-stars";
 
 type WatchHistoryEntry = {
   watchedAt: string;
@@ -758,14 +759,19 @@ export default function ProfilePage() {
             <div className="flex-1 space-y-2">
               <div className="flex flex-wrap items-center gap-3">
                 <h2
-                  className={`relative text-2xl font-bold text-white sm:text-3xl ${usernameEffectClass} ${usernameEffectClass ? "fx-username" : ""}`}
+                  className={`relative text-2xl font-bold text-white sm:text-3xl ${usernameEffectClass} ${usernameEffectClass ? "fx-username" : ""} ${STAR_FX[usernameEffectClass] ? "fx-js-stars" : ""}`}
                   style={!nameColorFx && nameColor ? { color: nameColor } : undefined}
                 >
-                  {nameColorFx ? (
-                    <span className={nameColor}>{displayName}</span>
-                  ) : (
-                    displayName
-                  )}
+                  <span className="relative inline-block">
+                    {nameColorFx ? (
+                      <span className={nameColor}>{displayName}</span>
+                    ) : (
+                      displayName
+                    )}
+                    {STAR_FX[usernameEffectClass] && (
+                      <FxStars {...STAR_FX[usernameEffectClass]} />
+                    )}
+                  </span>
                 </h2>
                 <Link
                   href="/achievements"
@@ -775,12 +781,22 @@ export default function ProfilePage() {
                     "Loading level..."
                   ) : achievementSummary ? (
                     <span
-                      className={`relative block min-w-0 whitespace-nowrap leading-none ${nameEffectClass}`}
+                      className={`relative block min-w-0 whitespace-nowrap leading-none ${nameEffectClass} ${STAR_FX[nameEffectClass] ? "fx-js-stars" : ""}`}
                       title={profileLevelLine}
                     >
                       <span className="bg-gradient-to-r from-violet-100 via-fuchsia-200 to-violet-300 bg-clip-text font-semibold text-transparent drop-shadow-[0_0_5px_rgba(167,139,250,0.85)]">
                         {profileLevelLine}
                       </span>
+                      {nameEffectClass === "fx-void" && (
+                        <FxStars count={6} leftMin={1} leftMax={99} />
+                      )}
+                      {STAR_FX[nameEffectClass] && (
+                        <FxStars
+                          {...STAR_FX[nameEffectClass]}
+                          leftMin={1}
+                          leftMax={99}
+                        />
+                      )}
                     </span>
                   ) : (
                     "Achievements"

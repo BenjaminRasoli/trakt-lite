@@ -16,6 +16,7 @@ import {
   resolveCosmetics,
   type ResolvedCosmetics,
 } from "@/lib/cosmetics";
+import FxStars, { STAR_FX } from "@/components/fx-stars";
 
 function GlobalSearch() {
   const searchParams = useSearchParams();
@@ -174,7 +175,7 @@ function ProfileLink({
         <span
           className={`relative font-semibold leading-tight ${usernameEffectClass} ${
             usernameEffectClass ? "fx-username " : ""
-          }${
+          }${STAR_FX[usernameEffectClass] ? "fx-js-stars " : ""}${
             compact
               ? "max-w-28 text-xs min-[420px]:max-w-36"
               : "max-w-40 text-sm"
@@ -186,11 +187,16 @@ function ProfileLink({
           style={!nameColorFx && nameColor ? { color: nameColor } : undefined}
           title={username}
         >
-          {nameColorFx ? (
-            <span className={nameColor}>{username}</span>
-          ) : (
-            username
-          )}
+          <span className="relative inline-block">
+            {nameColorFx ? (
+              <span className={nameColor}>{username}</span>
+            ) : (
+              username
+            )}
+            {STAR_FX[usernameEffectClass] && (
+              <FxStars {...STAR_FX[usernameEffectClass]} />
+            )}
+          </span>
         </span>
         <span
           className="flex min-w-0 items-center gap-1 whitespace-nowrap rounded-md bg-violet-500/10 px-1.5 py-1 text-[10px] font-semibold leading-none text-violet-100 ring-1 ring-inset ring-violet-400/30"
@@ -200,12 +206,22 @@ function ProfileLink({
             <span>…</span>
           ) : (
             <span
-              className={`relative block min-w-0 whitespace-nowrap leading-none ${nameEffectClass}`}
+              className={`relative block min-w-0 whitespace-nowrap leading-none ${nameEffectClass} ${STAR_FX[nameEffectClass] ? "fx-js-stars" : ""}`}
               title={levelLabel}
             >
               <span className="bg-gradient-to-r from-violet-100 via-fuchsia-200 to-violet-300 bg-clip-text font-semibold text-transparent drop-shadow-[0_0_5px_rgba(167,139,250,0.85)]">
                 {levelLine}
               </span>
+              {nameEffectClass === "fx-void" && (
+                <FxStars count={6} leftMin={1} leftMax={99} />
+              )}
+              {STAR_FX[nameEffectClass] && (
+                <FxStars
+                  {...STAR_FX[nameEffectClass]}
+                  leftMin={1}
+                  leftMax={99}
+                />
+              )}
             </span>
           )}
         </span>

@@ -23,6 +23,7 @@ import {
   SLOT_LABELS,
   type CosmeticSlot,
 } from "@/lib/cosmetics";
+import FxStars, { STAR_FX } from "@/components/fx-stars";
 
 const categories = [
   "All",
@@ -632,9 +633,9 @@ export default function AchievementsPage() {
                                   aria-pressed={selected}
                                   className={`rounded-xl border p-3 text-left transition ${
                                     selected
-                                      ? "border-violet-400/70 bg-violet-500/15"
+                                      ? "cursor-pointer border-violet-400/70 bg-violet-500/15"
                                       : unlocked
-                                        ? "border-zinc-700 bg-zinc-900/70 hover:border-zinc-500"
+                                        ? "cursor-pointer border-zinc-700 bg-zinc-900/70 hover:border-zinc-500"
                                         : "cursor-not-allowed border-zinc-800 bg-zinc-900/40 opacity-60"
                                   }`}
                                 >
@@ -665,17 +666,36 @@ export default function AchievementsPage() {
                                     {slot === "nameEffect" &&
                                       cosmetic.value && (
                                         <span
-                                          className={`relative inline-block bg-gradient-to-r from-violet-100 via-fuchsia-200 to-violet-300 bg-clip-text text-[10px] font-semibold text-transparent ${cosmetic.value}`}
+                                          className={`relative inline-block bg-gradient-to-r from-violet-100 via-fuchsia-200 to-violet-300 bg-clip-text text-[10px] font-semibold text-transparent ${cosmetic.value} ${STAR_FX[cosmetic.value] ? "fx-js-stars" : ""}`}
                                         >
                                           LVL 20 | RANK
+                                          {cosmetic.value === "fx-void" && (
+                                            <FxStars
+                                              count={6}
+                                              leftMin={1}
+                                              leftMax={99}
+                                            />
+                                          )}
+                                          {STAR_FX[cosmetic.value] && (
+                                            <FxStars
+                                              {...STAR_FX[cosmetic.value]}
+                                              leftMin={1}
+                                              leftMax={99}
+                                            />
+                                          )}
                                         </span>
                                       )}
                                     {slot === "usernameEffect" &&
                                       cosmetic.value && (
                                         <span
-                                          className={`relative inline-block text-[10px] font-semibold text-white fx-username ${cosmetic.value}`}
+                                          className={`relative inline-block text-[10px] font-semibold text-white fx-username ${cosmetic.value} ${STAR_FX[cosmetic.value] ? "fx-js-stars" : ""}`}
                                         >
                                           username
+                                          {STAR_FX[cosmetic.value] && (
+                                            <FxStars
+                                              {...STAR_FX[cosmetic.value]}
+                                            />
+                                          )}
                                         </span>
                                       )}
                                     {slot === "nameColor" && (
@@ -706,6 +726,10 @@ export default function AchievementsPage() {
                                             : cosmetic.value
                                               ? ""
                                               : "bg-gradient-to-br from-violet-400 via-fuchsia-400 to-indigo-500"
+                                        } ${
+                                          cosmetic.value.includes("--ring-angle")
+                                            ? "fx-ring-spin"
+                                            : ""
                                         }`}
                                         style={
                                           !isFxRing && cosmetic.value
@@ -749,7 +773,7 @@ export default function AchievementsPage() {
                               disabled={saving}
                               onClick={() => void updateRankName(rankLevel)}
                               aria-pressed={selected}
-                              className={`rounded-xl border p-3 text-left transition ${
+                              className={`cursor-pointer rounded-xl border p-3 text-left transition ${
                                 selected
                                   ? "border-violet-400/70 bg-violet-500/15"
                                   : "border-zinc-700 bg-zinc-900/70 hover:border-zinc-500"
