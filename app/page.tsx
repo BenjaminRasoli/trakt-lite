@@ -165,6 +165,7 @@ function HomeContent() {
     useState<(typeof SEARCH_SORTS)[number]["value"]>("relevance");
   const [showSearchSort, setShowSearchSort] = useState(false);
   const [recentHistory, setRecentHistory] = useState<any[]>([]);
+  const [watchStreak, setWatchStreak] = useState(0);
   const [nextUp, setNextUp] = useState<any[]>([]);
   const [nextUpWarning, setNextUpWarning] = useState<string | null>(null);
   const [showToDrop, setShowToDrop] = useState<{
@@ -466,8 +467,14 @@ function HomeContent() {
           );
           setUpcoming(upcomingItems);
           setRecentHistory(data.slice(0, 6));
+          setWatchStreak(
+            typeof responseData.currentStreak === "number"
+              ? responseData.currentStreak
+              : 0,
+          );
         } else {
           setRecentHistory([]);
+          setWatchStreak(0);
           setNextUp([]);
           setNextUpWarning(null);
           setUpcoming([]);
@@ -485,6 +492,7 @@ function HomeContent() {
       } catch (error) {
         console.error("Error fetching recent history:", error);
         setRecentHistory([]);
+        setWatchStreak(0);
         setNextUp([]);
         setNextUpWarning(null);
         setUpcoming([]);
@@ -676,11 +684,32 @@ function HomeContent() {
       <main className="relative z-10 w-full max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 py-12 flex-1">
         <div>
           {!searchQuery && (
-            <div className="flex items-center gap-4 mb-8">
-              <h1 className="text-3xl font-bold text-white">Welcome</h1>
-              <p className="text-3xl text-violet-400 font-semibold">
-                {capitalizedUsername}
-              </p>
+            <div className="mb-8">
+              <div className="flex items-center gap-4">
+                <h1 className="text-3xl font-bold text-white">Welcome</h1>
+                <p className="text-3xl text-violet-400 font-semibold">
+                  {capitalizedUsername}
+                </p>
+              </div>
+              {watchStreak > 0 && (
+                <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-orange-400/30 bg-gradient-to-r from-orange-500/15 to-amber-500/10 px-4 py-1.5 text-base font-semibold text-orange-200 shadow-[0_0_12px_rgba(249,115,22,0.25)]">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
+                  </svg>
+                  {watchStreak}-day streak
+                </div>
+              )}
             </div>
           )}
         </div>

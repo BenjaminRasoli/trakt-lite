@@ -865,9 +865,34 @@ export async function GET(request: NextRequest) {
         addEpisodeTypes(allUpcoming),
       ]);
 
+      const streakRows = await prisma.$queryRaw<{ d: string }[]>`
+        SELECT DISTINCT to_char("watchedAt" AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS d
+        FROM "WatchHistory"
+        WHERE "userId" = ${dbUser.id}
+        ORDER BY d DESC
+      `;
+      const dayMs = 86_400_000;
+      const todayUtc = Date.parse(
+        `${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`,
+      );
+      let currentStreak = 0;
+      let expectedDay = -1;
+      for (const { d } of streakRows) {
+        const t = Date.parse(`${d}T00:00:00.000Z`);
+        if (expectedDay === -1) {
+          if (t !== todayUtc && t !== todayUtc - dayMs) break;
+          expectedDay = t;
+        } else {
+          if (t !== expectedDay - dayMs) break;
+          expectedDay = t;
+        }
+        currentStreak++;
+      }
+
       return NextResponse.json({
         items: itemsWithPosters,
         hasMore,
+        currentStreak,
         nextUp: typedNextUp,
         nextUpWarning: nextUpResult.droppedShowStorageAvailable
           ? null
