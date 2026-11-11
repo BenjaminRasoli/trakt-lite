@@ -10,7 +10,7 @@ import type {
   AchievementApiResponse,
   AchievementSummary,
 } from "@/lib/achievements";
-import { getPrestigeTier, MAX_LEVEL } from "@/lib/achievements";
+import { MAX_LEVEL } from "@/lib/achievements";
 
 const categories = [
   "All",
@@ -20,15 +20,93 @@ const categories = [
   "Discovery",
   "Ratings",
 ] as const;
-const categoryIcons: Record<(typeof categories)[number], string> = {
-  All: "✨",
-  Watching: "🎬",
-  Movies: "🍿",
-  TV: "📺",
-  Discovery: "🧭",
-  Ratings: "⭐",
+type FilterIconName =
+  | "all"
+  | "watching"
+  | "movies"
+  | "tv"
+  | "discovery"
+  | "ratings"
+  | "unlocked"
+  | "locked";
+
+const categoryIcons: Record<(typeof categories)[number], FilterIconName> = {
+  All: "all",
+  Watching: "watching",
+  Movies: "movies",
+  TV: "tv",
+  Discovery: "discovery",
+  Ratings: "ratings",
 };
 const badgeStatuses = ["All badges", "Unlocked", "Locked"] as const;
+const badgeStatusIcons: Record<(typeof badgeStatuses)[number], FilterIconName> =
+  {
+    "All badges": "all",
+    Unlocked: "unlocked",
+    Locked: "locked",
+  };
+
+function FilterIcon({ name }: { name: FilterIconName }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {name === "all" ? (
+        <>
+          <rect x="3" y="3" width="7" height="7" />
+          <rect x="14" y="3" width="7" height="7" />
+          <rect x="14" y="14" width="7" height="7" />
+          <rect x="3" y="14" width="7" height="7" />
+        </>
+      ) : name === "watching" ? (
+        <>
+          <circle cx="12" cy="12" r="9" />
+          <path d="m10 8 6 4-6 4z" />
+        </>
+      ) : name === "movies" ? (
+        <>
+          <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18" />
+          <line x1="7" y1="2" x2="7" y2="22" />
+          <line x1="17" y1="2" x2="17" y2="22" />
+          <line x1="2" y1="12" x2="22" y2="12" />
+          <line x1="2" y1="7" x2="7" y2="7" />
+          <line x1="2" y1="17" x2="7" y2="17" />
+          <line x1="17" y1="17" x2="22" y2="17" />
+          <line x1="17" y1="7" x2="22" y2="7" />
+        </>
+      ) : name === "tv" ? (
+        <>
+          <rect x="2" y="7" width="20" height="15" rx="2" ry="2" />
+          <polyline points="17 2 12 7 7 2" />
+        </>
+      ) : name === "discovery" ? (
+        <>
+          <circle cx="12" cy="12" r="10" />
+          <path d="m16.2 7.8-2.7 5.7-5.7 2.7 2.7-5.7z" />
+          <circle cx="12" cy="12" r="1" />
+        </>
+      ) : name === "ratings" ? (
+        <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z" />
+      ) : name === "unlocked" ? (
+        <path d="M7 11V7a5 5 0 0 1 9.9-1M5 11h14v10H5z" />
+      ) : (
+        <>
+          <rect x="5" y="11" width="14" height="10" rx="2" />
+          <path d="M8 11V7a4 4 0 1 1 8 0v4" />
+        </>
+      )}
+    </svg>
+  );
+}
 
 export default function AchievementsPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -70,7 +148,9 @@ export default function AchievementsPage() {
       if (!isMounted) return;
       if (authError) {
         console.error("Error loading achievements user:", authError);
-        setError("Could not verify your account. Please refresh and try again.");
+        setError(
+          "Could not verify your account. Please refresh and try again.",
+        );
       }
       setUser(nextUser);
       setAuthLoading(false);
@@ -209,10 +289,12 @@ export default function AchievementsPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-violet-300">
               Your journey
             </p>
-            <h1 className="mt-2 text-3xl font-bold sm:text-4xl">Achievements</h1>
+            <h1 className="mt-2 text-3xl font-bold sm:text-4xl">
+              Achievements
+            </h1>
             <p className="mt-2 max-w-2xl text-sm text-zinc-400 sm:text-base">
-              Turn the movies, episodes, and ratings you log into XP. Every badge
-              is earned from your activity on Trakt Lite.
+              Turn the movies, episodes, and ratings you log into XP. Every
+              badge is earned from your activity on Trakt Lite.
             </p>
           </div>
           <Link
@@ -286,29 +368,7 @@ export default function AchievementsPage() {
                 </div>
               </div>
             </section>
-            <section
-              aria-label="Level and prestige guide"
-              className="mt-4 flex flex-col gap-2 rounded-2xl border border-violet-500/20 bg-zinc-900/70 p-4 text-sm sm:flex-row sm:items-center sm:justify-between"
-            >
-              <p className="text-zinc-300">
-                <span className="font-semibold text-violet-200">
-                  {MAX_LEVEL} levels available
-                </span>{" "}
-                · Every 100 XP advances you one level, up to level {MAX_LEVEL}.
-              </p>
-              <p className="text-zinc-400">
-                Prestige starts at{" "}
-                <span className="font-semibold text-amber-200">
-                  Level 21 ({(21 - 1) * 100} XP)
-                </span>
-                . It adds a prestige tier every 5 levels; it does not reset your
-                level or XP. You are{" "}
-                {getPrestigeTier(summary.level) === null
-                  ? "not prestige yet"
-                  : `Prestige ${getPrestigeTier(summary.level)}`}
-                .
-              </p>
-            </section>
+
             {(syncingGenres || genreSyncError) && (
               <p
                 role="status"
@@ -347,7 +407,7 @@ export default function AchievementsPage() {
                             : "border-zinc-700 bg-zinc-900/70 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200"
                         }`}
                       >
-                        <span aria-hidden="true">{categoryIcons[item]}</span>
+                        <FilterIcon name={categoryIcons[item]} />
                         {item}
                       </button>
                     ))}
@@ -366,12 +426,13 @@ export default function AchievementsPage() {
                         type="button"
                         onClick={() => setBadgeStatus(status)}
                         aria-pressed={badgeStatus === status}
-                        className={`cursor-pointer rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                        className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
                           badgeStatus === status
                             ? "border-violet-400/60 bg-violet-500/20 text-violet-100"
                             : "border-zinc-700 bg-zinc-900/70 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200"
                         }`}
                       >
+                        <FilterIcon name={badgeStatusIcons[status]} />
                         {status}
                       </button>
                     ))}

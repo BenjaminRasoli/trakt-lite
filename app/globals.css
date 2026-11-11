@@ -43,7 +43,7 @@ body {
   );
 }
 
-@keyframes prestige-starlight {
+@keyframes level-starlight {
   0%,
   100% {
     opacity: 0;
@@ -59,8 +59,8 @@ body {
   }
 }
 
-.prestige-starlight::before,
-.prestige-starlight::after {
+.level-starlight::before,
+.level-starlight::after {
   position: absolute;
   color: #d8b4fe;
   content: "✦";
@@ -69,15 +69,15 @@ body {
   opacity: 0;
   pointer-events: none;
   text-shadow: 0 0 5px rgba(192, 132, 252, 0.95);
-  animation: prestige-starlight 2.8s ease-out infinite;
+  animation: level-starlight 2.8s ease-out infinite;
 }
 
-.prestige-starlight::before {
+.level-starlight::before {
   top: -0.65em;
   left: 22%;
 }
 
-.prestige-starlight::after {
+.level-starlight::after {
   top: -0.8em;
   left: 76%;
   color: #e9d5ff;
@@ -85,8 +85,8 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .prestige-starlight::before,
-  .prestige-starlight::after {
+  .level-starlight::before,
+  .level-starlight::after {
     animation: none;
   }
 }

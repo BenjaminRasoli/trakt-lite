@@ -6,12 +6,7 @@ import NextImage from "next/image";
 import { useSupabase } from "./supabase-provider";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
-import {
-  getLevelIcon,
-  getPrestigeTier,
-  MAX_LEVEL,
-  type AchievementSummary,
-} from "@/lib/achievements";
+import { MAX_LEVEL, type AchievementSummary } from "@/lib/achievements";
 
 function GlobalSearch() {
   const searchParams = useSearchParams();
@@ -111,20 +106,17 @@ function ProfileLink({
   summary: AchievementSummary | null;
   compact?: boolean;
 }) {
-  const prestigeTier = summary ? getPrestigeTier(summary.level) : null;
   const isMaxLevel = summary?.level === MAX_LEVEL;
   const levelLabel = summary
-    ? `Level ${summary.level} · ${summary.rank}${prestigeTier ? ` · Prestige ${prestigeTier}` : ""}`
+    ? `Level ${summary.level} · ${summary.rank}`
     : "Loading level";
 
   const levelLine = summary
     ? `LVL\u00A0${summary.level}\u00A0|\u00A0${summary.rank}`
     : "";
   const glowLength =
-    summary && prestigeTier !== null
-      ? isMaxLevel
-        ? levelLine.length
-        : Math.ceil((levelLine.length * prestigeTier) / 5)
+    summary && summary.level >= 20 && MAX_LEVEL > 20
+      ? Math.ceil((levelLine.length * (summary.level - 19)) / (MAX_LEVEL - 19))
       : 0;
 
   return (
@@ -165,51 +157,40 @@ function ProfileLink({
         </span>
         <span
           className={`flex min-w-0 items-center gap-1 whitespace-nowrap text-[10px] font-semibold leading-none text-violet-100 ${
-            prestigeTier !== null
-              ? "rounded-md bg-violet-500/10 px-1.5 py-1 text-violet-100 ring-1 ring-inset ring-violet-400/30"
+            summary && summary.level >= 20
+              ? "rounded-md bg-violet-500/10 px-1.5 py-1 ring-1 ring-inset ring-violet-400/30"
               : ""
           }`}
           title={`${levelLabel} · ${summary?.xp ?? 0} XP`}
         >
-          <span aria-hidden="true" className="text-sm leading-none">
-            {summary ? getLevelIcon(summary.level) : "✦"}
-          </span>
           {!summary ? (
             <span>…</span>
-          ) : prestigeTier !== null ? (
+          ) : (
             <span
-              className={`-mx-2 block min-w-0 overflow-x-clip overflow-y-visible text-ellipsis whitespace-nowrap px-2 leading-none ${
-                compact ? "max-w-32 min-[420px]:max-w-44" : "max-w-52"
-              }`}
+              className="block min-w-0 whitespace-nowrap leading-none"
               title={levelLabel}
             >
-              <span className="prestige-starlight relative inline-block">
+              {summary.level >= 20 ? (
+                <span className="level-starlight relative inline-block">
+                  <span className="bg-gradient-to-r from-violet-100 via-fuchsia-200 to-violet-300 bg-clip-text font-semibold text-transparent drop-shadow-[0_0_5px_rgba(167,139,250,0.85)]">
+                    {levelLine.slice(0, glowLength)}
+                  </span>
+                </span>
+              ) : (
                 <span className="bg-gradient-to-r from-violet-100 via-fuchsia-200 to-violet-300 bg-clip-text font-semibold text-transparent drop-shadow-[0_0_5px_rgba(167,139,250,0.85)]">
                   {levelLine.slice(0, glowLength)}
                 </span>
-              </span>
-              <span className="font-medium text-violet-200/50">
+              )}
+              <span
+                className={
+                  summary.level >= 20
+                    ? "font-medium text-violet-200/50"
+                    : "font-medium text-violet-100"
+                }
+              >
                 {levelLine.slice(glowLength)}
               </span>
             </span>
-          ) : (
-            <>
-              <span className="flex items-center gap-10">
-                <span>LVL</span>
-                <span>{summary.level}</span>
-              </span>
-              <span aria-hidden="true" className="text-zinc-500">
-                |
-              </span>
-              <span
-                className={`flex min-w-0 items-center font-medium leading-none text-violet-50/80 ${
-                  compact ? "max-w-12 min-[420px]:max-w-20" : "max-w-24"
-                }`}
-                title={summary.rank}
-              >
-                <span className="block min-w-0 truncate">{summary.rank}</span>
-              </span>
-            </>
           )}
         </span>
       </span>
