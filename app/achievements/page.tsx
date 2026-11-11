@@ -299,7 +299,7 @@ export default function AchievementsPage() {
           </div>
           <Link
             href="/profile"
-            className="inline-flex w-fit items-center justify-center rounded-full border border-zinc-700 bg-zinc-900/80 px-4 py-2 text-sm font-semibold text-zinc-200 transition hover:border-violet-400 hover:text-white"
+            className="inline-flex w-fit cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
           >
             Back to profile
           </Link>
@@ -510,11 +510,7 @@ export default function AchievementsPage() {
                           </div>
                           <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-800">
                             <div
-                              className={`h-full rounded-full transition-all ${
-                                badge.earned
-                                  ? "bg-emerald-400"
-                                  : "bg-violet-500"
-                              }`}
+                              className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-400 transition-all"
                               style={{
                                 width: `${(badge.progress / badge.target) * 100}%`,
                               }}

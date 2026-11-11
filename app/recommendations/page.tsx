@@ -220,6 +220,8 @@ export default function RecommendationsPage() {
   }, [loading, sortedRecommendations.length, visibleCount]);
 
   const visibleMedia = sortedRecommendations.slice(0, visibleCount);
+  const showRecommendationControls =
+    recommendations.length > 0 && filteredRecommendations.length > 0;
 
   if (authLoading || !user) {
     return (
@@ -257,7 +259,7 @@ export default function RecommendationsPage() {
         </div>
 
         {!loading && !error && !hasRatings ? (
-          <div className="rounded-2xl border border-zinc-700/60 bg-zinc-900/70 px-6 py-12 text-center">
+          <div className="rounded-2xl border border-dashed border-zinc-700 bg-zinc-900/60 px-6 py-12 text-center">
             <h2 className="mb-3 text-xl font-semibold text-white">
               Your recommendations start with your ratings
             </h2>
@@ -274,7 +276,8 @@ export default function RecommendationsPage() {
           </div>
         ) : (
           <>
-            <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            {showRecommendationControls && (
+              <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex w-fit items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900/80 p-1">
                 {MEDIA_FILTERS.map(({ value, label, icon }) => (
                   <button
@@ -409,6 +412,7 @@ export default function RecommendationsPage() {
                 </div>
               </div>
             </div>
+            )}
 
             {loading ? (
               <div className="grid animate-pulse grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
@@ -461,7 +465,7 @@ export default function RecommendationsPage() {
                 </div>
               </>
             ) : (
-              <div className="rounded-xl border border-zinc-700/60 bg-zinc-900/70 px-6 py-10 text-center">
+              <div className="rounded-2xl border border-dashed border-zinc-700 bg-zinc-900/60 px-6 py-12 text-center">
                 <p className="text-zinc-300">
                   {filteredRecommendations.length === 0 &&
                   recommendations.length > 0
@@ -476,6 +480,16 @@ export default function RecommendationsPage() {
                     >
                       Rate more watched titles
                     </Link>
+                  )}
+                {filteredRecommendations.length === 0 &&
+                  recommendations.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setMediaFilter("all")}
+                      className="mt-5 inline-flex cursor-pointer items-center justify-center rounded-full border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
+                    >
+                      Show all recommendations
+                    </button>
                   )}
               </div>
             )}

@@ -954,7 +954,7 @@ function HomeContent() {
 
                       <div className="mt-3 h-2 w-[85%] min-w-[140px] max-w-[450px] overflow-hidden rounded-full bg-zinc-800">
                         <div
-                          className="h-full rounded-full bg-gradient-to-r from-violet-500 to-emerald-400"
+                          className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-400"
                           style={{
                             width: `${Math.min(100, Math.max(0, liveSession.percent))}%`,
                           }}

@@ -181,7 +181,11 @@ function RatingsPageContent() {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900/80 p-1">
+            <div
+              className={`flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900/80 p-1 ${
+                ratings.length === 0 ? "hidden" : ""
+              }`}
+            >
               {(
                 [
                   ["all", "All"],

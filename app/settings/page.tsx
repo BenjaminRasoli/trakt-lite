@@ -686,7 +686,7 @@ export default function SettingsPage() {
                   {importPercent > 0 && importPercent < 100 && (
                     <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
                       <div
-                        className="h-full rounded-full bg-gradient-to-r from-violet-500 to-emerald-400 transition-all duration-300"
+                        className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-400 transition-all duration-300"
                         style={{ width: `${importPercent}%` }}
                       />
                     </div>
@@ -813,7 +813,7 @@ export default function SettingsPage() {
                   {jellyfinImportPercent > 0 && jellyfinImportPercent < 100 && (
                     <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
                       <div
-                        className="h-full rounded-full bg-gradient-to-r from-violet-500 to-emerald-400 transition-all duration-300"
+                        className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-400 transition-all duration-300"
                         style={{ width: `${jellyfinImportPercent}%` }}
                       />
                     </div>
@@ -944,7 +944,7 @@ export default function SettingsPage() {
 
                     <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-zinc-800">
                       <div
-                        className="h-full rounded-full bg-gradient-to-r from-violet-500 to-emerald-400"
+                        className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-400"
                         style={{
                           width: `${Math.min(100, Math.max(0, liveSession.percent))}%`,
                         }}

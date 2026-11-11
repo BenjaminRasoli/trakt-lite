@@ -77,7 +77,10 @@ function HistoryPageContent() {
 
         if (!response.ok) {
           console.error("API response not OK:", response.status);
-          if (!append) setHistory([]);
+          if (!append) {
+            setHistory([]);
+            setAllHistory([]);
+          }
           setHasMore(false);
           return;
         }
@@ -86,7 +89,10 @@ function HistoryPageContent() {
 
         if (!data || !Array.isArray(data.items)) {
           console.error("Invalid API response format:", data);
-          if (!append) setHistory([]);
+          if (!append) {
+            setHistory([]);
+            setAllHistory([]);
+          }
           setHasMore(false);
           return;
         }
@@ -98,7 +104,7 @@ function HistoryPageContent() {
           );
         }
 
-        setAllHistory(filteredItems);
+        setAllHistory(data.items);
 
         const offset = append ? historyLengthRef.current : 0;
         const paginatedItems = filteredItems.slice(offset, offset + PAGE_SIZE);
@@ -114,7 +120,10 @@ function HistoryPageContent() {
         setHasMore(offset + PAGE_SIZE < filteredItems.length);
       } catch (error) {
         console.error("Error fetching history:", error);
-        if (!append) setHistory([]);
+        if (!append) {
+          setHistory([]);
+          setAllHistory([]);
+        }
         setHasMore(false);
       } finally {
         setHistoryLoading(false);
@@ -175,6 +184,7 @@ function HistoryPageContent() {
       void fetchHistory(false);
     } else {
       setHistory([]);
+      setAllHistory([]);
       setHasMore(false);
     }
   }, [user, filter]);
@@ -257,7 +267,11 @@ function HistoryPageContent() {
             </h1>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div
+            className={`flex items-center gap-3 ${
+              allHistory.length === 0 ? "hidden" : ""
+            }`}
+          >
             <div className="flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900/80 p-1">
               <Link
                 href="/history?filter=all"
@@ -366,12 +380,16 @@ function HistoryPageContent() {
             </div>
           </div>
         ) : sortedHistory.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-zinc-700 bg-zinc-900/60 p-12 text-center">
+          <div className="rounded-xl border border-zinc-700/60 bg-zinc-900/70 px-6 py-10 text-center">
             <h2 className="text-2xl font-semibold text-white">
-              No watched items yet
+              {allHistory.length === 0
+                ? "No watched items yet"
+                : `No ${filter === "tv" ? "TV" : "movie"} items found`}
             </h2>
             <p className="mt-3 text-zinc-400">
-              Start tracking shows and movies from the homepage or media pages.
+              {allHistory.length === 0
+                ? "Start tracking shows and movies from the homepage or media pages."
+                : "Try another filter to see more of your history."}
             </p>
           </div>
         ) : (
