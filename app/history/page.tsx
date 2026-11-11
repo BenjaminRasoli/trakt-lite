@@ -267,12 +267,12 @@ function HistoryPageContent() {
             </h1>
           </div>
 
-          <div
-            className={`flex items-center gap-3 ${
-              allHistory.length === 0 ? "hidden" : ""
-            }`}
-          >
-            <div className="flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900/80 p-1">
+          <div className="flex items-center gap-3">
+            <div
+              className={`flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900/80 p-1 ${
+                allHistory.length === 0 ? "hidden" : ""
+              }`}
+            >
               <Link
                 href="/history?filter=all"
                 className={`flex items-center cursor-pointer gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${

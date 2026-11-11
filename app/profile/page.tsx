@@ -738,7 +738,7 @@ export default function ProfilePage() {
                 </h2>
                 <Link
                   href="/achievements"
-                  className={`flex w-fit min-w-0 items-center gap-1 whitespace-nowrap text-[10px] font-semibold leading-none transition ${
+                  className={`flex w-fit min-w-0 self-center items-center gap-1 whitespace-nowrap text-[10px] font-semibold leading-none transition ${
                     achievementSummary && achievementSummary.level >= 20
                       ? "rounded-md bg-violet-500/10 px-1.5 py-1 text-violet-100 ring-1 ring-inset ring-violet-400/30 hover:bg-violet-500/20"
                       : "text-violet-100"

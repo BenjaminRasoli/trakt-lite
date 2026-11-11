@@ -214,10 +214,9 @@ function HomeContent() {
     setDropShowError(null);
 
     try {
-      const response = await fetch(
-        `/api/next-up?tmdbId=${showToDrop.tmdbId}`,
-        { method: "DELETE" },
-      );
+      const response = await fetch(`/api/next-up?tmdbId=${showToDrop.tmdbId}`, {
+        method: "DELETE",
+      });
       const data = await response.json();
 
       if (response.status === 401) {
@@ -593,7 +592,7 @@ function HomeContent() {
   if (!initialCheckDone) {
     return (
       <div className="flex flex-col flex-1 items-center font-sans min-h-screen bg-black overflow-hidden">
-        <div className="w-full max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 py-16 flex-1 animate-pulse">
+        <div className="w-full max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 py-12 flex-1 animate-pulse">
           <div className="mb-12">
             <div className="flex items-center gap-4 mb-8">
               <div className="h-12 w-32 rounded-md bg-zinc-800" />
@@ -674,8 +673,8 @@ function HomeContent() {
         <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/60 to-black/85" />
       </div>
 
-      <main className="relative z-10 w-full max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 py-16 flex-1">
-        <div className="mb-12">
+      <main className="relative z-10 w-full max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 py-12 flex-1">
+        <div>
           {!searchQuery && (
             <div className="flex items-center gap-4 mb-8">
               <h1 className="text-3xl font-bold text-white">Welcome</h1>
@@ -781,7 +780,11 @@ function HomeContent() {
                     onClick={() => setShowSearchSort((current) => !current)}
                     className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
                   >
-                    Sort: {SEARCH_SORTS.find(({ value }) => value === searchSort)?.label}
+                    Sort:{" "}
+                    {
+                      SEARCH_SORTS.find(({ value }) => value === searchSort)
+                        ?.label
+                    }
                     <svg
                       className={`h-4 w-4 transition-transform duration-200 ${
                         showSearchSort ? "rotate-180" : ""
@@ -966,8 +969,7 @@ function HomeContent() {
               </section>
             )}
 
-            {!historyLoading &&
-              (visibleNextUp.length > 0 || nextUpWarning) && (
+            {!historyLoading && (visibleNextUp.length > 0 || nextUpWarning) && (
               <section className="mb-8">
                 <div className="mb-4 flex items-center justify-between gap-4">
                   <div>
@@ -998,11 +1000,15 @@ function HomeContent() {
                         >
                           <div className="relative aspect-[2/3] overflow-hidden">
                             {isSpecialEpisodeType(item.episodeType) && (
-                              <EpisodeTypeBadge episodeType={item.episodeType} />
+                              <EpisodeTypeBadge
+                                episodeType={item.episodeType}
+                              />
                             )}
                             <img
                               src={getPosterUrl(
-                                item.seasonPosterPath || item.posterPath || null,
+                                item.seasonPosterPath ||
+                                  item.posterPath ||
+                                  null,
                               )}
                               alt={item.episodeTitle}
                               className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
@@ -1032,7 +1038,9 @@ function HomeContent() {
                             <NextUpEpisodeInfo
                               episodeRuntimeMinutes={item.episodeRuntimeMinutes}
                               remainingEpisodeCount={item.remainingEpisodeCount}
-                              remainingRuntimeMinutes={item.remainingRuntimeMinutes}
+                              remainingRuntimeMinutes={
+                                item.remainingRuntimeMinutes
+                              }
                             />
                           </div>
                         </Link>

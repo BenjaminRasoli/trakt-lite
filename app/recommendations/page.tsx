@@ -9,6 +9,7 @@ import { useSupabase } from "@/components/supabase-provider";
 import {
   getMediaType,
   getRandomBackdropUrl,
+  getTrendingMedia,
 } from "@/lib/tmdb";
 import type { TMDBMedia } from "@/lib/tmdb";
 
@@ -53,6 +54,29 @@ export default function RecommendationsPage() {
   const router = useRouter();
   const sortRef = useRef<HTMLDivElement>(null);
   const resultsEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchBackdrop = async () => {
+      try {
+        const trendingMedia = await getTrendingMedia();
+        if (!isMounted) return;
+        const fallbackBackdrop = getRandomBackdropUrl(trendingMedia);
+        setPageBackdrop(
+          (currentBackdrop) => currentBackdrop || fallbackBackdrop,
+        );
+      } catch (backdropError) {
+        console.error("Error loading recommendations backdrop:", backdropError);
+      }
+    };
+
+    void fetchBackdrop();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -123,7 +147,9 @@ export default function RecommendationsPage() {
           : [];
         setRecommendations(results);
         setHasRatings(data.hasRatings === true);
-        setPageBackdrop(getRandomBackdropUrl(results));
+        if (results.length > 0) {
+          setPageBackdrop(getRandomBackdropUrl(results));
+        }
         setVisibleCount(INITIAL_RESULT_COUNT);
       } catch (fetchError) {
         if (
@@ -170,8 +196,7 @@ export default function RecommendationsPage() {
   const filteredRecommendations = useMemo(
     () =>
       recommendations.filter(
-        (media) =>
-          mediaFilter === "all" || getMediaType(media) === mediaFilter,
+        (media) => mediaFilter === "all" || getMediaType(media) === mediaFilter,
       ),
     [mediaFilter, recommendations],
   );
@@ -237,47 +262,30 @@ export default function RecommendationsPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen flex-1 flex-col items-center overflow-x-hidden bg-black font-sans">
+    <div className="relative min-h-screen overflow-x-hidden bg-black text-white">
       <div className="pointer-events-none fixed inset-0 z-0 bg-gradient-to-b from-black/70 via-black/40 to-black/80">
         {pageBackdrop && (
           <div
-            className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-40"
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-35"
             style={{ backgroundImage: `url(${pageBackdrop})` }}
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/50 to-black/80" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/55 to-black/80" />
       </div>
 
-      <main className="relative z-10 mx-auto w-full max-w-[1650px] flex-1 px-4 py-16 sm:px-6 lg:px-8">
-        <div className="mb-12">
-          <h1 className="mb-4 text-4xl font-bold tracking-tight text-white">
-            Picked for you
-          </h1>
-          <p className="text-xl text-zinc-400">
-            Recommendations shaped by your ratings
-          </p>
-        </div>
+      <main className="relative z-10 mx-auto w-full max-w-[1650px] px-4 py-12 sm:px-6 lg:px-8">
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-4">
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-violet-400/80">
+                your activity
+              </p>
+              <h1 className="text-3xl font-bold text-white md:text-4xl">
+                Picked for you
+              </h1>
+            </div>
 
-        {!loading && !error && !hasRatings ? (
-          <div className="rounded-2xl border border-dashed border-zinc-700 bg-zinc-900/60 px-6 py-12 text-center">
-            <h2 className="mb-3 text-xl font-semibold text-white">
-              Your recommendations start with your ratings
-            </h2>
-            <p className="mx-auto mb-6 max-w-xl text-sm leading-relaxed text-zinc-400">
-              Rate movies or episodes you’ve watched and we’ll use your
-              favorites to find more titles you’re likely to enjoy.
-            </p>
-            <Link
-              href="/history"
-              className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-5 py-2.5 text-sm font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
-            >
-              Rate watched titles
-            </Link>
-          </div>
-        ) : (
-          <>
             {showRecommendationControls && (
-              <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex w-fit items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900/80 p-1">
                 {MEDIA_FILTERS.map(({ value, label, icon }) => (
                   <button
@@ -349,151 +357,170 @@ export default function RecommendationsPage() {
                   </button>
                 ))}
               </div>
-
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between lg:justify-end">
-                <div className="relative w-fit" ref={sortRef}>
-                  <button
-                    type="button"
-                    aria-haspopup="menu"
-                    aria-expanded={showSort}
-                    onClick={() => setShowSort((current) => !current)}
-                    className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
-                  >
-                    Sort:{" "}
-                    {MEDIA_SORTS.find(({ value }) => value === mediaSort)?.label}
-                    <svg
-                      className={`h-4 w-4 transition-transform duration-200 ${
-                        showSort ? "rotate-180" : ""
-                      }`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
-                  </button>
-                  {showSort && (
-                    <div
-                      role="menu"
-                      aria-label="Sort recommendations"
-                      className="absolute right-0 z-50 mt-2 w-40 rounded-xl border border-zinc-700 bg-zinc-900/95 shadow-xl backdrop-blur-sm"
-                    >
-                      {MEDIA_SORTS.map(({ value, label }, index) => (
-                        <button
-                          key={value}
-                          type="button"
-                          role="menuitemradio"
-                          aria-checked={mediaSort === value}
-                          onClick={() => {
-                            setMediaSort(value);
-                            setShowSort(false);
-                          }}
-                          className={`w-full cursor-pointer px-4 py-2 text-left text-sm transition hover:bg-zinc-800 ${
-                            mediaSort === value
-                              ? "text-violet-300"
-                              : "text-zinc-300"
-                          } ${index === 0 ? "rounded-t-xl" : ""} ${
-                            index === MEDIA_SORTS.length - 1
-                              ? "rounded-b-xl"
-                              : ""
-                          }`}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
             )}
+          </div>
 
-            {loading ? (
-              <div className="grid animate-pulse grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
-                {Array.from({ length: INITIAL_RESULT_COUNT }, (_, index) => (
-                  <div
-                    key={`recommendation-skeleton-${index}`}
-                    className="overflow-hidden rounded-lg border border-zinc-700/50 bg-zinc-900/80"
-                  >
-                    <div className="aspect-[2/3] bg-zinc-800" />
-                    <div className="space-y-2 p-3">
-                      <div className="h-3 w-4/5 rounded bg-zinc-700" />
-                      <div className="h-2.5 w-2/3 rounded bg-zinc-700" />
-                      <div className="flex gap-1.5">
-                        <div className="h-4 w-10 rounded bg-zinc-700" />
-                        <div className="h-4 w-10 rounded bg-zinc-700" />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : error ? (
-              <div className="rounded-xl border border-red-500/30 bg-red-950/20 p-6 text-center">
-                <p className="mb-4 text-sm text-red-200">{error}</p>
+          <div className="flex flex-wrap items-center gap-3">
+            {showRecommendationControls && (
+              <div className="relative w-fit" ref={sortRef}>
                 <button
                   type="button"
-                  onClick={() => setRetryCount((count) => count + 1)}
-                  className="inline-flex cursor-pointer items-center justify-center rounded-full border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
+                  aria-haspopup="menu"
+                  aria-expanded={showSort}
+                  onClick={() => setShowSort((current) => !current)}
+                  className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
                 >
-                  Try again
-                </button>
-              </div>
-            ) : visibleMedia.length > 0 ? (
-              <>
-                <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
-                  {visibleMedia.map((media) => (
-                    <MediaCard
-                      key={`${getMediaType(media)}-${media.id}`}
-                      media={media}
+                  Sort:{" "}
+                  {MEDIA_SORTS.find(({ value }) => value === mediaSort)?.label}
+                  <svg
+                    className={`h-4 w-4 transition-transform duration-200 ${
+                      showSort ? "rotate-180" : ""
+                    }`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
                     />
-                  ))}
-                </div>
-                <div
-                  ref={resultsEndRef}
-                  className="flex min-h-12 items-center justify-center py-4"
-                  aria-hidden="true"
-                >
-                  {sortedRecommendations.length > visibleCount && (
-                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/30 border-t-violet-300" />
-                  )}
-                </div>
-              </>
-            ) : (
-              <div className="rounded-2xl border border-dashed border-zinc-700 bg-zinc-900/60 px-6 py-12 text-center">
-                <p className="text-zinc-300">
-                  {filteredRecommendations.length === 0 &&
-                  recommendations.length > 0
-                    ? "No recommendations match this filter."
-                    : "We couldn’t find recommendations from your ratings yet."}
-                </p>
-                {filteredRecommendations.length === 0 &&
-                  recommendations.length === 0 && (
-                    <Link
-                      href="/history"
-                      className="mt-5 inline-flex cursor-pointer items-center justify-center rounded-full border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
-                    >
-                      Rate more watched titles
-                    </Link>
-                  )}
-                {filteredRecommendations.length === 0 &&
-                  recommendations.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setMediaFilter("all")}
-                      className="mt-5 inline-flex cursor-pointer items-center justify-center rounded-full border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
-                    >
-                      Show all recommendations
-                    </button>
-                  )}
+                  </svg>
+                </button>
+                {showSort && (
+                  <div
+                    role="menu"
+                    aria-label="Sort recommendations"
+                    className="absolute right-0 z-50 mt-2 w-40 rounded-xl border border-zinc-700 bg-zinc-900/95 shadow-xl backdrop-blur-sm"
+                  >
+                    {MEDIA_SORTS.map(({ value, label }, index) => (
+                      <button
+                        key={value}
+                        type="button"
+                        role="menuitemradio"
+                        aria-checked={mediaSort === value}
+                        onClick={() => {
+                          setMediaSort(value);
+                          setShowSort(false);
+                        }}
+                        className={`w-full cursor-pointer px-4 py-2 text-left text-sm transition hover:bg-zinc-800 ${
+                          mediaSort === value
+                            ? "text-violet-300"
+                            : "text-zinc-300"
+                        } ${index === 0 ? "rounded-t-xl" : ""} ${
+                          index === MEDIA_SORTS.length - 1 ? "rounded-b-xl" : ""
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
+            <Link
+              href="/"
+              className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
+            >
+              Back home
+            </Link>
+          </div>
+        </div>
+
+        {!loading && !error && !hasRatings ? (
+          <div className="rounded-xl border border-dashed border-zinc-700 bg-zinc-900/60 px-6 py-10 text-center">
+            <h2 className="text-2xl font-semibold text-white">
+              Your recommendations start with your ratings
+            </h2>
+            <p className="mx-auto mb-6 mt-3 max-w-xl text-sm leading-relaxed text-zinc-400">
+              Rate movies or episodes you’ve watched and we’ll use your
+              favorites to find more titles you’re likely to enjoy.
+            </p>
+            <Link
+              href="/history"
+              className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-5 py-2.5 text-sm font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
+            >
+              Rate watched titles
+            </Link>
+          </div>
+        ) : loading ? (
+          <div className="grid animate-pulse grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+            {Array.from({ length: INITIAL_RESULT_COUNT }, (_, index) => (
+              <div
+                key={`recommendation-skeleton-${index}`}
+                className="overflow-hidden rounded-lg border border-zinc-700/50 bg-zinc-900/80"
+              >
+                <div className="aspect-[2/3] bg-zinc-800" />
+                <div className="space-y-2 p-3">
+                  <div className="h-3 w-4/5 rounded bg-zinc-700" />
+                  <div className="h-2.5 w-2/3 rounded bg-zinc-700" />
+                  <div className="flex gap-1.5">
+                    <div className="h-4 w-10 rounded bg-zinc-700" />
+                    <div className="h-4 w-10 rounded bg-zinc-700" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : error ? (
+          <div className="rounded-xl border border-red-500/30 bg-red-950/20 p-6 text-center">
+            <p className="mb-4 text-sm text-red-200">{error}</p>
+            <button
+              type="button"
+              onClick={() => setRetryCount((count) => count + 1)}
+              className="inline-flex cursor-pointer items-center justify-center rounded-full border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
+            >
+              Try again
+            </button>
+          </div>
+        ) : visibleMedia.length > 0 ? (
+          <>
+            <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+              {visibleMedia.map((media) => (
+                <MediaCard
+                  key={`${getMediaType(media)}-${media.id}`}
+                  media={media}
+                />
+              ))}
+            </div>
+            <div
+              ref={resultsEndRef}
+              className="flex min-h-12 items-center justify-center py-4"
+              aria-hidden="true"
+            >
+              {sortedRecommendations.length > visibleCount && (
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/30 border-t-violet-300" />
+              )}
+            </div>
           </>
+        ) : (
+          <div className="rounded-xl border border-zinc-700/60 bg-zinc-900/70 px-6 py-10 text-center">
+            <h2 className="text-2xl font-semibold text-white">
+              {filteredRecommendations.length === 0 &&
+              recommendations.length > 0
+                ? "No recommendations match this filter."
+                : "We couldn’t find recommendations from your ratings yet."}
+            </h2>
+            {recommendations.length === 0 && (
+              <Link
+                href="/history"
+                className="mt-5 inline-flex cursor-pointer items-center justify-center rounded-full border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
+              >
+                Rate more watched titles
+              </Link>
+            )}
+            {recommendations.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setMediaFilter("all")}
+                className="mt-5 inline-flex cursor-pointer items-center justify-center rounded-full border border-violet-500/40 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-100 transition hover:border-violet-400 hover:bg-violet-500/20"
+              >
+                Show all recommendations
+              </button>
+            )}
+          </div>
         )}
       </main>
     </div>
