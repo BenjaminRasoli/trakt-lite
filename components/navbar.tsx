@@ -6,7 +6,16 @@ import NextImage from "next/image";
 import { useSupabase } from "./supabase-provider";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
-import { MAX_LEVEL, type AchievementSummary } from "@/lib/achievements";
+import {
+  getRankName,
+  MAX_LEVEL,
+  type AchievementSummary,
+} from "@/lib/achievements";
+import {
+  parseActiveRankNameLevel,
+  resolveCosmetics,
+  type ResolvedCosmetics,
+} from "@/lib/cosmetics";
 
 function GlobalSearch() {
   const searchParams = useSearchParams();
@@ -99,25 +108,33 @@ function ProfileLink({
   username,
   avatarUrl,
   summary,
+  rankName,
+  cosmetics,
   compact = false,
 }: {
   username: string;
   avatarUrl: string;
   summary: AchievementSummary | null;
+  rankName: string;
+  cosmetics: ResolvedCosmetics;
   compact?: boolean;
 }) {
   const isMaxLevel = summary?.level === MAX_LEVEL;
   const levelLabel = summary
-    ? `Level ${summary.level} · ${summary.rank}`
+    ? `Level ${summary.level} · ${rankName}`
     : "Loading level";
 
   const levelLine = summary
-    ? `LVL\u00A0${summary.level}\u00A0|\u00A0${summary.rank}`
+    ? `LVL\u00A0${summary.level}\u00A0|\u00A0${rankName}`
     : "";
-  const glowLength =
-    summary && summary.level >= 20 && MAX_LEVEL > 20
-      ? Math.ceil((levelLine.length * (summary.level - 19)) / (MAX_LEVEL - 19))
-      : 0;
+  const nameEffectClass = cosmetics.nameEffect?.value ?? "";
+  const usernameEffectClass = cosmetics.usernameEffect?.value ?? "";
+  const nameColor = cosmetics.nameColor?.value ?? "";
+  const nameColorFx = nameColor.startsWith("fx-color-");
+  const avatarRing = cosmetics.avatarRing;
+  const avatarRingValue = avatarRing?.value ?? "";
+  const avatarRingFx = avatarRingValue.startsWith("fx-ring-");
+  const avatarRingSpin = avatarRing?.id === "ring-rainbow";
 
   return (
     <Link
@@ -125,7 +142,20 @@ function ProfileLink({
       className={`flex min-w-0 items-center ${compact ? "gap-2" : "gap-2.5"}`}
       aria-label={`Profile: ${username}, ${levelLabel}`}
     >
-      <span className="relative h-11 w-11 shrink-0 rounded-full bg-gradient-to-br from-violet-400 via-fuchsia-400 to-indigo-500 p-[2px]">
+      <span
+        className={`relative h-11 w-11 shrink-0 rounded-full p-[2px] ${
+          avatarRingFx
+            ? avatarRingValue
+            : avatarRingValue
+              ? ""
+              : "bg-gradient-to-br from-violet-400 via-fuchsia-400 to-indigo-500"
+        } ${avatarRingSpin ? "fx-ring-spin" : ""}`}
+        style={
+          !avatarRingFx && avatarRingValue
+            ? { background: avatarRingValue }
+            : undefined
+        }
+      >
         {avatarUrl ? (
           <NextImage
             src={avatarUrl}
@@ -142,53 +172,39 @@ function ProfileLink({
       </span>
       <span className="flex min-w-0 flex-col justify-center gap-0.5">
         <span
-          className={`font-semibold leading-tight ${
+          className={`relative font-semibold leading-tight ${usernameEffectClass} ${
+            usernameEffectClass ? "fx-username " : ""
+          }${
             compact
               ? "max-w-28 text-xs min-[420px]:max-w-36"
               : "max-w-40 text-sm"
           } ${
             isMaxLevel
               ? "-mx-2 overflow-x-clip overflow-y-visible text-ellipsis whitespace-nowrap bg-gradient-to-r from-violet-200 via-fuchsia-200 to-violet-300 bg-clip-text px-2 text-transparent drop-shadow-[0_0_5px_rgba(167,139,250,0.85)]"
-              : "truncate text-white"
+              : "overflow-x-clip overflow-y-visible text-ellipsis whitespace-nowrap text-white"
           }`}
+          style={!nameColorFx && nameColor ? { color: nameColor } : undefined}
           title={username}
         >
-          {username}
+          {nameColorFx ? (
+            <span className={nameColor}>{username}</span>
+          ) : (
+            username
+          )}
         </span>
         <span
-          className={`flex min-w-0 items-center gap-1 whitespace-nowrap text-[10px] font-semibold leading-none text-violet-100 ${
-            summary && summary.level >= 20
-              ? "rounded-md bg-violet-500/10 px-1.5 py-1 ring-1 ring-inset ring-violet-400/30"
-              : ""
-          }`}
+          className="flex min-w-0 items-center gap-1 whitespace-nowrap rounded-md bg-violet-500/10 px-1.5 py-1 text-[10px] font-semibold leading-none text-violet-100 ring-1 ring-inset ring-violet-400/30"
           title={`${levelLabel} · ${summary?.xp ?? 0} XP`}
         >
           {!summary ? (
             <span>…</span>
           ) : (
             <span
-              className="block min-w-0 whitespace-nowrap leading-none"
+              className={`relative block min-w-0 whitespace-nowrap leading-none ${nameEffectClass}`}
               title={levelLabel}
             >
-              {summary.level >= 20 ? (
-                <span className="level-starlight relative inline-block">
-                  <span className="bg-gradient-to-r from-violet-100 via-fuchsia-200 to-violet-300 bg-clip-text font-semibold text-transparent drop-shadow-[0_0_5px_rgba(167,139,250,0.85)]">
-                    {levelLine.slice(0, glowLength)}
-                  </span>
-                </span>
-              ) : (
-                <span className="bg-gradient-to-r from-violet-100 via-fuchsia-200 to-violet-300 bg-clip-text font-semibold text-transparent drop-shadow-[0_0_5px_rgba(167,139,250,0.85)]">
-                  {levelLine.slice(0, glowLength)}
-                </span>
-              )}
-              <span
-                className={
-                  summary.level >= 20
-                    ? "font-medium text-violet-200/50"
-                    : "font-medium text-violet-100"
-                }
-              >
-                {levelLine.slice(glowLength)}
+              <span className="bg-gradient-to-r from-violet-100 via-fuchsia-200 to-violet-300 bg-clip-text font-semibold text-transparent drop-shadow-[0_0_5px_rgba(167,139,250,0.85)]">
+                {levelLine}
               </span>
             </span>
           )}
@@ -208,11 +224,7 @@ export default function Navbar() {
 
   useEffect(() => {
     const updateUser = (nextUser: User | null) => {
-      setUser((currentUser) => {
-        if (!nextUser) return null;
-        if (currentUser?.id === nextUser.id) return currentUser;
-        return nextUser;
-      });
+      setUser(nextUser);
       if (!nextUser) setAchievementSummary(null);
     };
 
@@ -236,7 +248,7 @@ export default function Navbar() {
   }, [supabase]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
 
     let isMounted = true;
 
@@ -261,7 +273,7 @@ export default function Navbar() {
     return () => {
       isMounted = false;
     };
-  }, [user]);
+  }, [user?.id]);
 
   const username =
     user?.user_metadata?.username || user?.email?.split("@")[0] || "User";
@@ -272,6 +284,16 @@ export default function Navbar() {
     user?.user_metadata?.profile_picture ||
     user?.user_metadata?.avatarUrl ||
     "";
+  const resolvedCosmetics = resolveCosmetics(
+    user?.user_metadata,
+    achievementSummary?.level ?? 1,
+  );
+  const rankName = getRankName(
+    parseActiveRankNameLevel(
+      user?.user_metadata,
+      achievementSummary?.level ?? 1,
+    ),
+  );
 
   if (loading || (!user && !loading)) {
     return null;
@@ -337,6 +359,8 @@ export default function Navbar() {
                       username={capitalizedUsername}
                       avatarUrl={avatarUrl}
                       summary={achievementSummary}
+                      rankName={rankName}
+                      cosmetics={resolvedCosmetics}
                       compact
                     />
                   </>
@@ -365,6 +389,8 @@ export default function Navbar() {
                     username={capitalizedUsername}
                     avatarUrl={avatarUrl}
                     summary={achievementSummary}
+                    rankName={rankName}
+                    cosmetics={resolvedCosmetics}
                   />
                 </>
               ) : (

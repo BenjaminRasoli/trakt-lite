@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const [totalWatches, episodeWatches, ratings, watchDates] =
+    const [totalWatches, episodeWatches, ratings, watchEntries, watchlistCount] =
       await Promise.all([
         prisma.watchHistory.count({ where: { userId: dbUser.id } }),
         prisma.watchHistory.count({
@@ -120,8 +120,14 @@ export async function GET(request: NextRequest) {
         }),
         prisma.watchHistory.findMany({
           where: { userId: dbUser.id },
-          select: { watchedAt: true },
+          select: {
+            watchedAt: true,
+            mediaId: true,
+            seasonNumber: true,
+            episodeNumber: true,
+          },
         }),
+        prisma.watchlist.count({ where: { userId: dbUser.id } }),
       ]);
 
     const genreSync =
@@ -138,7 +144,7 @@ export async function GET(request: NextRequest) {
     });
 
     const activeDateKeys = new Set(
-      watchDates.map(({ watchedAt }) => watchedAt.toISOString().slice(0, 10)),
+      watchEntries.map(({ watchedAt }) => watchedAt.toISOString().slice(0, 10)),
     );
     const sortedActiveDates = [...activeDateKeys].sort();
     let longestStreak = 0;
@@ -152,17 +158,40 @@ export async function GET(request: NextRequest) {
       previousDay = day;
     }
 
-    const watchedDates = watchDates.map(({ watchedAt }) => watchedAt);
+    const watchedDates = watchEntries.map(({ watchedAt }) => watchedAt);
     const activeMonths = new Set(
       watchedDates.map(
         (watchedAt) =>
           `${watchedAt.getUTCFullYear()}-${watchedAt.getUTCMonth()}`,
       ),
     );
+    const activeYears = new Set(
+      watchedDates.map((watchedAt) => watchedAt.getUTCFullYear()),
+    );
     const weekendWatches = watchedDates.filter((watchedAt) => {
       const day = watchedAt.getUTCDay();
       return day === 0 || day === 6;
     }).length;
+    const lateNight = watchedDates.filter((watchedAt) => {
+      const hour = watchedAt.getUTCHours();
+      return hour >= 23 || hour <= 4;
+    }).length;
+    const watchesPerDay = new Map<string, number>();
+    for (const dateKey of activeDateKeys) {
+      watchesPerDay.set(dateKey, 0);
+    }
+    for (const { watchedAt } of watchEntries) {
+      const dateKey = watchedAt.toISOString().slice(0, 10);
+      watchesPerDay.set(dateKey, (watchesPerDay.get(dateKey) ?? 0) + 1);
+    }
+    const longestDay = Math.max(0, ...watchesPerDay.values());
+    const uniqueWatchKeys = new Set(
+      watchEntries.map(
+        ({ mediaId, seasonNumber, episodeNumber }) =>
+          `${mediaId}:${seasonNumber ?? ""}:${episodeNumber ?? ""}`,
+      ),
+    );
+    const rewatch = Math.max(0, totalWatches - uniqueWatchKeys.size);
     const filmEras = new Set(
       mediaWithGenres.flatMap(({ releaseDate }) =>
         releaseDate ? [Math.floor(releaseDate.getUTCFullYear() / 10)] : [],
@@ -187,6 +216,12 @@ export async function GET(request: NextRequest) {
       weekendWatches,
       activeMonths: activeMonths.size,
       filmEras: filmEras.size,
+      watchlist: watchlistCount,
+      rewatch,
+      longestDay,
+      lateNight,
+      activeYears: activeYears.size,
+      perfectRatings: ratings.filter((rating) => rating.score >= 9.5).length,
     };
 
     return NextResponse.json({

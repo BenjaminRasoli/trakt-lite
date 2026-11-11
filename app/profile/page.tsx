@@ -15,7 +15,8 @@ import type {
   AchievementApiResponse,
   AchievementSummary,
 } from "@/lib/achievements";
-import { MAX_LEVEL } from "@/lib/achievements";
+import { getRankName } from "@/lib/achievements";
+import { parseActiveRankNameLevel, resolveCosmetics } from "@/lib/cosmetics";
 
 type WatchHistoryEntry = {
   watchedAt: string;
@@ -73,26 +74,22 @@ export default function ProfilePage() {
 
   const supabase = useSupabase();
   const router = useRouter();
+  const userId = user?.id;
+  const rankName = getRankName(
+    parseActiveRankNameLevel(
+      user?.user_metadata,
+      achievementSummary?.level ?? 1,
+    ),
+  );
   const profileLevelLine = achievementSummary
-    ? `LVL\u00A0${achievementSummary.level}\u00A0|\u00A0${achievementSummary.rank}`
+    ? `LVL\u00A0${achievementSummary.level}\u00A0|\u00A0${rankName}`
     : "";
-  const profileLevelGlowLength =
-    achievementSummary && achievementSummary.level >= 20 && MAX_LEVEL > 20
-      ? Math.ceil(
-          (profileLevelLine.length * (achievementSummary.level - 19)) /
-            (MAX_LEVEL - 19),
-        )
-      : 0;
 
   useEffect(() => {
     let isMounted = true;
 
     const updateUser = (nextUser: User | null) => {
-      setUser((currentUser) => {
-        if (!nextUser) return null;
-        if (currentUser?.id === nextUser.id) return currentUser;
-        return nextUser;
-      });
+      setUser(nextUser);
     };
 
     const getUser = async () => {
@@ -178,7 +175,7 @@ export default function ProfilePage() {
   }, [showDeleteConfirm]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
 
     const fetchHistory = async () => {
       setLoadingHistory(true);
@@ -207,10 +204,10 @@ export default function ProfilePage() {
     };
 
     void fetchHistory();
-  }, [user]);
+  }, [userId]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
 
     let isMounted = true;
 
@@ -251,7 +248,7 @@ export default function ProfilePage() {
     return () => {
       isMounted = false;
     };
-  }, [user]);
+  }, [userId]);
 
   useEffect(() => {
     const filteredHistory = selectedYear
@@ -471,6 +468,18 @@ export default function ProfilePage() {
     user?.user_metadata?.profile_picture ||
     user?.user_metadata?.avatarUrl ||
     "";
+  const resolvedCosmetics = resolveCosmetics(
+    user?.user_metadata,
+    achievementSummary?.level ?? 1,
+  );
+  const nameColor = resolvedCosmetics.nameColor?.value ?? "";
+  const nameColorFx = nameColor.startsWith("fx-color-");
+  const nameEffectClass = resolvedCosmetics.nameEffect?.value ?? "";
+  const usernameEffectClass = resolvedCosmetics.usernameEffect?.value ?? "";
+  const avatarRing = resolvedCosmetics.avatarRing;
+  const avatarRingValue = avatarRing?.value ?? "";
+  const avatarRingFx = avatarRingValue.startsWith("fx-ring-");
+  const avatarRingSpin = avatarRing?.id === "ring-rainbow";
 
   const handlePhotoUpload = async (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -695,19 +704,34 @@ export default function ProfilePage() {
         <div className="rounded-3xl border border-zinc-800 bg-zinc-900/80 p-5 shadow-2xl shadow-violet-900/10 backdrop-blur-sm sm:p-8">
           <div className="flex flex-col gap-6 md:flex-row md:items-center">
             <div className="relative">
-              {avatarUrl ? (
-                <NextImage
-                  src={avatarUrl}
-                  alt={displayName}
-                  width={112}
-                  height={112}
-                  className="h-24 w-24 rounded-full border border-violet-500/50 object-cover shadow-lg shadow-violet-500/20 sm:h-28 sm:w-28"
-                />
-              ) : (
-                <div className="flex h-24 w-24 items-center justify-center rounded-full border border-violet-500/50 bg-gradient-to-br from-violet-500 to-indigo-600 text-2xl font-bold text-white shadow-lg shadow-violet-500/20 sm:h-28 sm:w-28">
-                  {displayName.slice(0, 2).toUpperCase()}
-                </div>
-              )}
+              <span
+                className={`block h-24 w-24 rounded-full p-[3px] sm:h-28 sm:w-28 ${
+                  avatarRingFx
+                    ? avatarRingValue
+                    : avatarRingValue
+                      ? ""
+                      : "bg-gradient-to-br from-violet-400 via-fuchsia-400 to-indigo-500"
+                } ${avatarRingSpin ? "fx-ring-spin" : ""}`}
+                style={
+                  !avatarRingFx && avatarRingValue
+                    ? { background: avatarRingValue }
+                    : undefined
+                }
+              >
+                {avatarUrl ? (
+                  <NextImage
+                    src={avatarUrl}
+                    alt={displayName}
+                    width={112}
+                    height={112}
+                    className="h-full w-full rounded-full object-cover shadow-lg shadow-violet-500/20"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 text-2xl font-bold text-white shadow-lg shadow-violet-500/20">
+                    {displayName.slice(0, 2).toUpperCase()}
+                  </div>
+                )}
+              </span>
 
               <div className="absolute -bottom-2 -right-2 flex gap-2">
                 {avatarUrl && (
@@ -733,46 +757,29 @@ export default function ProfilePage() {
 
             <div className="flex-1 space-y-2">
               <div className="flex flex-wrap items-center gap-3">
-                <h2 className="text-2xl font-bold text-white sm:text-3xl">
-                  {displayName}
+                <h2
+                  className={`relative text-2xl font-bold text-white sm:text-3xl ${usernameEffectClass} ${usernameEffectClass ? "fx-username" : ""}`}
+                  style={!nameColorFx && nameColor ? { color: nameColor } : undefined}
+                >
+                  {nameColorFx ? (
+                    <span className={nameColor}>{displayName}</span>
+                  ) : (
+                    displayName
+                  )}
                 </h2>
                 <Link
                   href="/achievements"
-                  className={`flex w-fit min-w-0 self-center items-center gap-1 whitespace-nowrap text-[10px] font-semibold leading-none transition ${
-                    achievementSummary && achievementSummary.level >= 20
-                      ? "rounded-md bg-violet-500/10 px-1.5 py-1 text-violet-100 ring-1 ring-inset ring-violet-400/30 hover:bg-violet-500/20"
-                      : "text-violet-100"
-                  }`}
+                  className="flex w-fit min-w-0 translate-y-0.5 items-center gap-1 self-center whitespace-nowrap rounded-md bg-violet-500/10 px-1.5 py-1 text-xs font-semibold leading-none text-violet-100 ring-1 ring-inset ring-violet-400/30 transition hover:bg-violet-500/20"
                 >
                   {loadingAchievements ? (
                     "Loading level..."
                   ) : achievementSummary ? (
                     <span
-                      className="block min-w-0 whitespace-nowrap leading-none"
+                      className={`relative block min-w-0 whitespace-nowrap leading-none ${nameEffectClass}`}
                       title={profileLevelLine}
                     >
-                      {achievementSummary.level >= 20 ? (
-                        <span className="level-starlight relative inline-block">
-                          <span className="bg-gradient-to-r from-violet-100 via-fuchsia-200 to-violet-300 bg-clip-text font-semibold text-transparent drop-shadow-[0_0_5px_rgba(167,139,250,0.85)]">
-                            {profileLevelLine.slice(
-                              0,
-                              profileLevelGlowLength,
-                            )}
-                          </span>
-                        </span>
-                      ) : (
-                        <span className="bg-gradient-to-r from-violet-100 via-fuchsia-200 to-violet-300 bg-clip-text font-semibold text-transparent drop-shadow-[0_0_5px_rgba(167,139,250,0.85)]">
-                          {profileLevelLine.slice(0, profileLevelGlowLength)}
-                        </span>
-                      )}
-                      <span
-                        className={
-                          achievementSummary.level >= 20
-                            ? "font-medium text-violet-200/50"
-                            : "font-medium text-violet-100"
-                        }
-                      >
-                        {profileLevelLine.slice(profileLevelGlowLength)}
+                      <span className="bg-gradient-to-r from-violet-100 via-fuchsia-200 to-violet-300 bg-clip-text font-semibold text-transparent drop-shadow-[0_0_5px_rgba(167,139,250,0.85)]">
+                        {profileLevelLine}
                       </span>
                     </span>
                   ) : (

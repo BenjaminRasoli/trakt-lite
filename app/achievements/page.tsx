@@ -10,7 +10,19 @@ import type {
   AchievementApiResponse,
   AchievementSummary,
 } from "@/lib/achievements";
-import { MAX_LEVEL } from "@/lib/achievements";
+import { getRankName, MAX_LEVEL } from "@/lib/achievements";
+import {
+  COSMETICS_METADATA_KEY,
+  getSlotCosmetics,
+  isCosmeticUnlocked,
+  parseActiveRankNameLevel,
+  parseActiveCosmetics,
+  RANK_NAME_METADATA_KEY,
+  resolveCosmetics,
+  SLOT_DESCRIPTIONS,
+  SLOT_LABELS,
+  type CosmeticSlot,
+} from "@/lib/cosmetics";
 
 const categories = [
   "All",
@@ -19,14 +31,18 @@ const categories = [
   "TV",
   "Discovery",
   "Ratings",
+  "Collection",
 ] as const;
 type FilterIconName =
   | "all"
   | "watching"
+  | "badges"
+  | "rewards"
   | "movies"
   | "tv"
   | "discovery"
   | "ratings"
+  | "collection"
   | "unlocked"
   | "locked";
 
@@ -37,6 +53,13 @@ const categoryIcons: Record<(typeof categories)[number], FilterIconName> = {
   TV: "tv",
   Discovery: "discovery",
   Ratings: "ratings",
+  Collection: "collection",
+};
+const pageViews = ["Badges", "Rewards"] as const;
+type PageView = (typeof pageViews)[number];
+const pageViewIcons: Record<PageView, FilterIconName> = {
+  Badges: "badges",
+  Rewards: "rewards",
 };
 const badgeStatuses = ["All badges", "Unlocked", "Locked"] as const;
 const badgeStatusIcons: Record<(typeof badgeStatuses)[number], FilterIconName> =
@@ -72,6 +95,19 @@ function FilterIcon({ name }: { name: FilterIconName }) {
           <circle cx="12" cy="12" r="9" />
           <path d="m10 8 6 4-6 4z" />
         </>
+      ) : name === "badges" ? (
+        <>
+          <circle cx="12" cy="8" r="6" />
+          <path d="m8.2 13.2-1.1 8L12 18l4.9 3.2-1.1-8" />
+        </>
+      ) : name === "rewards" ? (
+        <>
+          <path d="M20 12v10H4V12" />
+          <path d="M2 7h20v5H2z" />
+          <path d="M12 22V7" />
+          <path d="M12 7H7.5a2.5 2.5 0 1 1 2.5-2.5V7Z" />
+          <path d="M12 7h4.5A2.5 2.5 0 1 0 14 4.5V7Z" />
+        </>
       ) : name === "movies" ? (
         <>
           <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18" />
@@ -96,6 +132,8 @@ function FilterIcon({ name }: { name: FilterIconName }) {
         </>
       ) : name === "ratings" ? (
         <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z" />
+      ) : name === "collection" ? (
+        <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
       ) : name === "unlocked" ? (
         <path d="M7 11V7a5 5 0 0 1 9.9-1M5 11h14v10H5z" />
       ) : (
@@ -120,6 +158,8 @@ export default function AchievementsPage() {
   const [category, setCategory] = useState<(typeof categories)[number]>("All");
   const [badgeStatus, setBadgeStatus] =
     useState<(typeof badgeStatuses)[number]>("All badges");
+  const [view, setView] = useState<PageView>("Badges");
+  const [savingCosmetic, setSavingCosmetic] = useState("");
   const supabase = useSupabase();
   const router = useRouter();
 
@@ -171,9 +211,11 @@ export default function AchievementsPage() {
     };
   }, [supabase]);
 
+  const userId = user?.id;
+
   useEffect(() => {
     if (authLoading) return;
-    if (!user) {
+    if (!userId) {
       router.push("/auth");
       return;
     }
@@ -244,7 +286,7 @@ export default function AchievementsPage() {
     return () => {
       isMounted = false;
     };
-  }, [authLoading, router, user]);
+  }, [authLoading, router, userId]);
 
   const visibleBadges = useMemo(
     () =>
@@ -256,6 +298,84 @@ export default function AchievementsPage() {
       ) ?? [],
     [badgeStatus, category, summary],
   );
+
+  const level = summary?.level ?? 1;
+  const activeCosmetics = parseActiveCosmetics(user?.user_metadata);
+  const activeRankNameLevel = parseActiveRankNameLevel(
+    user?.user_metadata,
+    level,
+  );
+  const resolvedCosmetics = resolveCosmetics(user?.user_metadata, level);
+  const badgeShineClass = resolvedCosmetics.badgeShine?.value ?? "";
+  const slotOrder: CosmeticSlot[] = [
+    "nameEffect",
+    "usernameEffect",
+    "nameColor",
+    "avatarRing",
+    "badgeShine",
+  ];
+
+  const updateCosmetic = async (slot: CosmeticSlot, id: string | null) => {
+    if (!user || savingCosmetic) return;
+
+    const savingKey = `${slot}:${id ?? "none"}`;
+    setSavingCosmetic(savingKey);
+    setError("");
+
+    const next = { ...activeCosmetics };
+    if (id === null) {
+      delete next[slot];
+    } else {
+      next[slot] = id;
+    }
+
+    try {
+      const { data, error: updateError } = await supabase.auth.updateUser({
+        data: {
+          ...(user.user_metadata ?? {}),
+          [COSMETICS_METADATA_KEY]: next,
+        },
+      });
+
+      if (updateError) {
+        setError(`Could not save your cosmetic: ${updateError.message}`);
+        return;
+      }
+      if (data.user) setUser(data.user);
+    } catch (updateError) {
+      console.error("Error saving cosmetic:", updateError);
+      setError("Could not save your cosmetic. Please try again.");
+    } finally {
+      setSavingCosmetic("");
+    }
+  };
+
+  const updateRankName = async (rankLevel: number) => {
+    if (!user || savingCosmetic) return;
+
+    setSavingCosmetic(`rankName:${rankLevel}`);
+    setError("");
+
+    try {
+      const { data, error: updateError } = await supabase.auth.updateUser({
+        data: {
+          ...(user.user_metadata ?? {}),
+          [RANK_NAME_METADATA_KEY]: rankLevel,
+        },
+      });
+
+      if (updateError) {
+        setError(`Could not save your rank name: ${updateError.message}`);
+        return;
+      }
+      if (data.user) setUser(data.user);
+    } catch (updateError) {
+      console.error("Error saving rank name:", updateError);
+      setError("Could not save your rank name. Please try again.");
+    } finally {
+      setSavingCosmetic("");
+    }
+  };
 
   if (authLoading || loadingAchievements) {
     return (
@@ -323,7 +443,7 @@ export default function AchievementsPage() {
                     Level {summary.level}
                   </p>
                   <h2 className="mt-2 text-3xl font-bold sm:text-4xl">
-                    {summary.rank}
+                    {getRankName(activeRankNameLevel)}
                   </h2>
                   <p className="mt-2 text-zinc-400">
                     {summary.xp} XP earned · {summary.earnedCount} of{" "}
@@ -340,7 +460,7 @@ export default function AchievementsPage() {
                     <span className="text-zinc-400">
                       {summary.level >= MAX_LEVEL
                         ? "MAX"
-                        : `${summary.progressInLevel} / 100 XP`}
+                        : `${summary.progressInLevel} / ${summary.levelXpCost} XP`}
                     </span>
                   </div>
                   <div
@@ -384,11 +504,42 @@ export default function AchievementsPage() {
             <section className="mt-8">
               <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                  <h2 className="text-xl font-bold">Badge collection</h2>
+                  <div
+                    className="mb-3 inline-flex rounded-full border border-zinc-700 bg-zinc-900/70 p-1"
+                    role="group"
+                    aria-label="Switch between badges and rewards"
+                  >
+                    {pageViews.map((item) => (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => setView(item)}
+                        aria-pressed={view === item}
+                        className={`cursor-pointer rounded-full px-4 py-1.5 text-xs font-semibold transition ${
+                          view === item
+                            ? "bg-violet-500/25 text-violet-100"
+                            : "text-zinc-400 hover:text-zinc-200"
+                        }`}
+                      >
+                        <span className="inline-flex items-center gap-1.5">
+                          <FilterIcon name={pageViewIcons[item]} />
+                          {item}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  <h2 className="text-xl font-bold">
+                    {view === "Badges"
+                      ? "Badge collection"
+                      : "Rewards & cosmetics"}
+                  </h2>
                   <p className="mt-1 text-sm text-zinc-400">
-                    Earn XP once per badge as you keep watching and rating.
+                    {view === "Badges"
+                      ? "Earn XP once per badge as you keep watching and rating."
+                      : "Every level unlocks a new rank and new cosmetics. Pick one per slot and show it off"}
                   </p>
                 </div>
+                {view === "Badges" && (
                 <div className="flex flex-col gap-3">
                   <div
                     className="flex flex-wrap gap-2"
@@ -438,9 +589,191 @@ export default function AchievementsPage() {
                     ))}
                   </div>
                 </div>
+                )}
               </div>
 
-              {visibleBadges.length === 0 ? (
+              {view === "Rewards" ? (
+                <div className="space-y-10">
+                  <div>
+                    <div className="space-y-6">
+                      {slotOrder.map((slot) => (
+                        <div key={slot}>
+                          <p className="text-xs font-semibold uppercase tracking-wider text-violet-300">
+                            {SLOT_LABELS[slot]}
+                          </p>
+                          <p className="mt-0.5 text-xs text-zinc-500">
+                            {SLOT_DESCRIPTIONS[slot]}
+                          </p>
+                          <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                            {getSlotCosmetics(slot).map((cosmetic) => {
+                              const unlocked = isCosmeticUnlocked(
+                                cosmetic,
+                                level,
+                              );
+                              const isFxRing = cosmetic.value.startsWith(
+                                "fx-ring-",
+                              );
+                              const selected =
+                                activeCosmetics[slot] === cosmetic.id;
+                              const saving = savingCosmetic.startsWith(
+                                `${slot}:`,
+                              );
+                              return (
+                                <button
+                                  key={cosmetic.id}
+                                  type="button"
+                                  disabled={!unlocked || saving}
+                                  onClick={() =>
+                                    updateCosmetic(
+                                      slot,
+                                      selected ? null : cosmetic.id,
+                                    )
+                                  }
+                                  aria-pressed={selected}
+                                  className={`rounded-xl border p-3 text-left transition ${
+                                    selected
+                                      ? "border-violet-400/70 bg-violet-500/15"
+                                      : unlocked
+                                        ? "border-zinc-700 bg-zinc-900/70 hover:border-zinc-500"
+                                        : "cursor-not-allowed border-zinc-800 bg-zinc-900/40 opacity-60"
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between gap-2">
+                                    <p className="text-sm font-semibold text-white">
+                                      {cosmetic.name}
+                                    </p>
+                                    <span
+                                      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                                        selected
+                                          ? "bg-violet-500/30 text-violet-100"
+                                          : unlocked
+                                            ? "bg-zinc-800 text-zinc-400"
+                                            : "bg-zinc-800/60 text-zinc-500"
+                                      }`}
+                                    >
+                                      {selected
+                                        ? "Equipped"
+                                        : unlocked
+                                          ? "Tap to equip"
+                                          : `Lv ${cosmetic.unlockLevel}`}
+                                    </span>
+                                  </div>
+                                  <p className="mt-1 text-xs text-zinc-400">
+                                    {cosmetic.description}
+                                  </p>
+                                  <div className="mt-2 flex h-7 items-center">
+                                    {slot === "nameEffect" &&
+                                      cosmetic.value && (
+                                        <span
+                                          className={`relative inline-block bg-gradient-to-r from-violet-100 via-fuchsia-200 to-violet-300 bg-clip-text text-[10px] font-semibold text-transparent ${cosmetic.value}`}
+                                        >
+                                          LVL 20 | RANK
+                                        </span>
+                                      )}
+                                    {slot === "usernameEffect" &&
+                                      cosmetic.value && (
+                                        <span
+                                          className={`relative inline-block text-[10px] font-semibold text-white fx-username ${cosmetic.value}`}
+                                        >
+                                          username
+                                        </span>
+                                      )}
+                                    {slot === "nameColor" && (
+                                      <span
+                                        className={`text-xs font-semibold ${
+                                          cosmetic.value.startsWith("fx-color-")
+                                            ? cosmetic.value
+                                            : ""
+                                        }`}
+                                        style={{
+                                          color:
+                                            cosmetic.value &&
+                                            !cosmetic.value.startsWith("fx-color-")
+                                              ? cosmetic.value
+                                              : undefined,
+                                        }}
+                                      >
+                                        {cosmetic.value
+                                          ? "Your username"
+                                          : "Your username"}
+                                      </span>
+                                    )}
+                                    {slot === "avatarRing" && (
+                                      <span
+                                        className={`flex h-6 w-6 items-center justify-center rounded-full p-[2px] ${
+                                          isFxRing
+                                            ? cosmetic.value
+                                            : cosmetic.value
+                                              ? ""
+                                              : "bg-gradient-to-br from-violet-400 via-fuchsia-400 to-indigo-500"
+                                        }`}
+                                        style={
+                                          !isFxRing && cosmetic.value
+                                            ? { background: cosmetic.value }
+                                            : undefined
+                                        }
+                                      >
+                                        <span className="block h-full w-full rounded-full bg-zinc-800" />
+                                      </span>
+                                    )}
+                                    {slot === "badgeShine" && (
+                                      <span
+                                        className={`rounded-md border border-violet-500/30 bg-zinc-900 px-2 py-0.5 text-[10px] font-semibold text-violet-200 ${cosmetic.value}`}
+                                      >
+                                        Unlocked badge
+                                      </span>
+                                    )}
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-violet-300">
+                          Rank name
+                        </p>
+                        <p className="mt-0.5 text-xs text-zinc-500">
+                          Choose any rank name you have already unlocked.
+                        </p>
+                        <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                      {Array.from({ length: level }, (_, index) => index + 1).map(
+                        (rankLevel) => {
+                          const selected = activeRankNameLevel === rankLevel;
+                          const saving = savingCosmetic.startsWith("rankName:");
+                          return (
+                            <button
+                              key={rankLevel}
+                              type="button"
+                              disabled={saving}
+                              onClick={() => void updateRankName(rankLevel)}
+                              aria-pressed={selected}
+                              className={`rounded-xl border p-3 text-left transition ${
+                                selected
+                                  ? "border-violet-400/70 bg-violet-500/15"
+                                  : "border-zinc-700 bg-zinc-900/70 hover:border-zinc-500"
+                              }`}
+                            >
+                              <span className="flex items-center justify-between gap-2">
+                                <span className="text-sm font-semibold text-white">
+                                  {getRankName(rankLevel)}
+                                </span>
+                                <span className="text-[10px] font-medium text-zinc-400">
+                                  Level {rankLevel}
+                                </span>
+                              </span>
+                            </button>
+                          );
+                        },
+                      )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              ) : visibleBadges.length === 0 ? (
                 <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-8 text-center">
                   <p className="text-sm font-semibold text-zinc-200">
                     No {badgeStatus.toLowerCase()} badges in this category yet.
@@ -458,7 +791,7 @@ export default function AchievementsPage() {
                         badge.earned
                           ? "border-violet-500/30 bg-gradient-to-br from-violet-950/50 to-zinc-900/90"
                           : "border-zinc-800 bg-zinc-900/70"
-                      }`}
+                      } ${badge.earned && badgeShineClass ? badgeShineClass : ""}`}
                     >
                       <div className="flex items-start gap-4">
                         <div

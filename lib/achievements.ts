@@ -11,7 +11,13 @@ export type AchievementMetric =
   | "longestStreak"
   | "weekendWatches"
   | "activeMonths"
-  | "filmEras";
+  | "filmEras"
+  | "watchlist"
+  | "rewatch"
+  | "longestDay"
+  | "lateNight"
+  | "activeYears"
+  | "perfectRatings";
 
 export type AchievementStats = Record<AchievementMetric, number>;
 
@@ -19,7 +25,13 @@ export type Achievement = {
   id: string;
   title: string;
   description: string;
-  category: "Watching" | "Movies" | "TV" | "Discovery" | "Ratings";
+  category:
+    | "Watching"
+    | "Movies"
+    | "TV"
+    | "Discovery"
+    | "Ratings"
+    | "Collection";
   icon: string;
   metric: AchievementMetric;
   target: number;
@@ -40,6 +52,7 @@ export type AchievementSummary = {
   rank: string;
   progressInLevel: number;
   xpForNextLevel: number;
+  levelXpCost: number;
   progressPercent: number;
 };
 
@@ -333,16 +346,6 @@ export const achievementDefinitions: Achievement[] = [
     xp: 35,
   },
   {
-    id: "twenty-five-ratings",
-    title: "Popcorn Reviewer",
-    description: "Rate 25 movies, shows, seasons, or episodes.",
-    category: "Ratings",
-    icon: "📝",
-    metric: "ratings",
-    target: 25,
-    xp: 75,
-  },
-  {
     id: "hundred-ratings",
     title: "Rating Regular",
     description: "Rate 100 movies, shows, seasons, or episodes.",
@@ -492,6 +495,336 @@ export const achievementDefinitions: Achievement[] = [
     target: 5,
     xp: 75,
   },
+  {
+    id: "watch-250",
+    title: "Quarter-Thousand Club",
+    description: "Log 250 movies and episodes.",
+    category: "Watching",
+    icon: "🎬",
+    metric: "totalWatches",
+    target: 250,
+    xp: 100,
+  },
+  {
+    id: "watch-10000",
+    title: "Ten Thousand Screenings",
+    description: "Log 10,000 movies and episodes.",
+    category: "Watching",
+    icon: "🌌",
+    metric: "totalWatches",
+    target: 10000,
+    xp: 750,
+  },
+  {
+    id: "rewatch-25",
+    title: "Second Helping",
+    description: "Rewatch 25 movies or episodes.",
+    category: "Watching",
+    icon: "🔁",
+    metric: "rewatch",
+    target: 25,
+    xp: 40,
+  },
+  {
+    id: "rewatch-100",
+    title: "Certified Rewatch",
+    description: "Rewatch 100 movies or episodes.",
+    category: "Watching",
+    icon: "♻️",
+    metric: "rewatch",
+    target: 100,
+    xp: 90,
+  },
+  {
+    id: "rewatch-500",
+    title: "Glutton for Repeats",
+    description: "Rewatch 500 movies or episodes.",
+    category: "Watching",
+    icon: "🧟",
+    metric: "rewatch",
+    target: 500,
+    xp: 200,
+  },
+  {
+    id: "longest-day-5",
+    title: "Matinee Marathon",
+    description: "Log 5 movies or episodes in a single day.",
+    category: "Watching",
+    icon: "📽️",
+    metric: "longestDay",
+    target: 5,
+    xp: 30,
+  },
+  {
+    id: "longest-day-10",
+    title: "Projector Room",
+    description: "Log 10 movies or episodes in a single day.",
+    category: "Watching",
+    icon: "🎞️",
+    metric: "longestDay",
+    target: 10,
+    xp: 75,
+  },
+  {
+    id: "longest-day-25",
+    title: "All-Nighter at the Cinema",
+    description: "Log 25 movies or episodes in a single day.",
+    category: "Watching",
+    icon: "🌙",
+    metric: "longestDay",
+    target: 25,
+    xp: 150,
+  },
+  {
+    id: "late-night-10",
+    title: "Midnight Matinee",
+    description: "Log 10 movies or episodes between midnight and 5 AM.",
+    category: "Watching",
+    icon: "🦉",
+    metric: "lateNight",
+    target: 10,
+    xp: 35,
+  },
+  {
+    id: "late-night-50",
+    title: "Vampire's Schedule",
+    description: "Log 50 movies or episodes between midnight and 5 AM.",
+    category: "Watching",
+    icon: "🧛",
+    metric: "lateNight",
+    target: 50,
+    xp: 90,
+  },
+  {
+    id: "active-years-2",
+    title: "New Year, New Reel",
+    description: "Log something in 2 different calendar years.",
+    category: "Watching",
+    icon: "🎇",
+    metric: "activeYears",
+    target: 2,
+    xp: 40,
+  },
+  {
+    id: "active-years-3",
+    title: "Holiday Fixture",
+    description: "Log something in 3 different calendar years.",
+    category: "Watching",
+    icon: "🗓️",
+    metric: "activeYears",
+    target: 3,
+    xp: 80,
+  },
+  {
+    id: "streak-60",
+    title: "Two-Month Marathon",
+    description: "Log something on 60 consecutive days.",
+    category: "Watching",
+    icon: "🔥",
+    metric: "longestStreak",
+    target: 60,
+    xp: 250,
+  },
+  {
+    id: "streak-100",
+    title: "Unbroken Reel",
+    description: "Log something on 100 consecutive days.",
+    category: "Watching",
+    icon: "⚡",
+    metric: "longestStreak",
+    target: 100,
+    xp: 400,
+  },
+  {
+    id: "weekend-250",
+    title: "Weekend Warrior",
+    description: "Log 250 movies or episodes on a weekend.",
+    category: "Watching",
+    icon: "🛡️",
+    metric: "weekendWatches",
+    target: 250,
+    xp: 120,
+  },
+  {
+    id: "active-days-365",
+    title: "Year of Stories",
+    description: "Log something on 365 different days.",
+    category: "Watching",
+    icon: "🗓️",
+    metric: "activeDays",
+    target: 365,
+    xp: 200,
+  },
+  {
+    id: "movies-500",
+    title: "Half-Thousand Features",
+    description: "Watch 500 different movies.",
+    category: "Movies",
+    icon: "🎬",
+    metric: "movies",
+    target: 500,
+    xp: 250,
+  },
+  {
+    id: "movies-1000",
+    title: "Millennium of Movies",
+    description: "Watch 1,000 different movies.",
+    category: "Movies",
+    icon: "🏆",
+    metric: "movies",
+    target: 1000,
+    xp: 400,
+  },
+  {
+    id: "episodes-1000",
+    title: "Episode Millennium",
+    description: "Log 1,000 TV episodes.",
+    category: "TV",
+    icon: "📺",
+    metric: "episodes",
+    target: 1000,
+    xp: 300,
+  },
+  {
+    id: "episodes-2500",
+    title: "Box Set Connoisseur",
+    description: "Log 2,500 TV episodes.",
+    category: "TV",
+    icon: "📦",
+    metric: "episodes",
+    target: 2500,
+    xp: 500,
+  },
+  {
+    id: "shows-100",
+    title: "Channel Surfer Supreme",
+    description: "Watch episodes from 100 different shows.",
+    category: "TV",
+    icon: "📡",
+    metric: "tvShows",
+    target: 100,
+    xp: 200,
+  },
+  {
+    id: "shows-250",
+    title: "The Streaming Addict",
+    description: "Watch episodes from 250 different shows.",
+    category: "TV",
+    icon: "🛜",
+    metric: "tvShows",
+    target: 250,
+    xp: 350,
+  },
+  {
+    id: "genres-15",
+    title: "Genre Globetrotter",
+    description: "Explore 15 different genres.",
+    category: "Discovery",
+    icon: "🧳",
+    metric: "genres",
+    target: 15,
+    xp: 150,
+  },
+  {
+    id: "film-eras-7",
+    title: "Seven Decades Deep",
+    description: "Watch movies or shows from 7 different decades.",
+    category: "Discovery",
+    icon: "🕰️",
+    metric: "filmEras",
+    target: 7,
+    xp: 120,
+  },
+  {
+    id: "film-eras-10",
+    title: "Full Century of Cinema",
+    description: "Watch movies or shows from 10 different decades.",
+    category: "Discovery",
+    icon: "🌍",
+    metric: "filmEras",
+    target: 10,
+    xp: 300,
+  },
+  {
+    id: "ratings-500",
+    title: "Rating Machine",
+    description: "Rate 500 movies, shows, seasons, or episodes.",
+    category: "Ratings",
+    icon: "⚙️",
+    metric: "ratings",
+    target: 500,
+    xp: 250,
+  },
+  {
+    id: "high-ratings-25",
+    title: "Standing Ovation Encore",
+    description: "Give 25 ratings of 9 or higher.",
+    category: "Ratings",
+    icon: "�",
+    metric: "highRatings",
+    target: 25,
+    xp: 80,
+  },
+  {
+    id: "low-ratings-25",
+    title: "Harsh Critic",
+    description: "Give 25 ratings of 3 or lower.",
+    category: "Ratings",
+    icon: "🧐",
+    metric: "lowRatings",
+    target: 25,
+    xp: 80,
+  },
+  {
+    id: "perfect-5",
+    title: "Flawless Five",
+    description: "Give 5 ratings of 9.5 or higher.",
+    category: "Ratings",
+    icon: "💎",
+    metric: "perfectRatings",
+    target: 5,
+    xp: 60,
+  },
+  {
+    id: "perfect-25",
+    title: "Perfectionist's Cut",
+    description: "Give 25 ratings of 9.5 or higher.",
+    category: "Ratings",
+    icon: "👑",
+    metric: "perfectRatings",
+    target: 25,
+    xp: 150,
+  },
+  {
+    id: "watchlist-10",
+    title: "Future Night Stand",
+    description: "Keep 10 titles in your watchlist.",
+    category: "Collection",
+    icon: "🔖",
+    metric: "watchlist",
+    target: 10,
+    xp: 30,
+  },
+  {
+    id: "watchlist-50",
+    title: "The Queue",
+    description: "Keep 50 titles in your watchlist.",
+    category: "Collection",
+    icon: "📋",
+    metric: "watchlist",
+    target: 50,
+    xp: 90,
+  },
+  {
+    id: "watchlist-100",
+    title: "Insomniac's List",
+    description: "Keep 100 titles in your watchlist.",
+    category: "Collection",
+    icon: "🌙",
+    metric: "watchlist",
+    target: 100,
+    xp: 160,
+  },
 ];
 
 const rankNames = [
@@ -530,9 +863,55 @@ const rankNames = [
   "Cinema Luminary",
   "Masterpiece Maker",
   "The Final Cut",
+  "Grand Premiere",
+  "Reel Sovereign",
+  "Silver Orbit",
+  "Story Supernova",
+  "Cinema Deity",
+  "Immortal Matinee",
+  "Trakt Eternal",
 ];
 
 export const MAX_LEVEL = rankNames.length;
+
+export function getRankName(level: number) {
+  return rankNames[Math.min(Math.max(level, 1), MAX_LEVEL) - 1] ?? "Newcomer";
+}
+
+const EARLY_LEVELS = 20;
+const EARLY_LEVEL_XP = 100;
+const LATE_LEVEL_XP = 300;
+const EARLY_LEVEL_CAP_XP = EARLY_LEVEL_XP * EARLY_LEVELS;
+
+function getLevelProgress(xp: number) {
+  const cappedXp = Math.min(xp, Number.MAX_SAFE_INTEGER);
+  const isPastEarlyLevels = cappedXp >= EARLY_LEVEL_CAP_XP;
+  const level = isPastEarlyLevels
+    ? Math.min(
+        EARLY_LEVELS + 1 + Math.floor((cappedXp - EARLY_LEVEL_CAP_XP) / LATE_LEVEL_XP),
+        MAX_LEVEL,
+      )
+    : Math.min(Math.floor(cappedXp / EARLY_LEVEL_XP) + 1, MAX_LEVEL);
+  const isAtMaxLevel = level === MAX_LEVEL;
+  const levelStartXp = isPastEarlyLevels
+    ? EARLY_LEVEL_CAP_XP + (level - EARLY_LEVELS - 1) * LATE_LEVEL_XP
+    : (level - 1) * EARLY_LEVEL_XP;
+  const levelXpCost = isPastEarlyLevels ? LATE_LEVEL_XP : EARLY_LEVEL_XP;
+  const progressInLevel = isAtMaxLevel
+    ? levelXpCost
+    : cappedXp - levelStartXp;
+
+  return {
+    level,
+    isAtMaxLevel,
+    progressInLevel,
+    levelXpCost,
+    xpForNextLevel: isAtMaxLevel ? 0 : levelXpCost - progressInLevel,
+    progressPercent: isAtMaxLevel
+      ? 100
+      : Math.round((progressInLevel / levelXpCost) * 100),
+  };
+}
 
 export function getAchievementSummary(
   stats: AchievementStats,
@@ -550,9 +929,8 @@ export function getAchievementSummary(
     (total, badge) => total + (badge.earned ? badge.xp : 0),
     0,
   );
-  const level = Math.min(Math.floor(xp / 100) + 1, MAX_LEVEL);
-  const isAtMaxLevel = level === MAX_LEVEL;
-  const progressInLevel = isAtMaxLevel ? 100 : xp % 100;
+  const { level, progressInLevel, levelXpCost, xpForNextLevel, progressPercent } =
+    getLevelProgress(xp);
 
   return {
     badges,
@@ -562,7 +940,8 @@ export function getAchievementSummary(
     level,
     rank: rankNames[level - 1] ?? "Newcomer",
     progressInLevel,
-    xpForNextLevel: isAtMaxLevel ? 0 : 100 - progressInLevel,
-    progressPercent: progressInLevel,
+    xpForNextLevel,
+    levelXpCost,
+    progressPercent,
   };
 }
