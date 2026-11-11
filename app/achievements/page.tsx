@@ -679,6 +679,7 @@ export default function AchievementsPage() {
                                           {STAR_FX[cosmetic.value] && (
                                             <FxStars
                                               {...STAR_FX[cosmetic.value]}
+                                              count={4}
                                               leftMin={1}
                                               leftMax={99}
                                             />

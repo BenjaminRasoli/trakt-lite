@@ -25,8 +25,8 @@ export const STAR_FX: Record<string, StarFx> = {
     anim: "fx-comet",
     count: 2,
     colors: ["#a5f3fc", "#e0f2fe", "#67e8f9", "#cffafe"],
-    sizeMin: 0.55,
-    sizeMax: 0.7,
+    sizeMin: 0.85,
+    sizeMax: 1.05,
   },
   "fx-celestial": {
     anim: "fx-drift",
@@ -86,7 +86,7 @@ function makeStars(
   return Array.from({ length: count }, (_, i) => ({
     id: i,
     left: leftMin + Math.random() * (leftMax - leftMin),
-    top: -0.45 - Math.random() * 0.65,
+    top: -0.75 + Math.random() * 1.1,
     size: rnd(sizeMin, sizeMax),
     color: colors[Math.floor(Math.random() * colors.length)],
   }));

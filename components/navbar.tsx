@@ -218,6 +218,7 @@ function ProfileLink({
               {STAR_FX[nameEffectClass] && (
                 <FxStars
                   {...STAR_FX[nameEffectClass]}
+                  count={4}
                   leftMin={1}
                   leftMax={99}
                 />
