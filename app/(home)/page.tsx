@@ -1,4 +1,7 @@
 import { getOrCreateDbUser, getServerUser } from "@/lib/auth-server";
+import { getAchievementSummaryForUser } from "@/lib/achievement-data";
+import { MAX_LEVEL } from "@/lib/achievements";
+import { resolveCosmetics } from "@/lib/cosmetics";
 import { getWatchHistoryFeed } from "@/lib/watch-history-data";
 import { getLiveSession } from "@/lib/live-session-data";
 import { getTrendingBackdropUrl } from "@/lib/trending-backdrop";
@@ -26,6 +29,8 @@ export default async function Home({ searchParams }: HomePageProps) {
         initialLiveSession={null}
         initialBackdrop={backdrop}
         searchQuery={searchQuery}
+        initialCosmetics={null}
+        initialIsMaxLevel={false}
       />
     );
   }
@@ -34,6 +39,9 @@ export default async function Home({ searchParams }: HomePageProps) {
 
   let homeData: Awaited<ReturnType<typeof getWatchHistoryFeed>> | null = null;
   let liveSession: Awaited<ReturnType<typeof getLiveSession>> | null = null;
+  const achievementSummaryPromise = dbUser
+    ? getAchievementSummaryForUser(dbUser.id).catch(() => null)
+    : Promise.resolve(null);
 
   if (dbUser && !searchQuery) {
     [homeData, liveSession] = await Promise.all([
@@ -50,6 +58,13 @@ export default async function Home({ searchParams }: HomePageProps) {
     ]);
   }
 
+  const achievementSummary = await achievementSummaryPromise;
+  const initialCosmetics = resolveCosmetics(
+    user.user_metadata,
+    achievementSummary?.level ?? 1,
+  );
+  const initialIsMaxLevel = achievementSummary?.level === MAX_LEVEL;
+
   return (
     <HomeClient
       key={searchQuery || "home"}
@@ -58,6 +73,8 @@ export default async function Home({ searchParams }: HomePageProps) {
       initialLiveSession={liveSession}
       initialBackdrop={backdrop}
       searchQuery={searchQuery}
+      initialCosmetics={initialCosmetics}
+      initialIsMaxLevel={initialIsMaxLevel}
     />
   );
 }

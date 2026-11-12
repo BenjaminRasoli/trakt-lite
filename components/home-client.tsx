@@ -11,6 +11,8 @@ import { useSupabase } from "@/components/supabase-provider";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import MediaCard from "@/components/media-card";
+import FxStars, { STAR_FX } from "@/components/fx-stars";
+import type { ResolvedCosmetics } from "@/lib/cosmetics";
 import EpisodeTypeBadge from "@/components/episode-type-badge";
 import NextUpEpisodeInfo, {
   isSpecialEpisodeType,
@@ -36,6 +38,8 @@ interface HomeClientProps {
   initialLiveSession: any | null;
   initialBackdrop: string;
   searchQuery: string;
+  initialCosmetics: ResolvedCosmetics | null;
+  initialIsMaxLevel: boolean;
 }
 
 const SEARCH_FILTERS = [
@@ -107,6 +111,8 @@ export default function HomeClient({
   initialLiveSession,
   initialBackdrop,
   searchQuery,
+  initialCosmetics,
+  initialIsMaxLevel,
 }: HomeClientProps) {
   const [user, setUser] = useState<any>(initialUser);
   const [searchResultPages, setSearchResultPages] = useState<TMDBMedia[][]>([]);
@@ -435,6 +441,9 @@ export default function HomeClient({
     () => username.charAt(0).toUpperCase() + username.slice(1),
     [username],
   );
+  const usernameEffectClass = initialCosmetics?.usernameEffect?.value ?? "";
+  const nameColor = initialCosmetics?.nameColor?.value ?? "";
+  const nameColorFx = nameColor.startsWith("fx-color-");
   const visibleNextUp = useMemo(() => nextUp.slice(0, 6), [nextUp]);
   const visibleHistory = useMemo(
     () => recentHistory.slice(0, 6),
@@ -522,10 +531,32 @@ export default function HomeClient({
         <div>
           {!searchQuery && (
             <div className="mb-8">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
                 <h1 className="text-3xl font-bold text-white">Welcome</h1>
-                <p className="text-3xl text-violet-400 font-semibold">
-                  {capitalizedUsername}
+                <p className="text-3xl font-semibold leading-none">
+                  <span
+                    className={`relative inline-block ${usernameEffectClass} ${
+                      usernameEffectClass ? "fx-username " : ""
+                    }${STAR_FX[usernameEffectClass] ? "fx-js-stars " : ""}${
+                      initialIsMaxLevel
+                        ? "bg-gradient-to-r from-violet-200 via-fuchsia-200 to-violet-300 bg-clip-text text-transparent [-webkit-text-fill-color:transparent] drop-shadow-[0_0_5px_rgba(167,139,250,0.85)]"
+                        : !nameColor && !nameColorFx
+                          ? "text-violet-400"
+                          : ""
+                    }`}
+                    style={
+                      !nameColorFx && nameColor ? { color: nameColor } : undefined
+                    }
+                  >
+                    {nameColorFx ? (
+                      <span className={nameColor}>{capitalizedUsername}</span>
+                    ) : (
+                      capitalizedUsername
+                    )}
+                    {STAR_FX[usernameEffectClass] && (
+                      <FxStars {...STAR_FX[usernameEffectClass]} />
+                    )}
+                  </span>
                 </p>
               </div>
               {watchStreak > 0 && (
