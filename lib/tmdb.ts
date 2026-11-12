@@ -864,7 +864,96 @@ export async function getTVEpisodeDetails(
 }
 
 const tvmazeShowIdCache = new Map<number, number | null>();
+export interface TVMazeCastImages {
+  byPerson: Map<string, string>;
+  byCharacter: Map<string, string>;
+}
+
+const EMPTY_TVMAZE_CAST: TVMazeCastImages = {
+  byPerson: new Map(),
+  byCharacter: new Map(),
+};
+
+const tvmazeCastImageCache = new Map<number, TVMazeCastImages | null>();
 const episodeAirTimeCache = new Map<string, string | null>();
+
+async function getTVMazeShowId(tvId: number): Promise<number | null> {
+  if (tvmazeShowIdCache.has(tvId)) {
+    return tvmazeShowIdCache.get(tvId) ?? null;
+  }
+
+  let showId: number | null = null;
+  try {
+    if (TMDB_API_KEY) {
+      const externalIds = await fetchTmdbJson<{ imdb_id?: string | null }>(
+        `${TMDB_BASE_URL}/tv/${tvId}/external_ids?api_key=${TMDB_API_KEY}`,
+      );
+      const imdbId = externalIds?.imdb_id;
+
+      if (imdbId) {
+        const lookupResponse = await fetch(
+          `https://api.tvmaze.com/lookup/shows?imdb=${encodeURIComponent(imdbId)}`,
+        );
+        const lookup = lookupResponse.ok
+          ? await lookupResponse.json()
+          : null;
+        showId = typeof lookup?.id === "number" ? lookup.id : null;
+      }
+    }
+  } catch (error) {
+    console.error("Error resolving TVMaze show id:", error);
+  }
+
+  tvmazeShowIdCache.set(tvId, showId);
+  return showId;
+}
+
+export async function getTVShowCastImages(
+  tvId: number,
+): Promise<TVMazeCastImages> {
+  if (tvmazeCastImageCache.has(tvId)) {
+    return tvmazeCastImageCache.get(tvId) ?? EMPTY_TVMAZE_CAST;
+  }
+
+  const byPerson = new Map<string, string>();
+  const byCharacter = new Map<string, string>();
+  try {
+    const showId = await getTVMazeShowId(tvId);
+    if (showId !== null) {
+      const castResponse = await fetch(
+        `https://api.tvmaze.com/shows/${showId}/cast`,
+      );
+      const cast = castResponse.ok ? await castResponse.json() : null;
+      if (Array.isArray(cast)) {
+        for (const entry of cast) {
+          const personName = entry?.person?.name;
+          const characterName = entry?.character?.name;
+          const image =
+            entry?.character?.image?.original ||
+            entry?.character?.image?.medium ||
+            entry?.person?.image?.original ||
+            entry?.person?.image?.medium;
+          if (typeof image !== "string") continue;
+          if (typeof personName === "string") {
+            byPerson.set(personName.trim().toLowerCase(), image);
+          }
+          if (typeof characterName === "string") {
+            byCharacter.set(characterName.trim().toLowerCase(), image);
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error fetching TVMaze cast images:", error);
+  }
+
+  const result =
+    byPerson.size > 0 || byCharacter.size > 0
+      ? { byPerson, byCharacter }
+      : null;
+  tvmazeCastImageCache.set(tvId, result);
+  return result ?? EMPTY_TVMAZE_CAST;
+}
 
 function formatAirTime(airtime: string | null | undefined) {
   if (!airtime) return null;
@@ -886,35 +975,15 @@ export async function getTVEpisodeAirTime(
   let airTime: string | null = null;
 
   try {
-    if (TMDB_API_KEY) {
-      const externalIds = await fetchTmdbJson<{ imdb_id?: string | null }>(
-        `${TMDB_BASE_URL}/tv/${tvId}/external_ids?api_key=${TMDB_API_KEY}`,
+    const showId = await getTVMazeShowId(tvId);
+    if (showId !== null) {
+      const episodeResponse = await fetch(
+        `https://api.tvmaze.com/shows/${showId}/episodebynumber?season=${seasonNumber}&number=${episodeNumber}`,
       );
-      const imdbId = externalIds?.imdb_id;
-
-      if (imdbId) {
-        let showId = tvmazeShowIdCache.get(tvId);
-        if (showId === undefined) {
-          const lookupResponse = await fetch(
-            `https://api.tvmaze.com/lookup/shows?imdb=${encodeURIComponent(imdbId)}`,
-          );
-          const lookup = lookupResponse.ok ? await lookupResponse.json() : null;
-          const resolvedShowId: number | null =
-            typeof lookup?.id === "number" ? lookup.id : null;
-          showId = resolvedShowId;
-          tvmazeShowIdCache.set(tvId, resolvedShowId);
-        }
-
-        if (showId !== null) {
-          const episodeResponse = await fetch(
-            `https://api.tvmaze.com/shows/${showId}/episodebynumber?season=${seasonNumber}&number=${episodeNumber}`,
-          );
-          const episodeData = episodeResponse.ok
-            ? await episodeResponse.json()
-            : null;
-          airTime = formatAirTime(episodeData?.airtime);
-        }
-      }
+      const episodeData = episodeResponse.ok
+        ? await episodeResponse.json()
+        : null;
+      airTime = formatAirTime(episodeData?.airtime);
     }
   } catch (error) {
     console.error("Error fetching episode air time:", error);

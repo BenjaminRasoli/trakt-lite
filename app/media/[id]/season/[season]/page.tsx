@@ -27,7 +27,7 @@ export default function SeasonPage() {
   >("justWatched");
   const [addingWatch, setAddingWatch] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [watchToDelete, setWatchToDelete] = useState<string | null>(null);
+  const [watchToDelete, setWatchToDelete] = useState<any | null>(null);
   const supabase = useSupabase();
   const router = useRouter();
   const params = useParams();
@@ -42,6 +42,10 @@ export default function SeasonPage() {
   const posterUrl = useMemo(
     () => getPosterUrl(season?.poster_path || show?.poster_path, "w500"),
     [season?.poster_path, show?.poster_path],
+  );
+  const backdropUrl = useMemo(
+    () => getPosterUrl(show?.backdrop_path!, "original"),
+    [show?.backdrop_path],
   );
 
   const handleTitleClick = (e: React.MouseEvent) => {
@@ -251,8 +255,8 @@ export default function SeasonPage() {
     }
   };
 
-  const handleDeleteWatch = async (watchId: string) => {
-    setWatchToDelete(watchId);
+  const handleDeleteWatch = (watch: any) => {
+    setWatchToDelete(watch);
     setShowDeleteConfirm(true);
   };
 
@@ -260,12 +264,12 @@ export default function SeasonPage() {
     if (!watchToDelete) return;
 
     try {
-      const response = await fetch(`/api/watch-history/${watchToDelete}`, {
+      const response = await fetch(`/api/watch-history/${watchToDelete.id}`, {
         method: "DELETE",
       });
 
       if (response.ok) {
-        setWatchHistory(watchHistory.filter((w) => w.id !== watchToDelete));
+        setWatchHistory(watchHistory.filter((w) => w.id !== watchToDelete.id));
       }
     } catch (error) {
       console.error("Error deleting watch history:", error);
@@ -315,8 +319,24 @@ export default function SeasonPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      <main className="mx-auto w-full max-w-[1650px] px-4 py-8 sm:px-6 lg:px-8">
+    <div className="relative min-h-screen overflow-x-hidden bg-black text-white">
+      <div
+        className="pointer-events-none fixed inset-0 z-0 bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage: `
+        linear-gradient(
+          180deg,
+          rgba(2,6,23,0.75),
+          rgba(2,6,23,0.96)
+        ),
+        url(${backdropUrl})
+      `,
+          backgroundPosition: "center -55%",
+        }}
+      />
+      <div className="pointer-events-none fixed inset-0 z-0 bg-black/10" />
+
+      <main className="relative z-10 mx-auto w-full max-w-[1650px] px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-3">
             <Link
@@ -437,8 +457,8 @@ export default function SeasonPage() {
               )
               .sort(
                 (a, b) =>
-                  new Date(a.watchedAt).getTime() -
-                  new Date(b.watchedAt).getTime(),
+                  new Date(b.watchedAt).getTime() -
+                  new Date(a.watchedAt).getTime(),
               );
 
             return (
@@ -537,7 +557,7 @@ export default function SeasonPage() {
                                 )}
                               </span>
                               <button
-                                onClick={() => handleDeleteWatch(watch.id)}
+                                onClick={() => handleDeleteWatch(watch)}
                                 className="shrink-0 px-2 py-1 cursor-pointer text-red-400 hover:text-red-300 text-xs whitespace-nowrap"
                               >
                                 Remove
@@ -715,9 +735,31 @@ export default function SeasonPage() {
             <h3 className="text-lg font-semibold text-white mb-2">
               Are you sure?
             </h3>
-            <p className="text-zinc-300 mb-6">
+            <p className="text-zinc-300 mb-4">
               Do you really want to remove this watch history entry?
             </p>
+            {watchToDelete && (
+              <div className="mb-6 rounded-lg border border-zinc-700 bg-zinc-800/60 p-3 text-sm text-zinc-300">
+                <p className="font-semibold text-white">{title}</p>
+                <p className="mt-1">
+                  {watchToDelete.seasonNumber !== null &&
+                  watchToDelete.episodeNumber !== null
+                    ? `S${watchToDelete.seasonNumber} E${watchToDelete.episodeNumber}${watchToDelete.episodeName ? ` — ${watchToDelete.episodeName}` : ""}`
+                    : "Full movie"}
+                  {" · watched "}
+                  {new Date(watchToDelete.watchedAt).toLocaleDateString(
+                    "en-US",
+                    {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    },
+                  )}
+                </p>
+              </div>
+            )}
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => {

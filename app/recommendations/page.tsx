@@ -477,12 +477,14 @@ export default function RecommendationsPage() {
           </div>
         ) : visibleMedia.length > 0 ? (
           <>
-            <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+            <div className="flex gap-3 overflow-x-auto pb-3 [scrollbar-width:thin] [scrollbar-color:rgba(168,85,247,0.8)_rgba(39,39,42,0.8)]">
               {visibleMedia.map((media) => (
-                <MediaCard
+                <div
                   key={`${getMediaType(media)}-${media.id}`}
-                  media={media}
-                />
+                  className="w-36 shrink-0 sm:w-44 md:w-48"
+                >
+                  <MediaCard media={media} />
+                </div>
               ))}
             </div>
             <div

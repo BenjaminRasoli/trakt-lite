@@ -15,8 +15,10 @@ import {
   getMediaRecommendations,
   getProfileUrl,
   getTVSeasonDetails,
+  getTVShowCastImages,
 } from "@/lib/tmdb";
 import type { TMDBMedia, TMDBActor, TMDBReview } from "@/lib/tmdb";
+import type { TVMazeCastImages } from "@/lib/tmdb";
 import MediaCard from "@/components/media-card";
 import UserRating from "@/components/user-rating";
 
@@ -36,7 +38,7 @@ export default function MediaDetailsPage() {
   const [showExpandedWatchHistory, setShowExpandedWatchHistory] =
     useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [watchToDelete, setWatchToDelete] = useState<string | null>(null);
+  const [watchToDelete, setWatchToDelete] = useState<any | null>(null);
   const [showWatchlistDeleteConfirm, setShowWatchlistDeleteConfirm] =
     useState(false);
   const [selectedSeason, setSelectedSeason] = useState<number>(1);
@@ -49,6 +51,9 @@ export default function MediaDetailsPage() {
     cast: TMDBActor[];
     crew: any[];
   } | null>(null);
+  const [castImages, setCastImages] = useState<TVMazeCastImages | null>(
+    null,
+  );
   const [reviews, setReviews] = useState<TMDBReview[]>([]);
   const [recommendations, setRecommendations] = useState<TMDBMedia[]>([]);
   const [detailsLoading, setDetailsLoading] = useState(true);
@@ -129,18 +134,22 @@ export default function MediaDetailsPage() {
       const type = (searchParams.get("type") as "movie" | "tv") || "movie";
       setDetailsLoading(true);
 
-      const [details, creditsData, reviewsData, recommendationsData] =
+      const [details, creditsData, reviewsData, recommendationsData, tvCastImages] =
         await Promise.all([
           getMediaDetails(parseInt(mediaId), type),
           getMediaCredits(parseInt(mediaId), type),
           getMediaReviews(parseInt(mediaId), type),
           getMediaRecommendations(parseInt(mediaId), type),
+          type === "tv"
+            ? getTVShowCastImages(parseInt(mediaId))
+            : Promise.resolve(null),
         ]);
 
       setMedia(details);
       setCredits(creditsData);
       setReviews(reviewsData);
       setRecommendations(recommendationsData);
+      setCastImages(tvCastImages);
 
       if (type === "tv" && details?.number_of_seasons) {
         try {
@@ -332,8 +341,8 @@ export default function MediaDetailsPage() {
     }
   };
 
-  const handleDeleteWatch = async (watchId: string) => {
-    setWatchToDelete(watchId);
+  const handleDeleteWatch = (watch: any) => {
+    setWatchToDelete(watch);
     setShowDeleteConfirm(true);
   };
 
@@ -341,12 +350,12 @@ export default function MediaDetailsPage() {
     if (!watchToDelete) return;
 
     try {
-      const response = await fetch(`/api/watch-history/${watchToDelete}`, {
+      const response = await fetch(`/api/watch-history/${watchToDelete.id}`, {
         method: "DELETE",
       });
 
       if (response.ok) {
-        setWatchHistory(watchHistory.filter((w) => w.id !== watchToDelete));
+        setWatchHistory(watchHistory.filter((w) => w.id !== watchToDelete.id));
       }
     } catch (error) {
       console.error("Error deleting watch history:", error);
@@ -676,7 +685,7 @@ export default function MediaDetailsPage() {
                                   </span>
                                 </div>
                                 <button
-                                  onClick={() => handleDeleteWatch(watch.id)}
+                                  onClick={() => handleDeleteWatch(watch)}
                                   className="shrink-0 cursor-pointer whitespace-nowrap px-1 py-1 text-xs text-red-400 hover:text-red-300 sm:px-3 sm:text-sm"
                                 >
                                   Remove
@@ -724,7 +733,7 @@ export default function MediaDetailsPage() {
                                 </span>
                               </div>
                               <button
-                                onClick={() => handleDeleteWatch(watch.id)}
+                                onClick={() => handleDeleteWatch(watch)}
                                 className="shrink-0 cursor-pointer whitespace-nowrap px-1 py-1 text-xs text-red-400 hover:text-red-300 sm:px-3 sm:text-sm"
                               >
                                 Remove
@@ -759,7 +768,7 @@ export default function MediaDetailsPage() {
             <div className="mb-8">
               <h2 className="mb-4 text-xl font-bold text-white">Seasons</h2>
 
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="flex gap-3 overflow-x-auto pb-3 [scrollbar-width:thin] [scrollbar-color:rgba(168,85,247,0.8)_rgba(39,39,42,0.8)]">
                 {Array.from(
                   { length: media.number_of_seasons },
                   (_, i) => i + 1,
@@ -773,7 +782,7 @@ export default function MediaDetailsPage() {
                     <Link
                       key={seasonNumber}
                       href={`/media/${mediaId}/season/${seasonNumber}?type=tv`}
-                      className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4 transition hover:border-violet-500/60 hover:bg-zinc-900"
+                      className="w-44 shrink-0 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4 transition hover:border-violet-500/60 hover:bg-zinc-900 sm:w-52"
                     >
                       <div className="mb-2 flex items-center justify-between gap-3">
                         <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-300">
@@ -796,12 +805,23 @@ export default function MediaDetailsPage() {
 
           {credits && credits.cast.length > 0 && (
             <div className="mb-8">
-              <h2 className="text-xl font-bold text-white mb-4">Top Cast</h2>
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
-                {credits.cast.slice(0, 12).map((actor) => {
-                  const avatarUrl = actor.profile_path
-                    ? getProfileUrl(actor.profile_path)
-                    : "";
+              <h2 className="text-xl font-bold text-white mb-4">Cast</h2>
+              <div className="flex gap-3 overflow-x-auto pb-3 [scrollbar-width:thin] [scrollbar-color:rgba(168,85,247,0.8)_rgba(39,39,42,0.8)]">
+                {credits.cast.map((actor) => {
+                  const tvmazeImage =
+                    castImages?.byPerson.get(
+                      actor.name.trim().toLowerCase(),
+                    ) ??
+                    (actor.character
+                      ? castImages?.byCharacter.get(
+                          actor.character.trim().toLowerCase(),
+                        )
+                      : undefined);
+                  const avatarUrl = tvmazeImage
+                    ? tvmazeImage
+                    : actor.profile_path
+                      ? getProfileUrl(actor.profile_path)
+                      : "";
                   const avatarLabel = getInitials(actor.name);
 
                   return (
@@ -809,7 +829,7 @@ export default function MediaDetailsPage() {
                       href={`/actor/${actor.id}`}
                       aria-label={`View ${actor.name}'s actor profile`}
                       key={actor.id}
-                      className="group mx-auto block w-full max-w-[180px] overflow-hidden rounded-xl border border-zinc-700/50 bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 text-center shadow-lg shadow-black/20 transition-colors hover:border-violet-500/50 hover:shadow-violet-500/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-400"
+                      className="group block w-28 shrink-0 overflow-hidden rounded-xl border border-zinc-700/50 bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 text-center shadow-lg shadow-black/20 transition-colors hover:border-violet-500/50 hover:shadow-violet-500/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-400 sm:w-32"
                     >
                       {avatarUrl && avatarUrl !== "/placeholder-avatar.svg" ? (
                         <img
@@ -1169,9 +1189,31 @@ export default function MediaDetailsPage() {
             <h3 className="text-lg font-semibold text-white mb-2">
               Are you sure?
             </h3>
-            <p className="text-zinc-300 mb-6">
+            <p className="text-zinc-300 mb-4">
               Do you really want to remove this watch history entry?
             </p>
+            {watchToDelete && (
+              <div className="mb-6 rounded-lg border border-zinc-700 bg-zinc-800/60 p-3 text-sm text-zinc-300">
+                <p className="font-semibold text-white">{title}</p>
+                <p className="mt-1">
+                  {watchToDelete.seasonNumber !== null &&
+                  watchToDelete.episodeNumber !== null
+                    ? `S${watchToDelete.seasonNumber} E${watchToDelete.episodeNumber}${watchToDelete.episodeName ? ` — ${watchToDelete.episodeName}` : ""}`
+                    : "Full movie"}
+                  {" · watched "}
+                  {new Date(watchToDelete.watchedAt).toLocaleDateString(
+                    "en-US",
+                    {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    },
+                  )}
+                </p>
+              </div>
+            )}
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => {

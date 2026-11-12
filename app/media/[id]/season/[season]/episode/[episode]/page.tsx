@@ -100,7 +100,7 @@ export default function EpisodePage() {
   const [addingWatch, setAddingWatch] = useState(false);
   const [showWatchDialog, setShowWatchDialog] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [watchToDelete, setWatchToDelete] = useState<string | null>(null);
+  const [watchToDelete, setWatchToDelete] = useState<any | null>(null);
   const supabase = useSupabase();
   const router = useRouter();
   const params = useParams();
@@ -368,8 +368,8 @@ export default function EpisodePage() {
     }
   };
 
-  const handleDeleteWatch = async (watchId: string) => {
-    setWatchToDelete(watchId);
+  const handleDeleteWatch = (watch: any) => {
+    setWatchToDelete(watch);
     setShowDeleteConfirm(true);
   };
 
@@ -377,12 +377,12 @@ export default function EpisodePage() {
     if (!watchToDelete) return;
 
     try {
-      const response = await fetch(`/api/watch-history/${watchToDelete}`, {
+      const response = await fetch(`/api/watch-history/${watchToDelete.id}`, {
         method: "DELETE",
       });
 
       if (response.ok) {
-        setWatchHistory(watchHistory.filter((w) => w.id !== watchToDelete));
+        setWatchHistory(watchHistory.filter((w) => w.id !== watchToDelete.id));
       }
     } catch (error) {
       console.error("Error deleting watch history:", error);
@@ -631,7 +631,7 @@ export default function EpisodePage() {
                           </span>
                         </div>
                         <button
-                          onClick={() => handleDeleteWatch(watch.id)}
+                          onClick={() => handleDeleteWatch(watch)}
                           className="shrink-0 cursor-pointer whitespace-nowrap px-1 py-1 text-xs text-red-400 hover:text-red-300 sm:px-3 sm:text-sm"
                         >
                           Remove
@@ -826,9 +826,31 @@ export default function EpisodePage() {
             <h3 className="text-lg font-semibold text-white mb-2">
               Are you sure?
             </h3>
-            <p className="text-zinc-300 mb-6">
+            <p className="text-zinc-300 mb-4">
               Do you really want to remove this watch history entry?
             </p>
+            {watchToDelete && (
+              <div className="mb-6 rounded-lg border border-zinc-700 bg-zinc-800/60 p-3 text-sm text-zinc-300">
+                <p className="font-semibold text-white">{title}</p>
+                <p className="mt-1">
+                  {watchToDelete.seasonNumber !== null &&
+                  watchToDelete.episodeNumber !== null
+                    ? `S${watchToDelete.seasonNumber} E${watchToDelete.episodeNumber}${watchToDelete.episodeName ? ` — ${watchToDelete.episodeName}` : ""}`
+                    : "Full movie"}
+                  {" · watched "}
+                  {new Date(watchToDelete.watchedAt).toLocaleDateString(
+                    "en-US",
+                    {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    },
+                  )}
+                </p>
+              </div>
+            )}
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => {
