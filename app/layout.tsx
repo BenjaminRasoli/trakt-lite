@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import SupabaseProvider from "@/components/supabase-provider";
-import Navbar from "@/components/navbar";
+import NavbarServer from "@/components/navbar-server";
 import ScrollToTop from "@/components/scroll-to-top";
 
 const geistSans = Geist({
@@ -41,7 +42,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col bg-black text-white">
         <SupabaseProvider>
           <ScrollToTop />
-          <Navbar />
+          <Suspense fallback={null}>
+            <NavbarServer />
+          </Suspense>
           {children}
         </SupabaseProvider>
       </body>

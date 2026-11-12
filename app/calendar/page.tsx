@@ -5,11 +5,10 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import {
   getPosterUrl,
-  getRandomBackdropUrl,
-  getTrendingMedia,
   getTVSeasonDetails,
   addEpisodeTypes,
 } from "@/lib/tmdb";
+import { getTrendingBackdropUrl } from "@/lib/trending-backdrop";
 
 interface UpcomingEpisodeItem {
   tmdbId: number;
@@ -428,9 +427,10 @@ function groupByDate(upcoming: UpcomingEpisodeItem[]) {
 }
 
 export default async function CalendarPage() {
-  const { user, upcoming } = await getCalendarData();
-  const trendingMedia = await getTrendingMedia();
-  const pageBackdrop = getRandomBackdropUrl(trendingMedia);
+  const [{ user, upcoming }, pageBackdrop] = await Promise.all([
+    getCalendarData(),
+    getTrendingBackdropUrl(),
+  ]);
 
   if (!user) {
     return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import NextImage from "next/image";
 import { useSupabase } from "./supabase-provider";
@@ -9,6 +9,7 @@ import type { User } from "@supabase/supabase-js";
 import {
   getRankName,
   MAX_LEVEL,
+  type AchievementApiResponse,
   type AchievementSummary,
 } from "@/lib/achievements";
 import {
@@ -231,29 +232,51 @@ function ProfileLink({
   );
 }
 
-export default function Navbar() {
-  const [user, setUser] = useState<User | null>(null);
+interface NavbarProps {
+  initialUser?: User | null;
+  initialAchievementSummary?: AchievementApiResponse | null;
+}
+
+export default function Navbar({
+  initialUser,
+  initialAchievementSummary,
+}: NavbarProps) {
+  const hasInitialUser = initialUser !== undefined;
+  const hasInitialSummary = initialAchievementSummary != null;
+  const [user, setUser] = useState<User | null>(initialUser ?? null);
   const [achievementSummary, setAchievementSummary] =
-    useState<AchievementSummary | null>(null);
-  const [loading, setLoading] = useState(true);
+    useState<AchievementSummary | null>(initialAchievementSummary ?? null);
+  const [loading, setLoading] = useState(!hasInitialUser);
   const supabase = useSupabase();
   const pathname = usePathname();
+  const initialUserIdRef = useRef(initialUser?.id ?? null);
+  const achievementsFetchedForRef = useRef<string | null>(null);
+  const summaryRef = useRef<AchievementSummary | null>(
+    initialAchievementSummary ?? null,
+  );
 
   useEffect(() => {
     const updateUser = (nextUser: User | null) => {
       setUser(nextUser);
-      if (!nextUser) setAchievementSummary(null);
+      if (!nextUser) {
+        setAchievementSummary(null);
+        summaryRef.current = null;
+        achievementsFetchedForRef.current = null;
+        initialUserIdRef.current = null;
+      }
     };
 
-    const getUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      updateUser(user);
-      setLoading(false);
-    };
+    if (!hasInitialUser) {
+      const getUser = async () => {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        updateUser(user);
+        setLoading(false);
+      };
 
-    getUser();
+      void getUser();
+    }
 
     const {
       data: { subscription },
@@ -262,11 +285,23 @@ export default function Navbar() {
     });
 
     return () => subscription.unsubscribe();
-  }, [supabase]);
+  }, [supabase, hasInitialUser]);
 
   useEffect(() => {
     if (!user?.id) return;
 
+    if (user.id === achievementsFetchedForRef.current) return;
+
+    if (
+      hasInitialSummary &&
+      summaryRef.current &&
+      user.id === initialUserIdRef.current
+    ) {
+      achievementsFetchedForRef.current = user.id;
+      return;
+    }
+
+    achievementsFetchedForRef.current = user.id;
     let isMounted = true;
 
     const loadAchievementLevel = async () => {
@@ -279,6 +314,7 @@ export default function Navbar() {
         }
 
         const summary: AchievementSummary = await response.json();
+        summaryRef.current = summary;
         if (isMounted) setAchievementSummary(summary);
       } catch (error) {
         console.error("Error loading navbar achievement level:", error);
@@ -290,7 +326,7 @@ export default function Navbar() {
     return () => {
       isMounted = false;
     };
-  }, [user?.id]);
+  }, [user?.id, hasInitialSummary]);
 
   const username =
     user?.user_metadata?.username || user?.email?.split("@")[0] || "User";
