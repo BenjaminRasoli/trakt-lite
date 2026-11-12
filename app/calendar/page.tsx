@@ -543,58 +543,60 @@ export default async function CalendarPage() {
                           : `/media/${item.tmdbId}/season/${item.seasonNumber}/episode/${item.episodeNumber}?type=tv`;
 
                       return (
-                        <Link
+                        <div
                           key={`${item.tmdbId}-${item.seasonNumber || "movie"}-${item.episodeNumber || "movie"}-${item.airDate || "unknown"}`}
-                          href={linkHref}
                           className="group w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:border-violet-500/50"
                         >
-                          <div className="relative aspect-[2/3] overflow-hidden">
-                            {!isMovie && (
-                              <EpisodeTypeBadge
-                                episodeType={item.episodeType}
-                              />
-                            )}
-                            <Image
-                              src={getPosterUrl(
-                                item.seasonPosterPath || item.posterPath || null,
+                          <Link href={linkHref} className="block">
+                            <div className="relative aspect-[2/3] overflow-hidden">
+                              {!isMovie && (
+                                <EpisodeTypeBadge
+                                  episodeType={item.episodeType}
+                                />
                               )}
-                              alt={
-                                isMovie
-                                  ? item.title
-                                  : item.episodeTitle || item.title
-                              }
-                              fill
-                              sizes="(max-width: 640px) 25vw, (max-width: 768px) 20vw, (max-width: 1024px) 16vw, (max-width: 1280px) 12vw, 10vw"
-                              className="object-cover transition duration-300 group-hover:scale-105"
-                            />
-                          </div>
+                              <Image
+                                src={getPosterUrl(
+                                  item.seasonPosterPath || item.posterPath || null,
+                                )}
+                                alt={
+                                  isMovie
+                                    ? item.title
+                                    : item.episodeTitle || item.title
+                                }
+                                fill
+                                sizes="(max-width: 640px) 25vw, (max-width: 768px) 20vw, (max-width: 1024px) 16vw, (max-width: 1280px) 12vw, 10vw"
+                                className="object-cover transition duration-300 group-hover:scale-105"
+                              />
+                            </div>
+                          </Link>
 
                           <div className="space-y-1 border-t border-zinc-800 px-2 py-2">
                             <div className="line-clamp-2 text-xs font-semibold text-white leading-tight">
-                              {!isMovie ? (
-                                <span className="hover:underline hover:text-violet-200 transition-colors cursor-pointer">
-                                  {item.title}
-                                </span>
-                              ) : (
-                                <span>{item.title}</span>
-                              )}
+                              <Link
+                                href={`/media/${item.tmdbId}?type=${isMovie ? "movie" : "tv"}`}
+                                className="transition-colors hover:text-violet-200 hover:underline"
+                              >
+                                {item.title}
+                              </Link>
                             </div>
-                            {!isMovie && item.episodeTitle && !isEntireSeason && !episodeRange && (
-                              <div className="line-clamp-1 text-[10px] text-zinc-400">
-                                {item.episodeTitle}
-                              </div>
-                            )}
                             {!isMovie && (
-                              <div className="text-[10px] text-zinc-400">
-                                {isEntireSeason
-                                  ? `Season ${item.seasonNumber}`
-                                  : episodeRange
-                                    ? `S${item.seasonNumber} ${episodeRange}`
-                                    : `S${item.seasonNumber} E${item.episodeNumber}`}
-                              </div>
+                              <Link href={linkHref} className="block">
+                                {item.episodeTitle && !isEntireSeason && !episodeRange && (
+                                  <div className="line-clamp-1 text-[10px] text-zinc-400">
+                                    {item.episodeTitle}
+                                  </div>
+                                )}
+                                <div className="text-[10px] text-zinc-400">
+                                  {isEntireSeason
+                                    ? `Season ${item.seasonNumber}`
+                                    : episodeRange
+                                      ? `S${item.seasonNumber} ${episodeRange}`
+                                      : `S${item.seasonNumber} E${item.episodeNumber}`}
+                                </div>
+                              </Link>
                             )}
                           </div>
-                        </Link>
+                        </div>
                       );
                     })}
                   </div>

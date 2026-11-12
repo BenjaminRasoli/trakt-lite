@@ -365,6 +365,24 @@ export default function MediaDetailsPage() {
     }
   };
 
+  const renderWatchLabel = (watch: any) => (
+    <>
+      {watch.seasonNumber !== null && watch.episodeNumber !== null
+        ? `S${watch.seasonNumber} E${watch.episodeNumber}${watch.episodeName ? ` - ${watch.episodeName}` : ""} - `
+        : "Watched "}
+      {new Date(watch.watchedAt).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        ...(mediaType === "movie" && {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        }),
+      })}
+    </>
+  );
+
   const handleAddToWatchlist = async () => {
     if (!user) return;
 
@@ -665,24 +683,19 @@ export default function MediaDetailsPage() {
                                 className="flex min-w-0 items-center justify-between gap-1 rounded-lg border border-zinc-700/50 bg-zinc-800/50 p-2 sm:gap-2 sm:p-3"
                               >
                                 <div className="flex min-w-0 items-center">
-                                  <span className="truncate whitespace-nowrap text-[11px] text-zinc-300 sm:text-sm">
-                                    {watch.seasonNumber !== null &&
-                                    watch.episodeNumber !== null
-                                      ? `S${watch.seasonNumber} E${watch.episodeNumber}${watch.episodeName ? ` - ${watch.episodeName}` : ""} - `
-                                      : "Watched "}
-                                    {new Date(
-                                      watch.watchedAt,
-                                    ).toLocaleDateString("en-US", {
-                                      month: "short",
-                                      day: "numeric",
-                                      year: "numeric",
-                                      ...(mediaType === "movie" && {
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                        hour12: false,
-                                      }),
-                                    })}
-                                  </span>
+                                  {watch.seasonNumber !== null &&
+                                  watch.episodeNumber !== null ? (
+                                    <Link
+                                      href={`/media/${mediaId}/season/${watch.seasonNumber}/episode/${watch.episodeNumber}?type=${mediaType}`}
+                                      className="truncate whitespace-nowrap text-[11px] text-zinc-300 transition-colors hover:text-violet-200 sm:text-sm"
+                                    >
+                                      {renderWatchLabel(watch)}
+                                    </Link>
+                                  ) : (
+                                    <span className="truncate whitespace-nowrap text-[11px] text-zinc-300 sm:text-sm">
+                                      {renderWatchLabel(watch)}
+                                    </span>
+                                  )}
                                 </div>
                                 <button
                                   onClick={() => handleDeleteWatch(watch)}
@@ -712,25 +725,19 @@ export default function MediaDetailsPage() {
                               className="flex min-w-0 items-center justify-between gap-1 rounded-lg border border-zinc-700/50 bg-zinc-800/50 p-2 sm:gap-2 sm:p-3"
                             >
                               <div className="flex min-w-0 items-center">
-                                <span className="truncate whitespace-nowrap text-[11px] text-zinc-300 sm:text-sm">
-                                  {watch.seasonNumber !== null &&
-                                  watch.episodeNumber !== null
-                                    ? `S${watch.seasonNumber} E${watch.episodeNumber}${watch.episodeName ? ` - ${watch.episodeName}` : ""} - `
-                                    : "Watched "}
-                                  {new Date(watch.watchedAt).toLocaleDateString(
-                                    "en-US",
-                                    {
-                                      month: "short",
-                                      day: "numeric",
-                                      year: "numeric",
-                                      ...(mediaType === "movie" && {
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                        hour12: false,
-                                      }),
-                                    },
-                                  )}
-                                </span>
+                                {watch.seasonNumber !== null &&
+                                watch.episodeNumber !== null ? (
+                                  <Link
+                                    href={`/media/${mediaId}/season/${watch.seasonNumber}/episode/${watch.episodeNumber}?type=${mediaType}`}
+                                    className="truncate whitespace-nowrap text-[11px] text-zinc-300 transition-colors hover:text-violet-200 sm:text-sm"
+                                  >
+                                    {renderWatchLabel(watch)}
+                                  </Link>
+                                ) : (
+                                  <span className="truncate whitespace-nowrap text-[11px] text-zinc-300 sm:text-sm">
+                                    {renderWatchLabel(watch)}
+                                  </span>
+                                )}
                               </div>
                               <button
                                 onClick={() => handleDeleteWatch(watch)}
@@ -829,38 +836,40 @@ export default function MediaDetailsPage() {
                       href={`/actor/${actor.id}`}
                       aria-label={`View ${actor.name}'s actor profile`}
                       key={actor.id}
-                      className="group block w-28 shrink-0 overflow-hidden rounded-xl border border-zinc-700/50 bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 text-center shadow-lg shadow-black/20 transition-colors hover:border-violet-500/50 hover:shadow-violet-500/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-400 sm:w-32"
+                      className="group block w-32 shrink-0 overflow-hidden rounded-xl border border-zinc-700/50 bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 text-center shadow-lg shadow-black/20 transition-colors hover:border-violet-500/50 hover:shadow-violet-500/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-400 sm:w-36"
                     >
-                      {avatarUrl && avatarUrl !== "/placeholder-avatar.svg" ? (
-                        <img
-                          src={avatarUrl}
-                          alt={actor.name}
-                          className="aspect-[3/4] w-full object-cover transition duration-300 group-hover:scale-105"
-                          onError={(e) => {
-                            const fallback = e.currentTarget
-                              .parentElement as HTMLDivElement;
-                            if (fallback) {
-                              const initialCard = document.createElement("div");
-                              initialCard.className =
-                                "flex aspect-[3/4] w-full items-center justify-center text-2xl font-bold text-white";
-                              initialCard.style.background = getAvatarColor(
-                                actor.name,
-                              );
-                              initialCard.textContent = avatarLabel;
-                              fallback.replaceChildren(initialCard);
-                            }
-                          }}
-                        />
-                      ) : (
-                        <div
-                          className="flex aspect-[3/4] w-full items-center justify-center text-2xl font-bold text-white"
-                          style={{
-                            background: getAvatarColor(actor.name),
-                          }}
-                        >
-                          {avatarLabel}
-                        </div>
-                      )}
+                      <div className="relative aspect-[3/4] overflow-hidden">
+                        {avatarUrl && avatarUrl !== "/placeholder-avatar.svg" ? (
+                          <img
+                            src={avatarUrl}
+                            alt={actor.name}
+                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            onError={(e) => {
+                              const fallback = e.currentTarget
+                                .parentElement as HTMLDivElement;
+                              if (fallback) {
+                                const initialCard = document.createElement("div");
+                                initialCard.className =
+                                  "flex h-full w-full items-center justify-center text-2xl font-bold text-white";
+                                initialCard.style.background = getAvatarColor(
+                                  actor.name,
+                                );
+                                initialCard.textContent = avatarLabel;
+                                fallback.replaceChildren(initialCard);
+                              }
+                            }}
+                          />
+                        ) : (
+                          <div
+                            className="flex h-full w-full items-center justify-center text-2xl font-bold text-white"
+                            style={{
+                              background: getAvatarColor(actor.name),
+                            }}
+                          >
+                            {avatarLabel}
+                          </div>
+                        )}
+                      </div>
                       <div className="px-2.5 py-3">
                         <p className="truncate text-sm font-semibold text-white transition-colors group-hover:text-violet-200">
                           {actor.name}
@@ -950,9 +959,14 @@ export default function MediaDetailsPage() {
               <h2 className="text-xl font-bold text-white mb-4">
                 Recommendations
               </h2>
-              <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4">
-                {recommendations.slice(0, 7).map((rec) => (
-                  <MediaCard key={rec.id} media={rec} />
+              <div className="flex gap-3 overflow-x-auto pb-3 [scrollbar-width:thin] [scrollbar-color:rgba(168,85,247,0.8)_rgba(39,39,42,0.8)]">
+                {recommendations.map((rec) => (
+                  <div
+                    key={rec.id}
+                    className="w-32 shrink-0 sm:w-36 md:w-40"
+                  >
+                    <MediaCard media={rec} />
+                  </div>
                 ))}
               </div>
             </div>

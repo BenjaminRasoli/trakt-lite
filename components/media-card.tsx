@@ -207,13 +207,13 @@ export default function MediaCard({ media, subtitle }: MediaCardProps) {
 
   return (
     <>
-      <div className="relative overflow-hidden rounded-lg border border-zinc-700/50 bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 backdrop-blur-sm transition-all hover:border-violet-500/50 hover:shadow-lg hover:shadow-violet-500/10">
+      <div className="group relative overflow-hidden rounded-lg border border-zinc-700/50 bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 backdrop-blur-sm transition-all hover:border-violet-500/50 hover:shadow-lg hover:shadow-violet-500/10">
         <Link href={`/media/${media.id}?type=${typeToUse}`} className="block">
-          <div className="relative aspect-[2/3]">
+          <div className="relative aspect-[2/3] overflow-hidden">
             <img
               src={posterUrl}
               alt={title}
-              className="h-full w-full object-cover"
+              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
               onError={(e) => {
                 e.currentTarget.src = "/placeholder-poster.svg";
               }}
@@ -224,7 +224,7 @@ export default function MediaCard({ media, subtitle }: MediaCardProps) {
           </div>
 
           <div className="p-3">
-            <h3 className="mb-1.5 line-clamp-1 text-sm font-bold text-white transition-colors hover:text-violet-200 hover:underline">
+            <h3 className="mb-1.5 line-clamp-1 text-sm font-bold text-white">
               {title}
             </h3>
 
