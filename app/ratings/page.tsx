@@ -56,6 +56,35 @@ function RatingsPageContent() {
     (rating) => filter === "all" || rating.media.mediaType === filter,
   );
   const visibleRatings = filteredRatings.slice(0, visibleCount);
+  const hasMoreVisible = visibleCount < filteredRatings.length;
+
+  useEffect(() => {
+    if (!hasMoreVisible) return;
+
+    let timeoutId: NodeJS.Timeout | null = null;
+
+    const handleScroll = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+
+      timeoutId = setTimeout(() => {
+        const scrollHeight = document.documentElement.scrollHeight;
+        const scrollTop = document.documentElement.scrollTop;
+        const clientHeight = document.documentElement.clientHeight;
+
+        const nearBottom = scrollTop + clientHeight >= scrollHeight - 500;
+
+        if (nearBottom) {
+          setVisibleCount((count) => count + 42);
+        }
+      }, 200);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [hasMoreVisible]);
 
   useEffect(() => {
     let isMounted = true;
@@ -372,7 +401,7 @@ function RatingsPageContent() {
                 <button
                   type="button"
                   onClick={() => setVisibleCount((count) => count + 42)}
-                  className="rounded-full border border-violet-500/40 bg-violet-500/10 px-5 py-2.5 text-sm font-semibold text-violet-200 transition hover:border-violet-400 hover:bg-violet-500/20"
+                  className="cursor-pointer rounded-full border border-violet-500/40 bg-violet-500/10 px-5 py-2.5 text-sm font-semibold text-violet-200 transition hover:border-violet-400 hover:bg-violet-500/20"
                 >
                   Load more
                 </button>

@@ -487,11 +487,18 @@ export default function RecommendationsPage() {
             </div>
             <div
               ref={resultsEndRef}
-              className="flex min-h-12 items-center justify-center py-4"
-              aria-hidden="true"
+              className="mt-8 flex min-h-12 items-center justify-center py-4"
             >
               {sortedRecommendations.length > visibleCount && (
-                <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/30 border-t-violet-300" />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setVisibleCount((count) => count + RESULTS_PER_SCROLL)
+                  }
+                  className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-5 py-2.5 text-sm font-semibold text-violet-200 transition hover:border-violet-400 hover:bg-violet-500/20"
+                >
+                  Load more
+                </button>
               )}
             </div>
           </>

@@ -668,7 +668,7 @@ export default function SettingsPage() {
                   type="file"
                   name="zipFile"
                   accept=".zip"
-                  className="w-full px-4 py-2 bg-zinc-800 border border-zinc-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  className="w-full px-4 py-2 bg-zinc-800 border border-zinc-600 rounded text-base text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
                   required
                 />
               </div>
@@ -757,7 +757,7 @@ export default function SettingsPage() {
                     }))
                   }
                   placeholder="https://jellyfin.example.com"
-                  className="w-full px-4 py-2 bg-zinc-800 border border-zinc-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  className="w-full px-4 py-2 bg-zinc-800 border border-zinc-600 rounded text-base text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
                   required
                 />
               </div>
@@ -773,7 +773,7 @@ export default function SettingsPage() {
                     }))
                   }
                   placeholder="Your Jellyfin username"
-                  className="w-full px-4 py-2 bg-zinc-800 border border-zinc-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  className="w-full px-4 py-2 bg-zinc-800 border border-zinc-600 rounded text-base text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
                   required
                 />
               </div>
@@ -790,7 +790,7 @@ export default function SettingsPage() {
                     }))
                   }
                   placeholder="Jellyfin API key"
-                  className="w-full px-4 py-2 bg-zinc-800 border border-zinc-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  className="w-full px-4 py-2 bg-zinc-800 border border-zinc-600 rounded text-base text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
                   required
                 />
                 <p className="mt-2 text-xs text-zinc-500">
@@ -1000,7 +1000,7 @@ export default function SettingsPage() {
                     }));
                   }}
                   placeholder="https://jellyfin.example.com"
-                  className="w-full rounded border border-zinc-600 bg-zinc-800 px-4 py-2 text-white outline-none focus:border-violet-500"
+                  className="w-full rounded border border-zinc-600 bg-zinc-800 px-4 py-2 text-base text-white outline-none focus:border-violet-500"
                 />
               </div>
 
@@ -1019,7 +1019,7 @@ export default function SettingsPage() {
                     }));
                   }}
                   placeholder="Your Jellyfin username"
-                  className="w-full rounded border border-zinc-600 bg-zinc-800 px-4 py-2 text-white outline-none focus:border-violet-500"
+                  className="w-full rounded border border-zinc-600 bg-zinc-800 px-4 py-2 text-base text-white outline-none focus:border-violet-500"
                 />
               </div>
 
@@ -1043,7 +1043,7 @@ export default function SettingsPage() {
                       ? "••••••••••••"
                       : "Create an API key in Jellyfin Dashboard > API Keys"
                   }
-                  className="w-full rounded border border-zinc-600 bg-zinc-800 px-4 py-2 text-white outline-none focus:border-violet-500"
+                  className="w-full rounded border border-zinc-600 bg-zinc-800 px-4 py-2 text-base text-white outline-none focus:border-violet-500"
                 />
                 <p className="mt-2 text-xs text-zinc-500">
                   Create an API key in Jellyfin Dashboard &gt; API Keys.
@@ -1180,7 +1180,7 @@ export default function SettingsPage() {
                     setAccountConfirmation(event.target.value)
                   }
                   autoComplete="off"
-                  className="w-full rounded border border-zinc-500 bg-zinc-800 px-4 py-2 text-white outline-none focus:border-red-400"
+                  className="w-full rounded border border-zinc-500 bg-zinc-800 px-4 py-2 text-base text-white outline-none focus:border-red-400"
                 />
                 <div className="flex flex-wrap gap-3">
                   <button

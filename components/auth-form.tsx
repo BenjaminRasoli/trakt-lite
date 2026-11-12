@@ -126,7 +126,7 @@ export default function AuthForm() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
-              className="w-full px-4 py-3 bg-zinc-800/50 border border-zinc-600/50 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-transparent transition-all"
+              className="w-full px-4 py-3 bg-zinc-800/50 border border-zinc-600/50 rounded-lg text-base text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-transparent transition-all"
             />
           </div>
         )}
@@ -137,7 +137,7 @@ export default function AuthForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full px-4 py-3 bg-zinc-800/50 border border-zinc-600/50 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-transparent transition-all"
+            className="w-full px-4 py-3 bg-zinc-800/50 border border-zinc-600/50 rounded-lg text-base text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-transparent transition-all"
           />
         </div>
         {!isForgotPassword && (
@@ -149,7 +149,7 @@ export default function AuthForm() {
               onChange={(e) => setPassword(e.target.value)}
               required
               autoComplete={isSignUp ? "new-password" : "current-password"}
-              className="w-full px-4 py-3 bg-zinc-800/50 border border-zinc-600/50 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-transparent transition-all"
+              className="w-full px-4 py-3 bg-zinc-800/50 border border-zinc-600/50 rounded-lg text-base text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-transparent transition-all"
             />
           </div>
         )}

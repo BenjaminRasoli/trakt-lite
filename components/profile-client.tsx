@@ -744,11 +744,15 @@ export default function ProfileClient({
 
             <div className="flex-1 space-y-2">
               <div className="flex flex-wrap items-center gap-3">
-                <h2
-                  className={`relative text-2xl font-bold text-white sm:text-3xl ${usernameEffectClass} ${usernameEffectClass ? "fx-username" : ""} ${STAR_FX[usernameEffectClass] ? "fx-js-stars" : ""}`}
-                  style={!nameColorFx && nameColor ? { color: nameColor } : undefined}
-                >
-                  <span className="relative inline-block">
+                <h2 className="relative text-2xl font-bold text-white sm:text-3xl">
+                  <span
+                    className={`relative inline-block ${usernameEffectClass} ${usernameEffectClass ? "fx-username" : ""} ${STAR_FX[usernameEffectClass] ? "fx-js-stars" : ""}`}
+                    style={
+                      !nameColorFx && nameColor
+                        ? { color: nameColor }
+                        : undefined
+                    }
+                  >
                     {nameColorFx ? (
                       <span className={nameColor}>{displayName}</span>
                     ) : (

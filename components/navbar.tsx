@@ -51,7 +51,7 @@ function GlobalSearchForm({ initialQuery }: { initialQuery: string }) {
           placeholder="Search for movies and TV shows..."
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          className="h-10 w-full rounded-lg border border-zinc-600/50 bg-zinc-800/50 px-4 pr-11 text-sm text-white placeholder-zinc-500 transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+          className="h-10 w-full rounded-lg border border-zinc-600/50 bg-zinc-800/50 px-4 pr-11 text-base text-white placeholder-zinc-500 transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-violet-500/50"
         />
         {query && (
           <button
@@ -174,21 +174,29 @@ function ProfileLink({
       </span>
       <span className="flex min-w-0 flex-col justify-center gap-0.5">
         <span
-          className={`relative font-semibold leading-tight ${usernameEffectClass} ${
-            usernameEffectClass ? "fx-username " : ""
-          }${STAR_FX[usernameEffectClass] ? "fx-js-stars " : ""}${
+          className={`relative font-semibold leading-tight ${
             compact
               ? "max-w-28 text-xs min-[420px]:max-w-36"
               : "max-w-40 text-sm"
           } ${
             isMaxLevel
-              ? "-mx-2 overflow-x-clip overflow-y-visible text-ellipsis whitespace-nowrap bg-gradient-to-r from-violet-200 via-fuchsia-200 to-violet-300 bg-clip-text px-2 text-transparent drop-shadow-[0_0_5px_rgba(167,139,250,0.85)]"
+              ? "-mx-2 overflow-x-clip overflow-y-visible text-ellipsis whitespace-nowrap px-2"
               : "overflow-x-clip overflow-y-visible text-ellipsis whitespace-nowrap text-white"
           }`}
-          style={!nameColorFx && nameColor ? { color: nameColor } : undefined}
           title={username}
         >
-          <span className="relative inline-block">
+          <span
+            className={`relative inline-block ${usernameEffectClass} ${
+              usernameEffectClass ? "fx-username " : ""
+            }${STAR_FX[usernameEffectClass] ? "fx-js-stars " : ""}${
+              isMaxLevel
+                ? "bg-gradient-to-r from-violet-200 via-fuchsia-200 to-violet-300 bg-clip-text text-transparent [-webkit-text-fill-color:transparent] drop-shadow-[0_0_5px_rgba(167,139,250,0.85)]"
+                : ""
+            }`}
+            style={
+              !nameColorFx && nameColor ? { color: nameColor } : undefined
+            }
+          >
             {nameColorFx ? (
               <span className={nameColor}>{username}</span>
             ) : (

@@ -74,7 +74,7 @@ export default function ResetPasswordPage() {
             onChange={(event) => setPassword(event.target.value)}
             autoComplete="new-password"
             required
-            className="w-full rounded-lg border border-zinc-600/50 bg-zinc-800/50 px-4 py-3 text-white placeholder-zinc-500 transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+            className="w-full rounded-lg border border-zinc-600/50 bg-zinc-800/50 px-4 py-3 text-base text-white placeholder-zinc-500 transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-violet-500/50"
           />
           <input
             type="password"
@@ -83,7 +83,7 @@ export default function ResetPasswordPage() {
             onChange={(event) => setConfirmPassword(event.target.value)}
             autoComplete="new-password"
             required
-            className="w-full rounded-lg border border-zinc-600/50 bg-zinc-800/50 px-4 py-3 text-white placeholder-zinc-500 transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+            className="w-full rounded-lg border border-zinc-600/50 bg-zinc-800/50 px-4 py-3 text-base text-white placeholder-zinc-500 transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-violet-500/50"
           />
           <button
             type="submit"

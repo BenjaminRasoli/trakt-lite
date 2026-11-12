@@ -314,7 +314,7 @@ export default function UserRating({
                     required
                     value={draftScore}
                     onChange={(event) => setDraftScore(event.target.value)}
-                    className="w-28 rounded-lg border border-zinc-600 bg-zinc-800 px-3 py-2 text-white focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-500/40"
+                    className="w-28 rounded-lg border border-zinc-600 bg-zinc-800 px-3 py-2 text-base text-white focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-500/40"
                   />
                   <span className="text-sm text-zinc-400">/ 10</span>
                 </div>
