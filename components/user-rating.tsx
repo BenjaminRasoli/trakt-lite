@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import type { InitialRating } from "@/lib/use-initial-rating";
 
 interface UserRatingProps {
   tmdbId: number;
@@ -10,6 +11,7 @@ interface UserRatingProps {
   watched: boolean;
   seasonNumber?: number;
   episodeNumber?: number;
+  initialRating?: InitialRating;
 }
 
 interface SavedRating {
@@ -30,18 +32,8 @@ export default function UserRating({
   watched,
   seasonNumber,
   episodeNumber,
+  initialRating,
 }: UserRatingProps) {
-  const [ratingResult, setRatingResult] = useState<RatingResult | null>(null);
-  const [requestError, setRequestError] = useState<{
-    key: string;
-    message: string;
-  } | null>(null);
-  const [hoveredScore, setHoveredScore] = useState<number | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [draftScore, setDraftScore] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [dialogError, setDialogError] = useState<string | null>(null);
-
   const targetParams = useMemo(() => {
     const params = new URLSearchParams({
       tmdbId: String(tmdbId),
@@ -57,6 +49,26 @@ export default function UserRating({
   }, [tmdbId, mediaType, seasonNumber, episodeNumber]);
 
   const targetKey = targetParams.toString();
+  const [ratingResult, setRatingResult] = useState<RatingResult | null>(() =>
+    initialRating && initialRating.key === targetKey
+      ? {
+          key: targetKey,
+          eligible: initialRating.eligible,
+          rating: initialRating.rating,
+        }
+      : null,
+  );
+  const [requestError, setRequestError] = useState<{
+    key: string;
+    message: string;
+  } | null>(null);
+  const [hoveredScore, setHoveredScore] = useState<number | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [draftScore, setDraftScore] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [dialogError, setDialogError] = useState<string | null>(null);
+  const adoptedInitialKey = useRef<string | null>(null);
+
   const currentResult =
     ratingResult?.key === targetKey ? ratingResult : null;
   const currentRequestError =
@@ -66,6 +78,21 @@ export default function UserRating({
   const savedRating = eligible ? currentResult?.rating ?? null : null;
 
   useEffect(() => {
+    if (
+      initialRating &&
+      initialRating.key === targetKey &&
+      adoptedInitialKey.current !== targetKey
+    ) {
+      adoptedInitialKey.current = targetKey;
+      setRatingResult({
+        key: targetKey,
+        eligible: initialRating.eligible,
+        rating: initialRating.rating,
+      });
+      setRequestError(null);
+      return;
+    }
+
     const controller = new AbortController();
 
     const loadRating = async () => {
@@ -96,7 +123,7 @@ export default function UserRating({
 
     void loadRating();
     return () => controller.abort();
-  }, [targetKey, watched]);
+  }, [targetKey, watched, initialRating]);
 
   useEffect(() => {
     if (!dialogOpen) return;
