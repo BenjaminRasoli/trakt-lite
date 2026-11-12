@@ -109,6 +109,13 @@ function isReleasedEpisode(
   return Number.isFinite(airDate.getTime()) && airDate <= new Date();
 }
 
+function startOfTodayUtc() {
+  const now = new Date();
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+  );
+}
+
 function isFutureEpisode(
   episode:
     | {
@@ -120,7 +127,9 @@ function isFutureEpisode(
   if (!episode?.air_date) return false;
 
   const airDate = new Date(episode.air_date);
-  return Number.isFinite(airDate.getTime()) && airDate > new Date();
+  return (
+    Number.isFinite(airDate.getTime()) && airDate >= startOfTodayUtc()
+  );
 }
 
 async function mapWithConcurrency<T, R>(
@@ -218,7 +227,7 @@ async function getUpcomingEpisodesQueue(userId: string, limit = 6) {
     const cachedUpcoming = await (prisma as any).upcomingEpisodesCache.findMany({
       where: {
         userId,
-        airDate: { gte: new Date() },
+        airDate: { gte: startOfTodayUtc() },
       },
       orderBy: { airDate: "asc" },
       take: limit,
@@ -425,9 +434,9 @@ async function getUpcomingWatchlistReleases(userId: string, limit = 40) {
     if (!releaseDate) continue;
 
     const releaseDateObj = new Date(releaseDate);
-    const now = new Date();
+    const todayStart = startOfTodayUtc();
 
-    if (releaseDateObj >= now) {
+    if (releaseDateObj >= todayStart) {
       if (media.mediaType === "tv") {
         try {
           const season1Details = await getTVSeasonDetails(media.tmdbId, 1);
@@ -436,7 +445,7 @@ async function getUpcomingWatchlistReleases(userId: string, limit = 40) {
           for (const episode of episodes) {
             if (episode?.air_date) {
               const episodeAirDate = new Date(episode.air_date);
-              if (episodeAirDate >= now) {
+              if (episodeAirDate >= todayStart) {
                 upcomingReleases.push({
                   tmdbId: media.tmdbId,
                   title: media.title,

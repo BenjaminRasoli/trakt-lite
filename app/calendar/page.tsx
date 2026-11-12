@@ -23,6 +23,13 @@ interface UpcomingEpisodeItem {
   airDate: string | null;
 }
 
+function startOfTodayUtc() {
+  const now = new Date();
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+  );
+}
+
 function isFutureEpisode(
   episode:
     | {
@@ -34,7 +41,9 @@ function isFutureEpisode(
   if (!episode?.air_date) return false;
 
   const airDate = new Date(episode.air_date);
-  return Number.isFinite(airDate.getTime()) && airDate > new Date();
+  return (
+    Number.isFinite(airDate.getTime()) && airDate >= startOfTodayUtc()
+  );
 }
 
 function normalizeDate(dateInput: string | Date | null | undefined): string | null {
@@ -93,7 +102,7 @@ async function getCalendarData() {
     const cachedUpcoming = await (prisma as any).upcomingEpisodesCache.findMany({
       where: {
         userId: dbUser.id,
-        airDate: { gte: new Date() },
+        airDate: { gte: startOfTodayUtc() },
       },
       orderBy: { airDate: "asc" },
       take: 100,
@@ -292,9 +301,9 @@ async function getCalendarData() {
     if (!releaseDate) continue;
 
     const releaseDateObj = new Date(releaseDate);
-    const now = new Date();
+    const todayStart = startOfTodayUtc();
 
-    if (releaseDateObj >= now) {
+    if (releaseDateObj >= todayStart) {
       if (media.mediaType === "tv") {
         try {
           const season1Details = await getTVSeasonDetails(media.tmdbId, 1);
@@ -303,7 +312,7 @@ async function getCalendarData() {
           for (const episode of episodes) {
             if (episode?.air_date) {
               const episodeAirDate = new Date(episode.air_date);
-              if (episodeAirDate >= now) {
+              if (episodeAirDate >= todayStart) {
                 upcoming.push({
                   tmdbId: media.tmdbId,
                   title: media.title,
@@ -441,6 +450,7 @@ export default async function CalendarPage() {
   }
 
   const groupedByDate = groupByDate(upcoming);
+  const todayKey = new Date().toISOString().split("T")[0];
 
   return (
     <div className="relative min-h-screen bg-black text-white overflow-x-hidden">
@@ -495,7 +505,9 @@ export default async function CalendarPage() {
                       const month = date.toLocaleDateString("en-US", { month: "short" });
                       const day = date.getDate();
                       const year = date.getFullYear();
-                      return `${weekday.charAt(0).toUpperCase() + weekday.slice(1).toLowerCase()}, ${month.charAt(0).toUpperCase() + month.slice(1).toLowerCase()} ${day}, ${year}`;
+                      const isToday = dateKey === todayKey;
+                      const formatted = `${weekday.charAt(0).toUpperCase() + weekday.slice(1).toLowerCase()}, ${month.charAt(0).toUpperCase() + month.slice(1).toLowerCase()} ${day}, ${year}`;
+                      return isToday ? `Today · ${formatted}` : formatted;
                     })();
 
               return (
