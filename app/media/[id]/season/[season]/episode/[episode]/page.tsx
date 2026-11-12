@@ -10,6 +10,7 @@ import {
   getPosterUrl,
   getTVSeasonDetails,
   getMediaTitle,
+  getTVEpisodeAirTime,
 } from "@/lib/tmdb";
 
 interface EpisodeNavigationTarget {
@@ -85,6 +86,7 @@ export default function EpisodePage() {
   const [show, setShow] = useState<any>(null);
   const [season, setSeason] = useState<any>(null);
   const [episode, setEpisode] = useState<any>(null);
+  const [episodeAirTime, setEpisodeAirTime] = useState<string | null>(null);
   const [previousEpisodeTarget, setPreviousEpisodeTarget] =
     useState<EpisodeNavigationTarget | null>(null);
   const [nextEpisodeTarget, setNextEpisodeTarget] =
@@ -177,6 +179,7 @@ export default function EpisodePage() {
     let isCurrent = true;
     const fetchEpisodeData = async () => {
       setDataLoaded(false);
+      setEpisodeAirTime(null);
       setPreviousEpisodeTarget(null);
       setNextEpisodeTarget(null);
 
@@ -198,7 +201,7 @@ export default function EpisodePage() {
 
         if (episodeData) {
           try {
-            const [previousTarget, nextTarget] = await Promise.all([
+            const [previousTarget, nextTarget, airTime] = await Promise.all([
               getAdjacentEpisodeTarget(
                 mediaId,
                 series?.seasons ?? [],
@@ -215,10 +218,12 @@ export default function EpisodePage() {
                 episodeNumber,
                 "next",
               ),
+              getTVEpisodeAirTime(mediaId, seasonNumber, episodeNumber),
             ]);
             if (!isCurrent) return;
             setPreviousEpisodeTarget(previousTarget);
             setNextEpisodeTarget(nextTarget);
+            setEpisodeAirTime(airTime);
           } catch (error) {
             if (isCurrent) {
               console.error("Error loading episode navigation:", error);
@@ -547,7 +552,7 @@ export default function EpisodePage() {
                 {episode.name || `Episode ${episodeNumber}`}
               </h2>
 
-              <div className="flex flex-wrap items-center gap-3 sm:gap-4 mb-4">
+              <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 mb-4">
                 <span className="text-zinc-400 text-sm sm:text-base">
                   {episode.air_date
                     ? new Date(episode.air_date).toLocaleDateString(undefined, {
@@ -556,12 +561,18 @@ export default function EpisodePage() {
                         year: "numeric",
                       })
                     : "Air date unknown"}
+                  {episodeAirTime ? ` at ${episodeAirTime}` : ""}
                 </span>
 
                 {episode.runtime && (
-                  <span className="text-zinc-400 text-sm sm:text-base">
-                    {episode.runtime} min
-                  </span>
+                  <>
+                    <span className="text-zinc-500 text-sm sm:text-base leading-none">
+                      ·
+                    </span>
+                    <span className="text-zinc-400 text-sm sm:text-base">
+                      {episode.runtime} min
+                    </span>
+                  </>
                 )}
               </div>
 

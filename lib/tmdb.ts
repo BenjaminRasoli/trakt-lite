@@ -863,6 +863,67 @@ export async function getTVEpisodeDetails(
   );
 }
 
+const tvmazeShowIdCache = new Map<number, number | null>();
+const episodeAirTimeCache = new Map<string, string | null>();
+
+function formatAirTime(airtime: string | null | undefined) {
+  if (!airtime) return null;
+  const [hours, minutes] = airtime.split(":").map(Number);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+export async function getTVEpisodeAirTime(
+  tvId: number,
+  seasonNumber: number,
+  episodeNumber: number,
+): Promise<string | null> {
+  const cacheKey = `${tvId}:${seasonNumber}:${episodeNumber}`;
+  if (episodeAirTimeCache.has(cacheKey)) {
+    return episodeAirTimeCache.get(cacheKey) ?? null;
+  }
+
+  let airTime: string | null = null;
+
+  try {
+    if (TMDB_API_KEY) {
+      const externalIds = await fetchTmdbJson<{ imdb_id?: string | null }>(
+        `${TMDB_BASE_URL}/tv/${tvId}/external_ids?api_key=${TMDB_API_KEY}`,
+      );
+      const imdbId = externalIds?.imdb_id;
+
+      if (imdbId) {
+        let showId = tvmazeShowIdCache.get(tvId);
+        if (showId === undefined) {
+          const lookupResponse = await fetch(
+            `https://api.tvmaze.com/lookup/shows?imdb=${encodeURIComponent(imdbId)}`,
+          );
+          const lookup = lookupResponse.ok ? await lookupResponse.json() : null;
+          const resolvedShowId: number | null =
+            typeof lookup?.id === "number" ? lookup.id : null;
+          showId = resolvedShowId;
+          tvmazeShowIdCache.set(tvId, resolvedShowId);
+        }
+
+        if (showId !== null) {
+          const episodeResponse = await fetch(
+            `https://api.tvmaze.com/shows/${showId}/episodebynumber?season=${seasonNumber}&number=${episodeNumber}`,
+          );
+          const episodeData = episodeResponse.ok
+            ? await episodeResponse.json()
+            : null;
+          airTime = formatAirTime(episodeData?.airtime);
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error fetching episode air time:", error);
+  }
+
+  episodeAirTimeCache.set(cacheKey, airTime);
+  return airTime;
+}
+
 export async function getTVEpisodeCredits(
   tvId: number,
   seasonNumber: number,
