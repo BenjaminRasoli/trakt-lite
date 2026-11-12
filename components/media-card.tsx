@@ -21,6 +21,7 @@ import {
 interface MediaCardProps {
   media: TMDBMedia;
   subtitle?: string;
+  hideGenres?: boolean;
 }
 
 const GENRE_MAP: Record<number, string> = {
@@ -45,7 +46,7 @@ const GENRE_MAP: Record<number, string> = {
   37: "Western",
 };
 
-export default function MediaCard({ media, subtitle }: MediaCardProps) {
+export default function MediaCard({ media, subtitle, hideGenres = false }: MediaCardProps) {
   const router = useRouter();
   const supabase = useSupabase();
   const [watchlistLoading, setWatchlistLoading] = useState(false);
@@ -207,8 +208,8 @@ export default function MediaCard({ media, subtitle }: MediaCardProps) {
 
   return (
     <>
-      <div className="group relative overflow-hidden rounded-lg border border-zinc-700/50 bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 backdrop-blur-sm transition-all hover:border-violet-500/50 hover:shadow-lg hover:shadow-violet-500/10">
-        <Link href={`/media/${media.id}?type=${typeToUse}`} className="block">
+      <div className="group relative flex h-full flex-col overflow-hidden rounded-lg border border-zinc-700/50 bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 backdrop-blur-sm transition-all hover:border-violet-500/50 hover:shadow-lg hover:shadow-violet-500/10">
+        <Link href={`/media/${media.id}?type=${typeToUse}`} className="block flex-1">
           <div className="relative aspect-[2/3] overflow-hidden">
             <img
               src={posterUrl}
@@ -228,8 +229,12 @@ export default function MediaCard({ media, subtitle }: MediaCardProps) {
               {title}
             </h3>
 
-            {subtitle && (
-              <p className="mb-1.5 break-words text-xs leading-relaxed text-zinc-400">
+            {(subtitle || hideGenres) && (
+              <p
+                className={`mb-1.5 line-clamp-2 break-words text-xs leading-relaxed text-zinc-400 ${
+                  hideGenres ? "min-h-10" : ""
+                }`}
+              >
                 {subtitle}
               </p>
             )}
@@ -243,16 +248,18 @@ export default function MediaCard({ media, subtitle }: MediaCardProps) {
               <span className="text-xs text-zinc-400">{date}</span>
             </div>
 
-            <div className="flex flex-wrap gap-1.5">
-              {genres.slice(0, 2).map((genre, index) => (
-                <span
-                  key={`${genre}-${index}`}
-                  className="rounded bg-zinc-700/50 px-1.5 py-0.5 text-[10px] text-zinc-300"
-                >
-                  {genre}
-                </span>
-              ))}
-            </div>
+            {!hideGenres && (
+              <div className="flex flex-wrap gap-1.5">
+                {genres.slice(0, 2).map((genre, index) => (
+                  <span
+                    key={`${genre}-${index}`}
+                    className="rounded bg-zinc-700/50 px-1.5 py-0.5 text-[10px] text-zinc-300"
+                  >
+                    {genre}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </Link>
         {watchlistError && !showRemoveConfirm && (

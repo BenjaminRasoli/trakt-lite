@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import MediaCard from "@/components/media-card";
 import { useSupabase } from "@/components/supabase-provider";
-import { getPersonDetails, getProfileUrl } from "@/lib/tmdb";
+import { getBackdropUrl, getPersonDetails, getProfileUrl } from "@/lib/tmdb";
 import type { TMDBPersonDetails } from "@/lib/tmdb";
 
 interface WatchedMedia {
@@ -186,6 +186,13 @@ export default function ActorPage() {
     [allCredits],
   );
 
+  const actorBackdrop = useMemo(() => {
+    const withBackdrop = credits
+      .filter((credit) => credit.backdrop_path)
+      .sort((a, b) => (b.vote_count ?? 0) - (a.vote_count ?? 0));
+    return withBackdrop[0]?.backdrop_path ?? null;
+  }, [credits]);
+
   const watchedKeys = useMemo(
     () =>
       new Set(
@@ -200,18 +207,6 @@ export default function ActorPage() {
         watchedKeys.has(`${credit.media_type}:${credit.id}`),
       ),
     [allCredits, watchedKeys],
-  );
-
-  const popularCredits = useMemo(
-    () =>
-      [...credits]
-        .sort(
-          (a, b) =>
-            (b.popularity ?? 0) - (a.popularity ?? 0) ||
-            (b.vote_count ?? 0) - (a.vote_count ?? 0),
-        )
-        .slice(0, 6),
-    [credits],
   );
 
   if (personLoading || authLoading) {
@@ -257,13 +252,30 @@ export default function ActorPage() {
 
   return (
     <div className="flex min-h-screen flex-1 flex-col bg-black font-sans">
+      {actorBackdrop && (
+        <div
+          className="fixed inset-0 z-0 bg-cover bg-center bg-no-repeat"
+          style={{
+            backgroundImage: `
+              linear-gradient(
+                180deg,
+                rgba(2,6,23,0.75),
+                rgba(2,6,23,0.96)
+              ),
+              url(${getBackdropUrl(actorBackdrop)})
+            `,
+            backgroundPosition: "center -55%",
+          }}
+        />
+      )}
+      <div className="fixed inset-0 z-0 bg-black/10 pointer-events-none" />
       <main className="relative z-10 mx-auto w-full max-w-[1650px] px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
         <section className="mb-14 flex flex-col gap-6 md:flex-row md:gap-8">
           <div className="mx-auto w-full max-w-[240px] flex-shrink-0 md:mx-0 md:w-1/4">
             <img
               src={profileUrl}
               alt={person.name}
-              className="w-full rounded-xl border border-zinc-700/50 object-cover shadow-2xl shadow-violet-500/10"
+              className="w-full rounded-lg shadow-2xl"
               onError={(event) => {
                 event.currentTarget.src = "/placeholder-avatar.svg";
               }}
@@ -351,15 +363,20 @@ export default function ActorPage() {
               to see titles you&apos;ve watched featuring {person.name}.
             </p>
           ) : watchedCredits.length > 0 ? (
-            <div className="grid gap-3 grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7">
+            <div className="flex gap-3 overflow-x-auto pb-3 [scrollbar-width:thin] [scrollbar-color:rgba(168,85,247,0.8)_rgba(39,39,42,0.8)]">
               {watchedCredits.map((credit) => (
-                <MediaCard
+                <div
                   key={`${credit.media_type}:${credit.id}`}
-                  media={credit}
-                  subtitle={
-                    credit.character ? `as ${credit.character}` : undefined
-                  }
-                />
+                  className="w-32 shrink-0 sm:w-36 md:w-40"
+                >
+                  <MediaCard
+                    media={credit}
+                    subtitle={
+                      credit.character ? `as ${credit.character}` : undefined
+                    }
+                    hideGenres
+                  />
+                </div>
               ))}
             </div>
           ) : (
@@ -372,15 +389,20 @@ export default function ActorPage() {
         <section>
           <h2 className="mb-5 text-2xl font-bold text-white">Known for</h2>
           {credits.length > 0 ? (
-            <div className="grid gap-3 grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7">
-              {popularCredits.map((credit) => (
-                <MediaCard
+            <div className="flex gap-3 overflow-x-auto pb-3 [scrollbar-width:thin] [scrollbar-color:rgba(168,85,247,0.8)_rgba(39,39,42,0.8)]">
+              {credits.map((credit) => (
+                <div
                   key={`${credit.media_type}:${credit.id}`}
-                  media={credit}
-                  subtitle={
-                    credit.character ? `as ${credit.character}` : undefined
-                  }
-                />
+                  className="w-32 shrink-0 sm:w-36 md:w-40"
+                >
+                  <MediaCard
+                    media={credit}
+                    subtitle={
+                      credit.character ? `as ${credit.character}` : undefined
+                    }
+                    hideGenres
+                  />
+                </div>
               ))}
             </div>
           ) : (
