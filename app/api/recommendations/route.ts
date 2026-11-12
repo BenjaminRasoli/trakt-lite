@@ -215,7 +215,7 @@ export async function GET() {
             Math.abs(a.score - NEUTRAL_RATING) ||
           b.updatedAt.getTime() - a.updatedAt.getTime(),
       )
-      .slice(0, 12);
+      .slice(0, 20);
 
     if (seeds.length === 0) {
       return NextResponse.json({
@@ -256,6 +256,8 @@ export async function GET() {
     for (const result of seedRecommendations) {
       const ratingSignal =
         (result.seed.score - NEUTRAL_RATING) / (10 - NEUTRAL_RATING);
+      const conviction =
+        Math.abs(result.seed.score - NEUTRAL_RATING) / (10 - NEUTRAL_RATING);
       if (ratingSignal === 0) continue;
 
       for (const [rank, recommendation] of result.recommendations.entries()) {
@@ -269,7 +271,7 @@ export async function GET() {
 
         const existing = ranked.get(key);
         const rankWeight = 1 / (1 + rank * 0.08);
-        const scoreContribution = ratingSignal * rankWeight;
+        const scoreContribution = ratingSignal * conviction * rankWeight;
         if (existing) {
           existing.score += scoreContribution;
           if (ratingSignal > 0 &&
