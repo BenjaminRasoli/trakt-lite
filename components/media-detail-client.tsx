@@ -232,6 +232,17 @@ export default function MediaDetailClient({
       : 0;
   }, [mediaType, media?.number_of_episodes]);
 
+  const watchedForRating =
+    mediaType === "tv"
+      ? watchHistory.some(
+          (watch) =>
+            watch.seasonNumber !== null && watch.episodeNumber !== null,
+        )
+      : watchHistory.length > 0;
+  const canRate =
+    initialRating != null &&
+    (initialRating.eligible || watchedForRating);
+
   const displayNames = useMemo(() => {
     try {
       return {
@@ -380,7 +391,7 @@ export default function MediaDetailClient({
     const measure = () => {
       const avail = el.clientWidth;
       const gap = 12;
-      const h = 112;
+      const h = avail < 640 ? 80 : 112;
       let used = 0;
       let count = 0;
       let lastNatural = 0;
@@ -987,8 +998,8 @@ export default function MediaDetailClient({
           backgroundImage: `
         linear-gradient(
           180deg,
-          rgba(2,6,23,0.75),
-          rgba(2,6,23,0.96)
+          rgba(2,6,23,0.6),
+          rgba(2,6,23,0.88)
         ),
         url(${backdropUrl})
       `,
@@ -996,12 +1007,12 @@ export default function MediaDetailClient({
         }}
       />
 
-      <div className="fixed inset-0 z-0 bg-black/10 pointer-events-none" />
+      <div className="fixed inset-0 z-0 bg-black/5 pointer-events-none" />
 
       <div className="relative z-10 min-h-screen">
-        <main className="w-full max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <main className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           <div className="flex flex-col md:flex-row gap-6 md:gap-8 mb-8">
-            <div className="w-full md:w-1/4 flex-shrink-0 max-w-[200px] mx-auto md:mx-0">
+            <div className="w-full md:w-[30%] flex-shrink-0 max-w-[300px] md:max-w-[240px] mx-auto md:mx-0">
               <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg shadow-2xl">
                 <img
                   src={posterUrl}
@@ -1035,7 +1046,7 @@ export default function MediaDetailClient({
                 )}
               </div>
               {detailItems.length > 0 && (
-                <dl className="mt-4 space-y-2.5">
+                <dl className="mt-4 hidden space-y-2.5 md:block">
                   {detailItems.map((item) => (
                     <div key={item.label}>
                       <dt className="text-[10px] font-semibold uppercase tracking-[0.15em] text-zinc-500">
@@ -1049,7 +1060,7 @@ export default function MediaDetailClient({
                 </dl>
               )}
               {releaseDates.length > 0 && (
-                <div className="mt-4">
+                <div className="mt-4 hidden md:block">
                   <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-zinc-500">
                     Release Dates
                   </p>
@@ -1081,7 +1092,7 @@ export default function MediaDetailClient({
               )}
 
               {allProviders.length > 0 && (
-                <div className="mt-4">
+                <div className="mt-4 hidden md:block">
                   <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-zinc-500">
                     Where to watch
                   </p>
@@ -1117,7 +1128,7 @@ export default function MediaDetailClient({
               )}
 
               {(media.imdb_id || media.homepage) && (
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="mt-4 hidden flex-wrap gap-2 md:flex">
                   {media.imdb_id && (
                     <a
                       href={`https://www.imdb.com/title/${media.imdb_id}/`}
@@ -1142,7 +1153,7 @@ export default function MediaDetailClient({
               )}
             </div>
 
-            <div className="w-full md:w-3/4">
+            <div className="w-full md:flex-1 md:min-w-0">
               <div className="flex items-center gap-2 mb-2">
                 <span className="px-2 py-1 bg-violet-600 text-white text-xs font-semibold rounded uppercase">
                   {type}
@@ -1163,7 +1174,7 @@ export default function MediaDetailClient({
                 {title}
               </h1>
 
-              <div className="flex flex-wrap items-center gap-3 sm:gap-4 mb-4">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 sm:gap-x-4 mb-4">
                 <span className="text-zinc-400 text-sm sm:text-base">
                   {date}
                 </span>
@@ -1180,6 +1191,15 @@ export default function MediaDetailClient({
                     {totalEpisodeCount === 1 ? "episode" : "episodes"}
                   </span>
                 )}
+
+                {genres.map((genre) => (
+                  <span
+                    key={genre}
+                    className="rounded-full border border-zinc-700/60 px-2 py-0.5 text-[11px] text-zinc-400"
+                  >
+                    {genre}
+                  </span>
+                ))}
               </div>
 
               {avgRating != null && (
@@ -1261,6 +1281,7 @@ export default function MediaDetailClient({
                 </div>
               )}
 
+              {canRate && (
               <div className="mt-6 pb-4">
                 <p className="mb-0.5 text-xs font-semibold uppercase tracking-widest text-zinc-400">
                   Rate
@@ -1271,30 +1292,10 @@ export default function MediaDetailClient({
                     mediaType={mediaType}
                     title={title}
                     initialRating={initialRating}
-                    watched={
-                      mediaType === "tv"
-                        ? watchHistory.some(
-                            (watch) =>
-                              watch.seasonNumber !== null &&
-                              watch.episodeNumber !== null,
-                          )
-                        : watchHistory.length > 0
-                    }
+                    watched={watchedForRating}
                   />
                 </div>
               </div>
-
-              {genres.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-6">
-                  {genres.map((genre) => (
-                    <span
-                      key={genre}
-                      className="px-2 py-1 sm:px-3 sm:py-1 bg-zinc-800 text-zinc-300 text-xs sm:text-sm rounded-full"
-                    >
-                      {genre}
-                    </span>
-                  ))}
-                </div>
               )}
 
               {media.overview && (
@@ -1711,7 +1712,7 @@ export default function MediaDetailClient({
                               ? { width: galleryFit.lastWidth }
                               : undefined
                           }
-                          className={`group relative h-28 shrink-0 cursor-pointer overflow-hidden rounded-lg border border-zinc-800 ${
+                          className={`group relative h-20 shrink-0 cursor-pointer overflow-hidden rounded-lg border border-zinc-800 sm:h-28 ${
                             visible ? "" : "hidden"
                           }`}
                         >
@@ -1744,11 +1745,6 @@ export default function MediaDetailClient({
 
             </div>
           </div>
-
-
-
-
-
           {reviews.length > 0 && (
             <div className="mb-8">
               <h2 className="text-xl font-bold text-white mb-4">Reviews</h2>
