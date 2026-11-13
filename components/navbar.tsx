@@ -57,10 +57,7 @@ function GlobalSearchForm({ initialQuery }: { initialQuery: string }) {
           <button
             type="button"
             aria-label="Clear search"
-            onClick={() => {
-              setQuery("");
-              router.push("/");
-            }}
+            onClick={() => setQuery("")}
             className="absolute inset-y-0 right-0 inline-flex w-10 cursor-pointer items-center justify-center text-violet-400 transition-colors hover:text-violet-300"
           >
             <svg
