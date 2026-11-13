@@ -376,7 +376,7 @@ export default function AchievementsClient({
         )}
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/55 to-black/80" />
       </div>
-      <main className="relative z-10 mx-auto w-full max-w-[1400px] flex-1 px-4 py-8 sm:px-6 lg:px-8">
+      <main className="relative z-10 mx-auto w-full max-w-[1650px] flex-1 px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-violet-300">
