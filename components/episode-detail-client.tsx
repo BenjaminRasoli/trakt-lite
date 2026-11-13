@@ -12,7 +12,11 @@ import {
   getTVSeasonDetails,
   getMediaTitle,
   getTVEpisodeAirTime,
+  getTVEpisodeCredits,
+  getProfileUrl,
+  getTVShowCastImages,
 } from "@/lib/tmdb";
+import type { TMDBActor, TVMazeCastImages } from "@/lib/tmdb";
 
 interface EpisodeNavigationTarget {
   seasonNumber: number;
@@ -96,6 +100,11 @@ export default function EpisodeDetailClient({
   const [season, setSeason] = useState<any>(null);
   const [episode, setEpisode] = useState<any>(null);
   const [episodeAirTime, setEpisodeAirTime] = useState<string | null>(null);
+  const [episodeCredits, setEpisodeCredits] = useState<{
+    cast: TMDBActor[];
+    crew: any[];
+  } | null>(null);
+  const [castImages, setCastImages] = useState<TVMazeCastImages | null>(null);
   const [previousEpisodeTarget, setPreviousEpisodeTarget] =
     useState<EpisodeNavigationTarget | null>(null);
   const [nextEpisodeTarget, setNextEpisodeTarget] =
@@ -194,16 +203,23 @@ export default function EpisodeDetailClient({
       setEpisodeAirTime(null);
       setPreviousEpisodeTarget(null);
       setNextEpisodeTarget(null);
+      setEpisodeCredits(null);
+      setCastImages(null);
 
       try {
-        const [series, seasonDetails] = await Promise.all([
-          getMediaDetails(mediaId, mediaType),
-          getTVSeasonDetails(mediaId, seasonNumber),
-        ]);
+        const [series, seasonDetails, episodeCreditsData, tvCastImages] =
+          await Promise.all([
+            getMediaDetails(mediaId, mediaType),
+            getTVSeasonDetails(mediaId, seasonNumber),
+            getTVEpisodeCredits(mediaId, seasonNumber, episodeNumber),
+            getTVShowCastImages(mediaId),
+          ]);
         if (!isCurrent) return;
 
         setShow(series);
         setSeason(seasonDetails);
+        setEpisodeCredits(episodeCreditsData);
+        setCastImages(tvCastImages);
 
         const episodeData = seasonDetails?.episodes?.find(
           (ep) => ep.episode_number === episodeNumber,
@@ -420,6 +436,32 @@ export default function EpisodeDetailClient({
     );
   }
 
+  const getAvatarColor = (name: string) => {
+    const colors = [
+      "linear-gradient(135deg, #8b5cf6, #4f46e5)",
+      "linear-gradient(135deg, #ec4899, #8b5cf6)",
+      "linear-gradient(135deg, #22c55e, #14b8a6)",
+      "linear-gradient(135deg, #f59e0b, #f97316)",
+      "linear-gradient(135deg, #06b6d4, #3b82f6)",
+      "linear-gradient(135deg, #ef4444, #f97316)",
+    ];
+
+    const hash = [...name].reduce(
+      (total, char) => total + char.charCodeAt(0),
+      0,
+    );
+    return colors[hash % colors.length];
+  };
+
+  const getInitials = (name: string) =>
+    name
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join("")
+      .toUpperCase() || "A";
+
   return (
     <div className="min-h-screen bg-black text-white">
       <div
@@ -633,6 +675,81 @@ export default function EpisodeDetailClient({
               )}
             </div>
           </div>
+
+          {episodeCredits && episodeCredits.cast.length > 0 && (
+            <div className="mb-8">
+              <h2 className="text-xl font-bold text-white mb-4">Cast</h2>
+              <div className="flex gap-3 overflow-x-auto pb-3 [scrollbar-width:thin] [scrollbar-color:rgba(168,85,247,0.8)_rgba(39,39,42,0.8)]">
+                {episodeCredits.cast.map((actor) => {
+                  const tvmazeImage =
+                    castImages?.byPerson.get(
+                      actor.name.trim().toLowerCase(),
+                    ) ??
+                    (actor.character
+                      ? castImages?.byCharacter.get(
+                          actor.character.trim().toLowerCase(),
+                        )
+                      : undefined);
+                  const avatarUrl = tvmazeImage
+                    ? tvmazeImage
+                    : actor.profile_path
+                      ? getProfileUrl(actor.profile_path)
+                      : "";
+                  const avatarLabel = getInitials(actor.name);
+
+                  return (
+                    <Link
+                      href={`/actor/${actor.id}`}
+                      aria-label={`View ${actor.name}'s actor profile`}
+                      key={actor.id}
+                      className="group block w-32 shrink-0 overflow-hidden rounded-xl border border-zinc-700/50 bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 text-center shadow-lg shadow-black/20 transition-colors hover:border-violet-500/50 hover:shadow-violet-500/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-400 sm:w-36"
+                    >
+                      <div className="relative aspect-[3/4] overflow-hidden">
+                        {avatarUrl && avatarUrl !== "/placeholder-avatar.svg" ? (
+                          <img
+                            src={avatarUrl}
+                            alt={actor.name}
+                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            onError={(e) => {
+                              const fallback = e.currentTarget
+                                .parentElement as HTMLDivElement;
+                              if (fallback) {
+                                const initialCard = document.createElement("div");
+                                initialCard.className =
+                                  "flex h-full w-full items-center justify-center text-2xl font-bold text-white";
+                                initialCard.style.background = getAvatarColor(
+                                  actor.name,
+                                );
+                                initialCard.textContent = avatarLabel;
+                                fallback.replaceChildren(initialCard);
+                              }
+                            }}
+                          />
+                        ) : (
+                          <div
+                            className="flex h-full w-full items-center justify-center text-2xl font-bold text-white"
+                            style={{
+                              background: getAvatarColor(actor.name),
+                            }}
+                          >
+                            {avatarLabel}
+                          </div>
+                        )}
+                      </div>
+                      <div className="px-2.5 py-3">
+                        <p className="truncate text-sm font-semibold text-white transition-colors group-hover:text-violet-200">
+                          {actor.name}
+                        </p>
+                        <p className="mt-1 truncate text-xs text-zinc-400">
+                          {actor.character || "Unknown role"}
+                        </p>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </main>
       </div>
 

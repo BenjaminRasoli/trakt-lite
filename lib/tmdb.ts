@@ -1008,7 +1008,11 @@ export async function getTVEpisodeCredits(
       `${TMDB_BASE_URL}/tv/${tvId}/season/${seasonNumber}/episode/${episodeNumber}/credits?api_key=${TMDB_API_KEY}`,
     );
     const data = await response.json();
-    return { cast: data.cast || [], crew: data.crew || [] };
+    const cast = [...(data.cast || []), ...(data.guest_stars || [])].sort(
+      (a: { order?: number }, b: { order?: number }) =>
+        (a.order ?? 0) - (b.order ?? 0),
+    );
+    return { cast, crew: data.crew || [] };
   } catch (error) {
     console.error("Error fetching TV episode credits:", error);
     return null;
