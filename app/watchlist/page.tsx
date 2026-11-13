@@ -361,7 +361,7 @@ function WatchlistPageContent() {
               return (
                 <div
                   key={item.id}
-                  className="group relative overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:-translate-y-0.5 hover:border-violet-500/50"
+                  className="group relative overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/80 transition hover:border-violet-500/50"
                 >
                   <Link
                     href={`/media/${item.media.tmdbId}?type=${item.media.mediaType}`}
