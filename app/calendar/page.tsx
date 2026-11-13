@@ -10,6 +10,7 @@ import {
   addEpisodeTypes,
 } from "@/lib/tmdb";
 import { getTrendingBackdropUrl } from "@/lib/trending-backdrop";
+import { collapseEpisodeDrops } from "@/lib/episode-drops";
 
 interface UpcomingEpisodeItem {
   tmdbId: number;
@@ -397,63 +398,7 @@ function groupByDate(upcoming: UpcomingEpisodeItem[]) {
   const finalGroups: Record<string, UpcomingEpisodeItem[]> = {};
 
   for (const [dateKey, items] of Object.entries(byDate)) {
-    const byShow = items.reduce<Record<number, UpcomingEpisodeItem[]>>(
-      (showGroups, item) => {
-        showGroups[item.tmdbId] = showGroups[item.tmdbId]
-          ? [...showGroups[item.tmdbId], item]
-          : [item];
-        return showGroups;
-      },
-      {},
-    );
-
-    const combinedItems: UpcomingEpisodeItem[] = [];
-
-    for (const showItems of Object.values(byShow)) {
-      if (showItems.length === 1) {
-        combinedItems.push(showItems[0]);
-      } else {
-        const seasons = new Set(showItems.map((item) => item.seasonNumber));
-        const allSameSeason = seasons.size === 1;
-
-        if (allSameSeason) {
-          const seasonNumber = showItems[0].seasonNumber;
-          const episodeNumbers = showItems
-            .map((item) => item.episodeNumber)
-            .filter((n): n is number => n !== null)
-            .sort((a, b) => a - b);
-
-          if (episodeNumbers.length > 0) {
-            const minEp = episodeNumbers[0];
-            const maxEp = episodeNumbers[episodeNumbers.length - 1];
-            const premiere = showItems.find(
-              (item) =>
-                item.episodeNumber === 1 &&
-                item.episodeType === "season_premiere",
-            );
-
-            const combined: UpcomingEpisodeItem = {
-              ...showItems[0],
-              episodeType: premiere ? "season_premiere" : null,
-              episodeTitle:
-                minEp === maxEp
-                  ? showItems[0].episodeTitle
-                  : `Season ${seasonNumber}`,
-            };
-
-            (combined as any).episodeRange =
-              minEp === maxEp ? `E${minEp}` : `E${minEp}-${maxEp}`;
-            (combined as any).isEntireSeason = episodeNumbers.length > 5;
-
-            combinedItems.push(combined);
-          }
-        } else {
-          combinedItems.push(...showItems);
-        }
-      }
-    }
-
-    finalGroups[dateKey] = combinedItems;
+    finalGroups[dateKey] = collapseEpisodeDrops(items);
   }
 
   return finalGroups;

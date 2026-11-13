@@ -1020,9 +1020,14 @@ export default function HomeClient({
                       item.seasonNumber === null && item.episodeNumber === null;
                     const daysUntil = getDaysUntil(item.airDate);
                     const mediaType = isMovie ? "movie" : "tv";
+                    const itemWithMeta = item as any;
+                    const isEntireSeason = itemWithMeta.isEntireSeason;
+                    const episodeRange = itemWithMeta.episodeRange;
                     const linkHref = isMovie
                       ? `/media/${item.tmdbId}?type=movie`
-                      : `/media/${item.tmdbId}/season/${item.seasonNumber}/episode/${item.episodeNumber}?type=tv`;
+                      : isEntireSeason || episodeRange
+                        ? `/media/${item.tmdbId}?type=tv`
+                        : `/media/${item.tmdbId}/season/${item.seasonNumber}/episode/${item.episodeNumber}?type=tv`;
 
                     return (
                       <Link
@@ -1087,16 +1092,23 @@ export default function HomeClient({
                               {item.title}
                             </span>
                           </div>
-                          {!isMovie && item.episodeTitle && (
-                            <div className="h-4 truncate text-[10px] leading-4 text-zinc-400">
-                              {item.episodeTitle}
-                            </div>
-                          )}
+                          {!isMovie &&
+                            item.episodeTitle &&
+                            !isEntireSeason &&
+                            !episodeRange && (
+                              <div className="h-4 truncate text-[10px] leading-4 text-zinc-400">
+                                {item.episodeTitle}
+                              </div>
+                            )}
                           {!isMovie &&
                             item.seasonNumber !== null &&
                             item.episodeNumber !== null && (
                               <div className="h-4 truncate text-[10px] leading-4 text-zinc-400">
-                                S{item.seasonNumber} E{item.episodeNumber}
+                                {isEntireSeason
+                                  ? `Season ${item.seasonNumber}`
+                                  : episodeRange
+                                    ? `S${item.seasonNumber} ${episodeRange}`
+                                    : `S${item.seasonNumber} E${item.episodeNumber}`}
                               </div>
                             )}
                         </div>

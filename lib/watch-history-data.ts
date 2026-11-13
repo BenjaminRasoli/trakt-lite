@@ -8,6 +8,7 @@ import {
   getMediaDetails,
   getTVSeasonDetails,
 } from "@/lib/tmdb";
+import { collapseEpisodeDrops } from "@/lib/episode-drops";
 
 const mediaCache = new Map<string, any>();
 const CACHE_TTL = 5 * 60 * 1000;
@@ -717,6 +718,8 @@ export async function getWatchHistoryFeed(
     includeStreak?: boolean;
   } = {},
 ) {
+  const upcomingPoolLimit = 100;
+
   const [historyResult, nextUpResult, upcomingQueue, watchlistUpcoming, currentStreak] =
     await Promise.all([
       getWatchHistoryItems(userId, { limit, offset, mediaType }),
@@ -724,10 +727,10 @@ export async function getWatchHistoryFeed(
         ? getNextUpQueue(userId, nextUpLimit)
         : Promise.resolve({ items: [], droppedShowStorageAvailable: true }),
       includeUpcoming
-        ? getUpcomingEpisodesQueue(userId, nextUpLimit)
+        ? getUpcomingEpisodesQueue(userId, upcomingPoolLimit)
         : Promise.resolve([]),
       includeUpcoming
-        ? getUpcomingWatchlistReleases(userId, limit)
+        ? getUpcomingWatchlistReleases(userId, upcomingPoolLimit)
         : Promise.resolve([]),
       includeStreak ? getWatchStreak(userId) : Promise.resolve(0),
     ]);
@@ -813,13 +816,14 @@ export async function getWatchHistoryFeed(
     .sort(
       (a, b) =>
         new Date(a.airDate || 0).getTime() - new Date(b.airDate || 0).getTime(),
-    )
-    .slice(0, limit);
+    );
 
   const [typedNextUp, typedUpcoming] = await Promise.all([
     addNextUpEpisodeInfo(hydratedNextUp),
     addEpisodeTypes(allUpcoming),
   ]);
+
+  const collapsedUpcoming = collapseEpisodeDrops(typedUpcoming).slice(0, limit);
 
   return {
     items: historyResult.items,
@@ -829,6 +833,6 @@ export async function getWatchHistoryFeed(
     nextUpWarning: nextUpResult.droppedShowStorageAvailable
       ? null
       : "Next Up is showing, but dropped shows cannot be remembered until the database migration is applied.",
-    upcoming: typedUpcoming,
+    upcoming: collapsedUpcoming,
   };
 }
