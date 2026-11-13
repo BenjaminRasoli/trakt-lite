@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSupabase } from "@/components/supabase-provider";
 import UserRating from "@/components/user-rating";
+import { notifyWatchedChanged } from "@/components/watched-state";
 import type { InitialRating } from "@/lib/use-initial-rating";
 import {
   getMediaDetails,
@@ -361,6 +362,7 @@ export default function EpisodeDetailClient({
       if (response.ok) {
         const newEntry = await response.json();
         setWatchHistory([...watchHistory, newEntry]);
+        notifyWatchedChanged();
         setShowWatchDialog(false);
         setWatchDate("");
         setWatchTime("");
@@ -388,6 +390,7 @@ export default function EpisodeDetailClient({
 
       if (response.ok) {
         setWatchHistory(watchHistory.filter((w) => w.id !== watchToDelete.id));
+        notifyWatchedChanged();
       }
     } catch (error) {
       console.error("Error deleting watch history:", error);

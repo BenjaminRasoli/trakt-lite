@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSupabase } from "@/components/supabase-provider";
 import UserRating from "@/components/user-rating";
+import { notifyWatchedChanged } from "@/components/watched-state";
 import type { InitialRating } from "@/lib/use-initial-rating";
 import {
   getMediaDetails,
@@ -236,6 +237,7 @@ export default function SeasonDetailClient({
         }
         return [...current, updated];
       });
+      notifyWatchedChanged();
       closeWatchModal();
     } catch (error) {
       console.error("Error saving episode watch state:", error);
@@ -259,6 +261,7 @@ export default function SeasonDetailClient({
 
       if (response.ok) {
         setWatchHistory(watchHistory.filter((w) => w.id !== watchToDelete.id));
+        notifyWatchedChanged();
       }
     } catch (error) {
       console.error("Error deleting watch history:", error);

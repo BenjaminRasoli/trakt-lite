@@ -21,6 +21,7 @@ import type { TMDBMedia, TMDBActor, TMDBReview } from "@/lib/tmdb";
 import type { TVMazeCastImages } from "@/lib/tmdb";
 import MediaCard from "@/components/media-card";
 import UserRating from "@/components/user-rating";
+import { notifyWatchedChanged } from "@/components/watched-state";
 import type { InitialRating } from "@/lib/use-initial-rating";
 
 interface MediaDetailClientProps {
@@ -323,6 +324,7 @@ export default function MediaDetailClient({
       if (response.ok) {
         const newEntry = await response.json();
         setWatchHistory([...watchHistory, newEntry]);
+        notifyWatchedChanged();
         setShowWatchDialog(false);
         setWatchDate("");
         setWatchTime("");
@@ -350,6 +352,7 @@ export default function MediaDetailClient({
 
       if (response.ok) {
         setWatchHistory(watchHistory.filter((w) => w.id !== watchToDelete.id));
+        notifyWatchedChanged();
       }
     } catch (error) {
       console.error("Error deleting watch history:", error);
@@ -516,14 +519,38 @@ export default function MediaDetailClient({
         <main className="w-full max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           <div className="flex flex-col md:flex-row gap-6 md:gap-8 mb-8">
             <div className="w-full md:w-1/4 flex-shrink-0 max-w-[200px] mx-auto md:mx-0">
-              <img
-                src={posterUrl}
-                alt={title}
-                className="w-full rounded-lg shadow-2xl"
-                onError={(e) => {
-                  e.currentTarget.src = "/placeholder-poster.svg";
-                }}
-              />
+              <div className="relative">
+                <img
+                  src={posterUrl}
+                  alt={title}
+                  className="block w-full rounded-lg shadow-2xl"
+                  onError={(e) => {
+                    e.currentTarget.src = "/placeholder-poster.svg";
+                  }}
+                />
+                {watchHistory.length > 0 && (
+                <div
+                  className="absolute bottom-2 left-2 flex h-5 w-5 items-center justify-center rounded bg-violet-600/60 text-violet-100 shadow-sm backdrop-blur-sm"
+                  title="Watched"
+                  aria-label="Watched"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="10"
+                    height="10"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </div>
+                )}
+              </div>
             </div>
 
             <div className="w-full md:w-3/4">

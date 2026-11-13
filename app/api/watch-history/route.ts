@@ -46,6 +46,16 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    if (searchParams.get("watchedIdsOnly") === "true") {
+      const watchedMedia = await prisma.media.findMany({
+        where: { watchHistory: { some: { userId: dbUser.id } } },
+        select: { tmdbId: true },
+      });
+      return NextResponse.json({
+        tmdbIds: watchedMedia.map((media) => media.tmdbId),
+      });
+    }
+
     if (!mediaId) {
       const parsedLimit =
         limitParam && limitParam !== "all"

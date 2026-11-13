@@ -17,6 +17,7 @@ import {
   getWatchlistIds,
   notifyWatchlistChanged,
 } from "@/components/watchlist-state";
+import { getWatchedIds } from "@/components/watched-state";
 
 interface MediaCardProps {
   media: TMDBMedia;
@@ -51,6 +52,7 @@ export default function MediaCard({ media, subtitle, hideGenres = false }: Media
   const supabase = useSupabase();
   const [watchlistLoading, setWatchlistLoading] = useState(false);
   const [isInWatchlist, setIsInWatchlist] = useState(false);
+  const [isWatched, setIsWatched] = useState(false);
   const [watchlistError, setWatchlistError] = useState<string | null>(null);
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
   const title = getMediaTitle(media);
@@ -72,8 +74,23 @@ export default function MediaCard({ media, subtitle, hideGenres = false }: Media
     let isMounted = true;
     let currentUserId: string | null = null;
 
+    const syncWatched = async (userId: string | null) => {
+      if (!userId) {
+        setIsWatched(false);
+        return;
+      }
+
+      try {
+        const ids = await getWatchedIds(userId);
+        if (isMounted) setIsWatched(ids.has(media.id));
+      } catch (error) {
+        console.error("Error checking media card watched status:", error);
+      }
+    };
+
     const syncWatchlist = async (userId: string | null) => {
       currentUserId = userId;
+      void syncWatched(userId);
       if (!userId) {
         setIsInWatchlist(false);
         return;
@@ -96,6 +113,17 @@ export default function MediaCard({ media, subtitle, hideGenres = false }: Media
       if (isMounted) void syncWatchlist(user?.id ?? null);
     };
 
+    const handleWatchedUpdate = () => {
+      if (!currentUserId) return;
+      void getWatchedIds(currentUserId)
+        .then((ids) => {
+          if (isMounted) setIsWatched(ids.has(media.id));
+        })
+        .catch((error: unknown) => {
+          console.error("Error refreshing media card watched status:", error);
+        });
+    };
+
     const handleWatchlistUpdate = () => {
       if (!currentUserId) return;
       void getWatchlistIds(currentUserId)
@@ -116,11 +144,13 @@ export default function MediaCard({ media, subtitle, hideGenres = false }: Media
         void syncWatchlist(session?.user.id ?? null);
     });
     window.addEventListener("watchlist-updated", handleWatchlistUpdate);
+    window.addEventListener("watch-history-updated", handleWatchedUpdate);
 
     return () => {
         isMounted = false;
         subscription.unsubscribe();
         window.removeEventListener("watchlist-updated", handleWatchlistUpdate);
+        window.removeEventListener("watch-history-updated", handleWatchedUpdate);
     };
   }, [media.id, supabase]);
 
@@ -222,6 +252,28 @@ export default function MediaCard({ media, subtitle, hideGenres = false }: Media
             <div className="absolute left-1 top-1 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-violet-400 backdrop-blur-sm">
               {mediaType}
             </div>
+            {isWatched && (
+              <div
+                className="absolute bottom-2 left-2 flex h-5 w-5 items-center justify-center rounded bg-violet-600/60 text-violet-100 shadow-sm backdrop-blur-sm"
+                title="Watched"
+                aria-label="Watched"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="10"
+                  height="10"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </div>
+            )}
           </div>
 
           <div className="p-3">
