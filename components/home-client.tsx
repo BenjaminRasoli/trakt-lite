@@ -71,6 +71,8 @@ interface HomeClientProps {
   initialLiveSession: any | null;
   initialBackdrop: string;
   searchQuery: string;
+  initialSearchFilter?: "all" | "tv" | "movie";
+  initialSearchSort?: "relevance" | "newest" | "oldest" | "az" | "za";
   initialCosmetics: ResolvedCosmetics | null;
   initialIsMaxLevel: boolean;
 }
@@ -144,6 +146,8 @@ export default function HomeClient({
   initialLiveSession,
   initialBackdrop,
   searchQuery,
+  initialSearchFilter = "all",
+  initialSearchSort = "relevance",
   initialCosmetics,
   initialIsMaxLevel,
 }: HomeClientProps) {
@@ -155,9 +159,9 @@ export default function HomeClient({
   const [searchPage, setSearchPage] = useState(1);
   const [searchTotalResults, setSearchTotalResults] = useState(0);
   const [searchFilter, setSearchFilter] =
-    useState<(typeof SEARCH_FILTERS)[number]["value"]>("all");
+    useState<(typeof SEARCH_FILTERS)[number]["value"]>(initialSearchFilter);
   const [searchSort, setSearchSort] =
-    useState<(typeof SEARCH_SORTS)[number]["value"]>("relevance");
+    useState<(typeof SEARCH_SORTS)[number]["value"]>(initialSearchSort);
   const [showSearchSort, setShowSearchSort] = useState(false);
   const [recentHistory, setRecentHistory] = useState<any[]>(
     initialHomeData?.items ?? [],
@@ -326,6 +330,26 @@ export default function HomeClient({
       }
     };
   }, [searchQuery, searchFilter]);
+
+  useEffect(() => {
+    if (!searchQuery) return;
+
+    const params = new URLSearchParams(window.location.search);
+    params.set("q", searchQuery);
+    if (searchFilter === "all") {
+      params.delete("filter");
+    } else {
+      params.set("filter", searchFilter);
+    }
+    if (searchSort === "relevance") {
+      params.delete("sort");
+    } else {
+      params.set("sort", searchSort);
+    }
+
+    const qs = params.toString();
+    window.history.replaceState(null, "", `/?${qs}`);
+  }, [searchQuery, searchFilter, searchSort]);
 
   const loadMoreSearchResults = useCallback(async () => {
     if (

@@ -8,13 +8,41 @@ import { getTrendingBackdropUrl } from "@/lib/trending-backdrop";
 import HomeClient from "@/components/home-client";
 
 interface HomePageProps {
-  searchParams: Promise<{ q?: string | string[] }>;
+  searchParams: Promise<{
+    q?: string | string[];
+    filter?: string | string[];
+    sort?: string | string[];
+  }>;
+}
+
+const SEARCH_FILTER_VALUES = ["all", "tv", "movie"] as const;
+const SEARCH_SORT_VALUES = [
+  "relevance",
+  "newest",
+  "oldest",
+  "az",
+  "za",
+] as const;
+
+function firstParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
 }
 
 export default async function Home({ searchParams }: HomePageProps) {
   const params = await searchParams;
-  const rawQuery = Array.isArray(params.q) ? params.q[0] : params.q;
-  const searchQuery = rawQuery?.trim() ?? "";
+  const searchQuery = firstParam(params.q)?.trim() ?? "";
+  const rawFilter = firstParam(params.filter);
+  const rawSort = firstParam(params.sort);
+  const searchFilter = SEARCH_FILTER_VALUES.includes(
+    rawFilter as (typeof SEARCH_FILTER_VALUES)[number],
+  )
+    ? (rawFilter as (typeof SEARCH_FILTER_VALUES)[number])
+    : "all";
+  const searchSort = SEARCH_SORT_VALUES.includes(
+    rawSort as (typeof SEARCH_SORT_VALUES)[number],
+  )
+    ? (rawSort as (typeof SEARCH_SORT_VALUES)[number])
+    : "relevance";
 
   const [user, backdrop] = await Promise.all([
     getServerUser(),
@@ -29,6 +57,8 @@ export default async function Home({ searchParams }: HomePageProps) {
         initialLiveSession={null}
         initialBackdrop={backdrop}
         searchQuery={searchQuery}
+        initialSearchFilter={searchFilter}
+        initialSearchSort={searchSort}
         initialCosmetics={null}
         initialIsMaxLevel={false}
       />
@@ -67,12 +97,18 @@ export default async function Home({ searchParams }: HomePageProps) {
 
   return (
     <HomeClient
-      key={searchQuery || "home"}
+      key={
+        searchQuery
+          ? `${searchQuery}|${searchFilter}|${searchSort}`
+          : "home"
+      }
       initialUser={user}
       initialHomeData={homeData}
       initialLiveSession={liveSession}
       initialBackdrop={backdrop}
       searchQuery={searchQuery}
+      initialSearchFilter={searchFilter}
+      initialSearchSort={searchSort}
       initialCosmetics={initialCosmetics}
       initialIsMaxLevel={initialIsMaxLevel}
     />
