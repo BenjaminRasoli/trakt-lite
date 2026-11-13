@@ -185,7 +185,6 @@ export default function HomeClient({
   const router = useRouter();
   const searchRequestIdRef = useRef(0);
   const isLoadingMoreSearchRef = useRef(false);
-  const searchResultsEndRef = useRef<HTMLDivElement>(null);
   const searchSortRef = useRef<HTMLDivElement>(null);
   const searchResults = useMemo(
     () => getUniqueMedia(searchResultPages.flat()),
@@ -380,21 +379,38 @@ export default function HomeClient({
   }, [searchFilter, searchHasMore, searchPage, searchQuery, searching]);
 
   useEffect(() => {
-    const sentinel = searchResultsEndRef.current;
-    if (!sentinel || !searchHasMore || searching) return;
+    if (!searchQuery || !searchHasMore || searching) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) {
+    let timeoutId: NodeJS.Timeout | null = null;
+
+    const handleScroll = () => {
+      if (searchLoadingMore || searching) return;
+
+      if (timeoutId) clearTimeout(timeoutId);
+
+      timeoutId = setTimeout(() => {
+        const scrollHeight = document.documentElement.scrollHeight;
+        const scrollTop = document.documentElement.scrollTop;
+        const clientHeight = document.documentElement.clientHeight;
+
+        if (scrollTop + clientHeight >= scrollHeight - 500) {
           void loadMoreSearchResults();
         }
-      },
-      { rootMargin: "400px" },
-    );
-    observer.observe(sentinel);
+      }, 200);
+    };
 
-    return () => observer.disconnect();
-  }, [loadMoreSearchResults, searchHasMore, searching]);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [
+    searchQuery,
+    searchHasMore,
+    searchLoadingMore,
+    searching,
+    loadMoreSearchResults,
+  ]);
 
   useEffect(() => {
     if (!showSearchSort) return;
@@ -698,15 +714,18 @@ export default function HomeClient({
                     />
                   ))}
                 </div>
-                <div
-                  ref={searchResultsEndRef}
-                  className="flex min-h-12 items-center justify-center py-4"
-                  aria-hidden="true"
-                >
-                  {searchLoadingMore && (
-                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/30 border-t-violet-300" />
-                  )}
-                </div>
+                {searchHasMore && (
+                  <div className="mt-6 flex justify-center">
+                    <button
+                      type="button"
+                      onClick={() => void loadMoreSearchResults()}
+                      disabled={searchLoadingMore || searching}
+                      className="cursor-pointer rounded-full border border-violet-500/40 bg-violet-500/10 px-5 py-2.5 text-sm font-semibold text-violet-200 transition hover:border-violet-400 hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {searchLoadingMore ? "Loading..." : "Load more"}
+                    </button>
+                  </div>
+                )}
               </>
             ) : (
               <p className="text-zinc-400">No results found.</p>
