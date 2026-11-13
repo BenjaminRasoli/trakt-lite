@@ -402,7 +402,7 @@ export default function SeasonDetailClient({
           </div>
         </div>
 
-        <div className="mb-8 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4 md:flex md:items-start md:gap-5">
+        <div className="mb-6 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4 md:flex md:items-start md:gap-5">
           <img
             src={posterUrl}
             alt={`${title} ${season.name || `Season ${seasonNumber}`}`}
@@ -440,7 +440,7 @@ export default function SeasonDetailClient({
           </div>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-6">
           {season.episodes?.map((episode: any) => {
             const episodeHistory = watchHistory
               .filter(

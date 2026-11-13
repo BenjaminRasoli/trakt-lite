@@ -21,6 +21,24 @@ export interface TMDBMedia {
   number_of_episodes?: number;
   seasons?: Array<{ season_number: number }>;
   status?: string;
+  imdb_id?: string;
+  homepage?: string | null;
+  budget?: number;
+  revenue?: number;
+  original_language?: string;
+  production_companies?: Array<{
+    id: number;
+    name: string;
+    logo_path: string | null;
+    origin_country: string;
+  }>;
+  production_countries?: Array<{ iso_3166_1: string; name: string }>;
+  spoken_languages?: Array<{ iso_639_1: string; name: string }>;
+  languages?: Array<{ iso_639_1: string; name: string; english_name?: string }>;
+  networks?: Array<{ id: number; name: string; logo_path: string | null }>;
+  origin_country?: string[];
+  episode_run_time?: number[];
+  created_by?: Array<{ id: number; name: string }>;
 }
 
 export interface TMDBSearchPage {
@@ -69,6 +87,14 @@ interface TMDBAggregateCredits {
       character: string;
       episode_count: number;
     }>;
+  }>;
+  crew?: Array<{
+    id: number;
+    name: string;
+    job: string;
+    department: string;
+    profile_path: string | null;
+    total_episode_count?: number;
   }>;
 }
 
@@ -652,7 +678,20 @@ export async function getTVCredits(
       };
     });
 
-  return { cast, crew: [] };
+  const crew = [...(credits.crew ?? [])]
+    .sort(
+      (a, b) =>
+        (b.total_episode_count ?? 0) - (a.total_episode_count ?? 0),
+    )
+    .map((member) => ({
+      id: member.id,
+      name: member.name,
+      job: member.job,
+      department: member.department,
+      profile_path: member.profile_path,
+    }));
+
+  return { cast, crew };
 }
 
 export async function getMediaCredits(
@@ -744,6 +783,170 @@ export async function getMediaRecommendations(
   } else {
     return getTVRecommendations(mediaId);
   }
+}
+
+export interface TMDBKeyword {
+  id: number;
+  name: string;
+}
+
+export interface TMDBProvider {
+  provider_id: number;
+  provider_name: string;
+  logo_path: string | null;
+  display_priority: number;
+}
+
+export interface TMDBWatchProviders {
+  link?: string;
+  flatrate?: TMDBProvider[];
+  rent?: TMDBProvider[];
+  buy?: TMDBProvider[];
+  ads?: TMDBProvider[];
+  free?: TMDBProvider[];
+}
+
+export interface TMDBVideo {
+  key: string;
+  name: string;
+  site: string;
+  type: string;
+  official?: boolean;
+}
+
+export interface TMDBReleaseDateInfo {
+  type: number;
+  certification: string;
+  release_date?: string;
+}
+
+const MOVIE_RELEASE_TYPE_LABELS: Record<number, string> = {
+  1: "Premiere",
+  2: "Theatrical (limited)",
+  3: "Theatrical",
+  4: "Digital",
+  5: "Physical",
+  6: "TV",
+};
+
+export async function getMediaKeywords(
+  mediaId: number,
+  mediaType: "movie" | "tv",
+): Promise<TMDBKeyword[]> {
+  if (mediaType === "movie") {
+    const data = await fetchTmdbJson<{ keywords?: TMDBKeyword[] }>(
+      `${TMDB_BASE_URL}/movie/${mediaId}/keywords?api_key=${TMDB_API_KEY}`,
+    );
+    return data?.keywords ?? [];
+  }
+  const data = await fetchTmdbJson<{ results?: TMDBKeyword[] }>(
+    `${TMDB_BASE_URL}/tv/${mediaId}/keywords?api_key=${TMDB_API_KEY}`,
+  );
+  return data?.results ?? [];
+}
+
+export async function getMediaWatchProviders(
+  mediaId: number,
+  mediaType: "movie" | "tv",
+): Promise<TMDBWatchProviders | null> {
+  const data = await fetchTmdbJson<{ results?: Record<string, TMDBWatchProviders> }>(
+    `${TMDB_BASE_URL}/${mediaType}/${mediaId}/watch/providers?api_key=${TMDB_API_KEY}`,
+  );
+  const results = data?.results;
+  if (!results) return null;
+  return results.US ?? results.GB ?? Object.values(results)[0] ?? null;
+}
+
+export async function getMediaVideos(
+  mediaId: number,
+  mediaType: "movie" | "tv",
+): Promise<TMDBVideo[]> {
+  const data = await fetchTmdbJson<{ results?: TMDBVideo[] }>(
+    `${TMDB_BASE_URL}/${mediaType}/${mediaId}/videos?api_key=${TMDB_API_KEY}`,
+  );
+  return (data?.results ?? []).filter(
+    (video) => video.site === "YouTube" && video.key,
+  );
+}
+
+export interface TMDBImage {
+  file_path: string;
+  iso_639_1?: string | null;
+  vote_average?: number;
+  width?: number;
+  height?: number;
+  aspect_ratio?: number;
+}
+
+export async function getMediaImages(
+  mediaId: number,
+  mediaType: "movie" | "tv",
+): Promise<TMDBImage[]> {
+  const data = await fetchTmdbJson<{
+    backdrops?: TMDBImage[];
+    posters?: TMDBImage[];
+  }>(`${TMDB_BASE_URL}/${mediaType}/${mediaId}/images?api_key=${TMDB_API_KEY}`);
+  return data?.backdrops ?? [];
+}
+
+export async function getMediaCertification(
+  mediaId: number,
+  mediaType: "movie" | "tv",
+): Promise<string | null> {
+  if (mediaType === "movie") {
+    const data = await fetchTmdbJson<{
+      results?: Array<{
+        iso_3166_1: string;
+        release_dates?: TMDBReleaseDateInfo[];
+      }>;
+    }>(
+      `${TMDB_BASE_URL}/movie/${mediaId}/release_dates?api_key=${TMDB_API_KEY}`,
+    );
+    const us = data?.results?.find((r) => r.iso_3166_1 === "US");
+    const dates = us?.release_dates ?? [];
+    const theatrical =
+      dates.find((d) => d.type === 3 || d.type === 2) ??
+      dates.find((d) => d.certification);
+    return theatrical?.certification || null;
+  }
+
+  const data = await fetchTmdbJson<{
+    results?: Array<{ iso_3166_1: string; rating: string }>;
+  }>(`${TMDB_BASE_URL}/tv/${mediaId}/content_ratings?api_key=${TMDB_API_KEY}`);
+  const us = data?.results?.find((r) => r.iso_3166_1 === "US");
+  return us?.rating || null;
+}
+
+export async function getMovieReleaseDates(
+  movieId: number,
+): Promise<Array<{ label: string; date: string; certification?: string }>> {
+  const data = await fetchTmdbJson<{
+    results?: Array<{
+      iso_3166_1: string;
+      release_dates?: TMDBReleaseDateInfo[];
+    }>;
+  }>(
+    `${TMDB_BASE_URL}/movie/${movieId}/release_dates?api_key=${TMDB_API_KEY}`,
+  );
+  const us = data?.results?.find((r) => r.iso_3166_1 === "US");
+  const dates = us?.release_dates ?? [];
+
+  const byType = new Map<number, TMDBReleaseDateInfo>();
+  for (const entry of dates) {
+    if (!entry.release_date) continue;
+    const existing = byType.get(entry.type);
+    if (!existing || entry.release_date > (existing.release_date ?? "")) {
+      byType.set(entry.type, entry);
+    }
+  }
+
+  return [...byType.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([type, entry]) => ({
+      label: MOVIE_RELEASE_TYPE_LABELS[type] ?? `Type ${type}`,
+      date: entry.release_date!.slice(0, 10),
+      certification: entry.certification || undefined,
+    }));
 }
 
 export function getPosterUrl(
