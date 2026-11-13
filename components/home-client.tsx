@@ -11,6 +11,7 @@ import { useSupabase } from "@/components/supabase-provider";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import MediaCard from "@/components/media-card";
+import MediaFilterTabs from "@/components/media-filter-tabs";
 import FxStars, { STAR_FX } from "@/components/fx-stars";
 import type { ResolvedCosmetics } from "@/lib/cosmetics";
 import EpisodeTypeBadge from "@/components/episode-type-badge";
@@ -603,74 +604,10 @@ export default function HomeClient({
               <span className="text-violet-400">{searchQuery}</span>&quot;
             </h2>
             <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex w-fit items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900/80 p-1">
-                {SEARCH_FILTERS.map(({ value, label, icon }) => (
-                  <button
-                    key={value}
-                    type="button"
-                    aria-pressed={searchFilter === value}
-                    onClick={() => setSearchFilter(value)}
-                    className={`flex items-center cursor-pointer gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
-                      searchFilter === value
-                        ? "bg-violet-500/20 text-violet-200"
-                        : "text-zinc-400 hover:text-zinc-200"
-                    }`}
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      aria-hidden="true"
-                    >
-                      {icon === "grid" ? (
-                        <>
-                          <rect x="3" y="3" width="7" height="7" />
-                          <rect x="14" y="3" width="7" height="7" />
-                          <rect x="14" y="14" width="7" height="7" />
-                          <rect x="3" y="14" width="7" height="7" />
-                        </>
-                      ) : icon === "tv" ? (
-                        <>
-                          <rect
-                            x="2"
-                            y="7"
-                            width="20"
-                            height="15"
-                            rx="2"
-                            ry="2"
-                          />
-                          <polyline points="17 2 12 7 7 2" />
-                        </>
-                      ) : (
-                        <>
-                          <rect
-                            x="2"
-                            y="2"
-                            width="20"
-                            height="20"
-                            rx="2.18"
-                            ry="2.18"
-                          />
-                          <line x1="7" y1="2" x2="7" y2="22" />
-                          <line x1="17" y1="2" x2="17" y2="22" />
-                          <line x1="2" y1="12" x2="22" y2="12" />
-                          <line x1="2" y1="7" x2="7" y2="7" />
-                          <line x1="2" y1="17" x2="7" y2="17" />
-                          <line x1="17" y1="17" x2="22" y2="17" />
-                          <line x1="17" y1="7" x2="22" y2="7" />
-                        </>
-                      )}
-                    </svg>
-                    {label}
-                  </button>
-                ))}
-              </div>
+              <MediaFilterTabs
+                value={searchFilter}
+                onChange={setSearchFilter}
+              />
 
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between lg:justify-end">
                 <p className="text-sm text-zinc-400" aria-live="polite">
