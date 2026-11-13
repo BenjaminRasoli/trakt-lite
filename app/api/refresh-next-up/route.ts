@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
-import { getTVSeasonDetails } from "@/lib/tmdb";
+import { getMediaDetails, getTVSeasonDetails } from "@/lib/tmdb";
 
 function isReleasedEpisode(
   episode:
@@ -383,57 +383,80 @@ async function computeUpcomingEpisodesForUser(userId: string) {
 
   await Promise.all(computedShows);
 
-  for (const item of watchlist) {
+  await mapWithConcurrency(watchlist, 3, async (item) => {
     const media = item.media;
-    const releaseDate = media.releaseDate;
 
-    if (!releaseDate) continue;
+    if (media.mediaType === "tv") {
+      if (latestByShow.has(media.tmdbId)) return;
+
+      try {
+        const showDetails = await getMediaDetails(media.tmdbId, "tv");
+        const latestSeason = Math.max(
+          1,
+          showDetails?.number_of_seasons ?? 1,
+        );
+
+        for (const seasonNumber of [latestSeason, latestSeason + 1]) {
+          const seasonDetails = await getCachedSeasonDetails(
+            media.tmdbId,
+            seasonNumber,
+          );
+          const episodes = (seasonDetails?.episodes || [])
+            .filter(
+              (episode: { air_date?: string | null }) =>
+                isFutureEpisode(episode),
+            )
+            .sort(
+              (
+                a: { air_date?: string | null },
+                b: { air_date?: string | null },
+              ) =>
+                new Date(a.air_date || 0).getTime() -
+                new Date(b.air_date || 0).getTime(),
+            );
+
+          for (const episode of episodes) {
+            upcoming.push({
+              tmdbId: media.tmdbId,
+              title: media.title,
+              posterPath: media.posterPath,
+              backdropPath: media.backdropPath,
+              seasonNumber,
+              episodeNumber: Number(episode.episode_number),
+              episodeTitle:
+                episode.name ||
+                `Episode ${Number(episode.episode_number)}`,
+              overview: episode.overview || media.overview,
+              airDate: episode.air_date ? new Date(episode.air_date) : null,
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching TV season details:", error);
+      }
+      return;
+    }
+
+    const releaseDate = media.releaseDate;
+    if (!releaseDate) return;
 
     const releaseDateObj = new Date(releaseDate);
     const todayStart = startOfTodayUtc();
 
     if (releaseDateObj >= todayStart) {
-      if (media.mediaType === "tv") {
-        try {
-          const season1Details = await getTVSeasonDetails(media.tmdbId, 1);
-          const episodes = season1Details?.episodes || [];
-
-          for (const episode of episodes) {
-            if (episode?.air_date) {
-              const episodeAirDate = new Date(episode.air_date);
-              if (episodeAirDate >= todayStart) {
-                upcoming.push({
-                  tmdbId: media.tmdbId,
-                  title: media.title,
-                  posterPath: media.posterPath,
-                  backdropPath: media.backdropPath,
-                  seasonNumber: 1,
-                  episodeNumber: Number(episode.episode_number),
-                  episodeTitle: episode.name || `Episode ${Number(episode.episode_number)}`,
-                  overview: episode.overview || media.overview,
-                  airDate: episode.air_date ? new Date(episode.air_date) : null,
-                });
-              }
-            }
-          }
-        } catch (error) {
-          console.error("Error fetching TV season details:", error);
-        }
-      } else {
-        upcoming.push({
-          tmdbId: media.tmdbId,
-          title: media.title,
-          posterPath: media.posterPath,
-          backdropPath: media.backdropPath,
-          seasonNumber: null,
-          episodeNumber: null,
-          episodeTitle: null,
-          overview: media.overview,
-          airDate: releaseDate,
-        });
-      }
+      upcoming.push({
+        tmdbId: media.tmdbId,
+        title: media.title,
+        posterPath: media.posterPath,
+        backdropPath: media.backdropPath,
+        seasonNumber: null,
+        episodeNumber: null,
+        episodeTitle: null,
+        overview: media.overview,
+        airDate: releaseDate,
+      });
     }
-  }
+  });
 
   return upcoming
     .sort(

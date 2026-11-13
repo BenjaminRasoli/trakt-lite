@@ -412,72 +412,129 @@ async function getUpcomingEpisodesQueue(userId: string, limit = 6) {
 }
 
 async function getUpcomingWatchlistReleases(userId: string, limit = 40) {
-  const watchlist = await prisma.watchlist.findMany({
-    where: {
-      userId,
-    },
-    include: {
-      media: true,
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-    take: 500,
-  });
+  const [watchlist, watchHistory] = await Promise.all([
+    prisma.watchlist.findMany({
+      where: {
+        userId,
+      },
+      include: {
+        media: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 500,
+    }),
+    prisma.watchHistory.findMany({
+      where: {
+        userId,
+        media: { mediaType: "tv" },
+      },
+      select: {
+        media: {
+          select: {
+            tmdbId: true,
+          },
+        },
+      },
+    }),
+  ]);
+
+  const watchedTvTmdbIds = new Set(
+    watchHistory.map((item) => item.media.tmdbId),
+  );
+
+  const seasonDetailCache = new Map<string, any>();
+  const getCachedSeasonDetails = async (
+    tmdbId: number,
+    seasonNumber: number,
+  ) => {
+    const key = `${tmdbId}:${seasonNumber}`;
+    if (seasonDetailCache.has(key)) {
+      return seasonDetailCache.get(key);
+    }
+
+    const seasonDetails = await getTVSeasonDetails(tmdbId, seasonNumber);
+    seasonDetailCache.set(key, seasonDetails ?? null);
+    return seasonDetails ?? null;
+  };
 
   const upcomingReleases: any[] = [];
 
-  for (const item of watchlist) {
+  await mapWithConcurrency(watchlist, 3, async (item) => {
     const media = item.media;
-    const releaseDate = media.releaseDate;
 
-    if (!releaseDate) continue;
+    if (media.mediaType === "tv") {
+      if (watchedTvTmdbIds.has(media.tmdbId)) return;
+
+      try {
+        const showDetails = await getMediaDetails(media.tmdbId, "tv");
+        const latestSeason = Math.max(
+          1,
+          showDetails?.number_of_seasons ?? 1,
+        );
+
+        for (const seasonNumber of [latestSeason, latestSeason + 1]) {
+          const seasonDetails = await getCachedSeasonDetails(
+            media.tmdbId,
+            seasonNumber,
+          );
+          const episodes = (seasonDetails?.episodes || [])
+            .filter(
+              (episode: { air_date?: string | null }) =>
+                isFutureEpisode(episode),
+            )
+            .sort(
+              (
+                a: { air_date?: string | null },
+                b: { air_date?: string | null },
+              ) =>
+                new Date(a.air_date || 0).getTime() -
+                new Date(b.air_date || 0).getTime(),
+            );
+
+          for (const episode of episodes) {
+            upcomingReleases.push({
+              tmdbId: media.tmdbId,
+              title: media.title,
+              posterPath: media.posterPath,
+              backdropPath: media.backdropPath,
+              seasonNumber,
+              episodeNumber: Number(episode.episode_number),
+              episodeTitle:
+                episode.name ||
+                `Episode ${Number(episode.episode_number)}`,
+              overview: episode.overview || media.overview,
+              airDate: normalizeDate(episode.air_date),
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching TV season details:", error);
+      }
+      return;
+    }
+
+    const releaseDate = media.releaseDate;
+    if (!releaseDate) return;
 
     const releaseDateObj = new Date(releaseDate);
     const todayStart = startOfTodayUtc();
 
     if (releaseDateObj >= todayStart) {
-      if (media.mediaType === "tv") {
-        try {
-          const season1Details = await getTVSeasonDetails(media.tmdbId, 1);
-          const episodes = season1Details?.episodes || [];
-
-          for (const episode of episodes) {
-            if (episode?.air_date) {
-              const episodeAirDate = new Date(episode.air_date);
-              if (episodeAirDate >= todayStart) {
-                upcomingReleases.push({
-                  tmdbId: media.tmdbId,
-                  title: media.title,
-                  posterPath: media.posterPath,
-                  backdropPath: media.backdropPath,
-                  seasonNumber: 1,
-                  episodeNumber: Number(episode.episode_number),
-                  episodeTitle: episode.name || `Episode ${Number(episode.episode_number)}`,
-                  overview: episode.overview || media.overview,
-                  airDate: normalizeDate(episode.air_date),
-                });
-              }
-            }
-          }
-        } catch (error) {
-          console.error("Error fetching TV season details:", error);
-        }
-      } else {
-        upcomingReleases.push({
-          tmdbId: media.tmdbId,
-          title: media.title,
-          posterPath: media.posterPath,
-          backdropPath: media.backdropPath,
-          seasonNumber: null,
-          episodeNumber: null,
-          episodeTitle: null,
-          overview: media.overview,
-          airDate: normalizeDate(releaseDate.toISOString()),
-        });
-      }
+      upcomingReleases.push({
+        tmdbId: media.tmdbId,
+        title: media.title,
+        posterPath: media.posterPath,
+        backdropPath: media.backdropPath,
+        seasonNumber: null,
+        episodeNumber: null,
+        episodeTitle: null,
+        overview: media.overview,
+        airDate: normalizeDate(releaseDate.toISOString()),
+      });
     }
-  }
+  });
 
   return upcomingReleases
     .sort(
