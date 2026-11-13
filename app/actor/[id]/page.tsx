@@ -162,36 +162,67 @@ export default function ActorPage() {
     };
   }, [supabase]);
 
-  const allCredits = useMemo(() => {
+  const isDisplayableCredit = useMemo(
+    () => (credit: { character?: string; genre_ids?: number[] }) => {
+      const character = credit.character?.trim() ?? "";
+      const isSelfAppearance =
+        /^(as\s+)?(himself|herself|themself|themselves|self)(\b|$)/i.test(
+          character,
+        );
+      const isTalkShow = credit.genre_ids?.includes(10767);
+      return !isSelfAppearance && !isTalkShow;
+    },
+    [],
+  );
+
+  const castCredits = useMemo(() => {
     const seen = new Set<string>();
     return (person?.combined_credits?.cast ?? []).filter((credit) => {
       const key = `${credit.media_type}:${credit.id}`;
       if (seen.has(key)) return false;
       seen.add(key);
+      return isDisplayableCredit(credit);
+    });
+  }, [person, isDisplayableCredit]);
+
+  const crewCredits = useMemo(() => {
+    const seen = new Set<string>();
+    return (person?.combined_credits?.crew ?? []).filter((credit) => {
+      const key = `${credit.media_type}:${credit.id}:${credit.job ?? ""}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return isDisplayableCredit(credit);
+    });
+  }, [person, isDisplayableCredit]);
+
+  const allCredits = useMemo(() => {
+    const seen = new Set<string>();
+    return [...castCredits, ...crewCredits].filter((credit) => {
+      const key = `${credit.media_type}:${credit.id}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
       return true;
     });
-  }, [person]);
+  }, [castCredits, crewCredits]);
 
-  const credits = useMemo(
-    () =>
-      allCredits.filter((credit) => {
-        const character = credit.character?.trim() ?? "";
-        const isSelfAppearance =
-          /^(as\s+)?(himself|herself|themself|themselves|self)(\b|$)/i.test(
-            character,
-          );
-        const isTalkShow = credit.genre_ids?.includes(10767);
-        return !isSelfAppearance && !isTalkShow;
-      }),
-    [allCredits],
-  );
+  const credits = castCredits;
+
+  const creditSubtitle = (credit: (typeof allCredits)[number]) => {
+    const character =
+      "character" in credit ? credit.character : undefined;
+    return character
+      ? `as ${character}`
+      : "job" in credit && credit.job
+        ? credit.job
+        : undefined;
+  };
 
   const actorBackdrop = useMemo(() => {
-    const withBackdrop = credits
+    const withBackdrop = allCredits
       .filter((credit) => credit.backdrop_path)
       .sort((a, b) => (b.vote_count ?? 0) - (a.vote_count ?? 0));
     return withBackdrop[0]?.backdrop_path ?? null;
-  }, [credits]);
+  }, [allCredits]);
 
   const watchedKeys = useMemo(
     () =>
@@ -316,6 +347,24 @@ export default function ActorPage() {
               </p>
             )}
 
+            {person.also_known_as && person.also_known_as.length > 0 && (
+              <div className="mb-4">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-zinc-500">
+                  Also known as
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {person.also_known_as.slice(0, 8).map((name) => (
+                    <span
+                      key={name}
+                      className="rounded-full border border-zinc-700/60 bg-zinc-900/60 px-2.5 py-1 text-xs text-zinc-300"
+                    >
+                      {name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <h2 className="mb-2 text-lg font-semibold text-white">Biography</h2>
             <p
               className={`whitespace-pre-line text-sm leading-7 text-zinc-300 ${
@@ -371,9 +420,7 @@ export default function ActorPage() {
                 >
                   <MediaCard
                     media={credit}
-                    subtitle={
-                      credit.character ? `as ${credit.character}` : undefined
-                    }
+                    subtitle={creditSubtitle(credit)}
                     hideGenres
                   />
                 </div>
@@ -397,9 +444,7 @@ export default function ActorPage() {
                 >
                   <MediaCard
                     media={credit}
-                    subtitle={
-                      credit.character ? `as ${credit.character}` : undefined
-                    }
+                    subtitle={creditSubtitle(credit)}
                     hideGenres
                   />
                 </div>
@@ -411,6 +456,28 @@ export default function ActorPage() {
             </p>
           )}
         </section>
+
+        {crewCredits.length > 0 && (
+          <section className="mb-14">
+            <h2 className="mb-5 text-2xl font-bold text-white">
+              Crew credits
+            </h2>
+            <div className="flex gap-3 overflow-x-auto pb-3 [scrollbar-width:thin] [scrollbar-color:rgba(168,85,247,0.8)_rgba(39,39,42,0.8)]">
+              {crewCredits.map((credit) => (
+                <div
+                  key={`${credit.media_type}:${credit.id}:${credit.job ?? ""}`}
+                  className="w-32 shrink-0 sm:w-36 md:w-40"
+                >
+                  <MediaCard
+                    media={credit}
+                    subtitle={creditSubtitle(credit)}
+                    hideGenres
+                  />
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
       </main>
     </div>
   );

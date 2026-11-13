@@ -106,6 +106,15 @@ export interface TMDBPersonCredit extends TMDBMedia {
   vote_count?: number;
 }
 
+export interface TMDBPersonCrewCredit extends TMDBMedia {
+  media_type: "movie" | "tv";
+  job?: string;
+  department?: string;
+  credit_id?: string;
+  popularity?: number;
+  vote_count?: number;
+}
+
 export interface TMDBPersonDetails {
   id: number;
   name: string;
@@ -114,9 +123,11 @@ export interface TMDBPersonDetails {
   deathday: string | null;
   place_of_birth: string | null;
   known_for_department: string | null;
+  also_known_as?: string[];
   profile_path: string | null;
   combined_credits?: {
     cast: TMDBPersonCredit[];
+    crew?: TMDBPersonCrewCredit[];
   };
 }
 
