@@ -298,6 +298,11 @@ export default function UserRating({
             </span>
           );
         })}
+        {savedRating && (
+          <span className="ml-2 text-xs text-zinc-500">
+            ({Math.round(savedRating.score * 10) / 10})
+          </span>
+        )}
       </div>
 
       {dialogOpen &&
