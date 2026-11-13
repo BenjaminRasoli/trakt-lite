@@ -108,6 +108,12 @@ export default function MediaDetailClient({
     () => media?.genres?.map((g) => g.name) || [],
     [media?.genres],
   );
+  const totalEpisodeCount = useMemo(() => {
+    if (mediaType !== "tv") return 0;
+    return typeof media?.number_of_episodes === "number"
+      ? media.number_of_episodes
+      : 0;
+  }, [mediaType, media?.number_of_episodes]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
@@ -551,6 +557,13 @@ export default function MediaDetailClient({
                 {media.runtime && (
                   <span className="text-zinc-400 text-sm sm:text-base">
                     {media.runtime} min
+                  </span>
+                )}
+
+                {mediaType === "tv" && totalEpisodeCount > 0 && (
+                  <span className="text-zinc-400 text-sm sm:text-base">
+                    {totalEpisodeCount}{" "}
+                    {totalEpisodeCount === 1 ? "episode" : "episodes"}
                   </span>
                 )}
               </div>
