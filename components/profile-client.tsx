@@ -446,6 +446,8 @@ export default function ProfileClient({
     };
   }, [watchHistory, selectedYear]);
 
+  const showYearBreakdown = stats.yearBreakdown.length !== 1;
+
   const formatCompactDuration = (minutes: number) => {
     const totalMinutes = Math.max(0, minutes);
     const days = Math.floor(totalMinutes / (60 * 24));
@@ -958,10 +960,12 @@ export default function ProfileClient({
 
           <div
             className={`mt-6 grid gap-6 ${
-              selectedYear ? "xl:grid-cols-1" : "xl:grid-cols-[1.15fr_0.85fr]"
+              showYearBreakdown
+                ? "xl:grid-cols-[1.15fr_0.85fr]"
+                : "xl:grid-cols-1"
             }`}
           >
-            {!selectedYear && (
+            {showYearBreakdown && (
               <div className="min-w-0 rounded-2xl border border-zinc-800 bg-zinc-950/40 p-4">
                 <h4 className="text-sm font-semibold uppercase tracking-[0.25em] text-zinc-300">
                   Year breakdown
@@ -1009,7 +1013,7 @@ export default function ProfileClient({
 
             <div
               className={`min-w-0 rounded-2xl border border-zinc-800 bg-zinc-950/40 p-4 ${
-                selectedYear ? "xl:col-span-1" : ""
+                showYearBreakdown ? "" : "xl:col-span-1"
               }`}
             >
               <h4 className="text-sm font-semibold uppercase tracking-[0.25em] text-zinc-300">
