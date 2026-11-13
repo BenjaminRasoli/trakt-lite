@@ -98,7 +98,7 @@ export async function getAchievementDataForUser(
           episodeNumber: true,
         },
       }),
-      prisma.watchlist.count({ where: { userId } }),
+      prisma.watchlistEntry.count({ where: { userId } }),
     ]);
 
   const genreSync = skipGenreSync

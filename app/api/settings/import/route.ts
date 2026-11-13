@@ -465,6 +465,19 @@ export async function POST(request: NextRequest) {
                   mediaId: media.id,
                 },
               });
+              await prisma.watchlistEntry.upsert({
+                where: {
+                  userId_mediaId: {
+                    userId: dbUser.id,
+                    mediaId: media.id,
+                  },
+                },
+                update: {},
+                create: {
+                  userId: dbUser.id,
+                  mediaId: media.id,
+                },
+              });
               watchlistImportedCount++;
             }
           } catch (error) {

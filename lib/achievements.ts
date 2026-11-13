@@ -798,7 +798,7 @@ export const achievementDefinitions: Achievement[] = [
   {
     id: "watchlist-10",
     title: "Future Night Stand",
-    description: "Keep 10 titles in your watchlist.",
+    description: "Add 10 titles to your watchlist.",
     category: "Collection",
     icon: "🔖",
     metric: "watchlist",
@@ -808,7 +808,7 @@ export const achievementDefinitions: Achievement[] = [
   {
     id: "watchlist-50",
     title: "The Queue",
-    description: "Keep 50 titles in your watchlist.",
+    description: "Add 50 titles to your watchlist.",
     category: "Collection",
     icon: "📋",
     metric: "watchlist",
@@ -818,7 +818,7 @@ export const achievementDefinitions: Achievement[] = [
   {
     id: "watchlist-100",
     title: "Insomniac's List",
-    description: "Keep 100 titles in your watchlist.",
+    description: "Add 100 titles to your watchlist.",
     category: "Collection",
     icon: "🌙",
     metric: "watchlist",

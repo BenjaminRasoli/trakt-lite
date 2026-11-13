@@ -320,6 +320,21 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Track all-time watchlist additions for achievements (never deleted)
+    await prisma.watchlistEntry.upsert({
+      where: {
+        userId_mediaId: {
+          userId: dbUser.id,
+          mediaId: media.id,
+        },
+      },
+      update: {},
+      create: {
+        userId: dbUser.id,
+        mediaId: media.id,
+      },
+    });
+
     return NextResponse.json({ watchlistItem });
   } catch (error) {
     console.error("Error adding to watchlist:", error);
