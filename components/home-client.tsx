@@ -25,6 +25,38 @@ import {
 } from "@/lib/tmdb";
 import type { TMDBMedia } from "@/lib/tmdb";
 
+function streakBadgeClass(streak: number) {
+  return `mt-[22px] inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-base font-semibold ${
+    streak >= 14
+      ? "border-orange-400/60 bg-gradient-to-r from-orange-600/35 to-orange-500/25 text-orange-300 shadow-[0_0_24px_rgba(249,115,22,0.55)]"
+      : streak >= 7
+        ? "border-orange-400/40 bg-gradient-to-r from-orange-500/25 to-red-500/15 text-orange-200 shadow-[0_0_20px_rgba(249,115,22,0.4)]"
+        : "border-orange-400/30 bg-gradient-to-r from-orange-500/15 to-amber-500/10 text-orange-200 shadow-[0_0_12px_rgba(249,115,22,0.25)]"
+  }`;
+}
+
+function StreakBadge({ streak, className }: { streak: number; className?: string }) {
+  return (
+    <div className={className ?? streakBadgeClass(streak)}>
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
+      </svg>
+      {streak}-day streak
+    </div>
+  );
+}
+
 interface HomeClientProps {
   initialUser: any;
   initialHomeData: {
@@ -530,7 +562,7 @@ export default function HomeClient({
       <main className="relative z-10 w-full max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 py-12 flex-1">
         <div>
           {!searchQuery && (
-            <div className="mb-8">
+            <div className="mb-[22px]">
               <div className="flex items-center gap-2">
                 <h1 className="text-3xl font-bold text-white">Welcome</h1>
                 <p className="text-3xl font-semibold leading-none">
@@ -559,25 +591,7 @@ export default function HomeClient({
                   </span>
                 </p>
               </div>
-              {watchStreak > 0 && (
-                <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-orange-400/30 bg-gradient-to-r from-orange-500/15 to-amber-500/10 px-4 py-1.5 text-base font-semibold text-orange-200 shadow-[0_0_12px_rgba(249,115,22,0.25)]">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
-                  </svg>
-                  {watchStreak}-day streak
-                </div>
-              )}
+              {watchStreak > 0 && <StreakBadge streak={watchStreak} />}
             </div>
           )}
         </div>
